@@ -25,6 +25,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 
 	// Initialize handlers
 	vocabHandler := NewVocabularyHandler(db)
+	quizHandler := NewQuizHandler(db)
 
 	// API v1 group
 	v1 := router.Group("/api/v1")
@@ -45,9 +46,9 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 		// Quiz routes
 		quiz := v1.Group("/quiz")
 		{
-			quiz.GET("/generate", generateQuiz)
-			quiz.POST("/submit", submitQuiz)
-			quiz.GET("/history", getQuizHistory)
+			quiz.POST("/generate", quizHandler.GenerateQuiz)
+			quiz.POST("/submit", quizHandler.SubmitQuiz)
+			quiz.GET("/history", quizHandler.GetQuizHistory)
 		}
 
 		// Dictionary routes
@@ -72,25 +73,6 @@ func healthCheck(c *gin.Context) {
 		"status":  "healthy",
 		"service": "chinese-learning-api",
 		"version": "1.0.0",
-	})
-}
-
-// Quiz endpoints
-func generateQuiz(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Generate quiz endpoint - to be implemented",
-	})
-}
-
-func submitQuiz(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Submit quiz endpoint - to be implemented",
-	})
-}
-
-func getQuizHistory(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Get quiz history endpoint - to be implemented",
 	})
 }
 

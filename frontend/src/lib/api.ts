@@ -80,10 +80,39 @@ export const vocabularyApi = {
   },
 }
 
+// Quiz API
+export const quizApi = {
+	// Generate a new quiz
+	generate: async (type: 'practice' | 'scored', hskLevel?: number, count?: number): Promise<any> => {
+		const response = await api.post('/quiz/generate', {
+			type,
+			hsk_level: hskLevel,
+			count: count || 10,
+		})
+		return response.data
+	},
+
+	// Submit quiz answers
+	submit: async (quizId: string, answers: Record<string, string>, completed: boolean): Promise<any> => {
+		const response = await api.post('/quiz/submit', {
+			quiz_id: quizId,
+			answers,
+			completed,
+		})
+		return response.data
+	},
+
+	// Get quiz history
+	getHistory: async (): Promise<any> => {
+		const response = await api.get('/quiz/history')
+		return response.data
+	},
+}
+
 // Health check
 export const healthApi = {
-  check: async (): Promise<{ status: string; service: string; version: string }> => {
-    const response = await api.get('/health')
-    return response.data
-  },
+	check: async (): Promise<{ status: string; service: string; version: string }> => {
+		const response = await api.get('/health')
+		return response.data
+	},
 } 
