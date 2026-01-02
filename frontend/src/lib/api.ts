@@ -10,6 +10,67 @@ export const api = axios.create({
   },
 })
 
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Add response interceptor to handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+
+      try {
+        const refreshToken = localStorage.getItem('refresh_token')
+        if (refreshToken) {
+          // Try to refresh the token
+          const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
+            refresh_token: refreshToken,
+          })
+          
+          const { access_token } = response.data
+          localStorage.setItem('access_token', access_token)
+          
+          // Retry the original request
+          originalRequest.headers.Authorization = `Bearer ${access_token}`
+          return api(originalRequest)
+        }
+      } catch (refreshError) {
+        // Refresh failed, only redirect if we're not on a public route
+        // Public routes: vocabulary, dictionary, quiz/generate, quiz/submit
+        const url = originalRequest.url || ''
+        const isPublicRoute = url.includes('/vocabulary') || 
+                             url.includes('/dictionary') || 
+                             url.includes('/quiz/generate') || 
+                             url.includes('/quiz/submit') ||
+                             url.includes('/health')
+        
+        if (!isPublicRoute) {
+          // Only redirect to login for protected routes
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          window.location.href = '/login'
+        }
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
+
 // Types
 export interface ExampleSentence {
   chinese: string
@@ -41,6 +102,8 @@ export interface VocabularyFilters {
   search?: string
   page?: number
   limit?: number
+  sort_by?: string
+  sort_order?: 'asc' | 'desc'
 }
 
 // API functions
@@ -52,6 +115,8 @@ export const vocabularyApi = {
     if (filters.search) params.append('search', filters.search)
     if (filters.page) params.append('page', filters.page.toString())
     if (filters.limit) params.append('limit', filters.limit.toString())
+    if (filters.sort_by) params.append('sort_by', filters.sort_by)
+    if (filters.sort_order) params.append('sort_order', filters.sort_order)
 
     const response = await api.get(`/vocabulary/?${params.toString()}`)
     return response.data
@@ -113,6 +178,80 @@ export const quizApi = {
 export const healthApi = {
 	check: async (): Promise<{ status: string; service: string; version: string }> => {
 		const response = await api.get('/health')
+		return response.data
+	},
+}
+
+// User types
+export interface User {
+	id: string
+	email: string
+	first_name?: string
+	last_name?: string
+	is_verified: boolean
+	is_active: boolean
+	last_login_at?: string
+	created_at: string
+	updated_at: string
+}
+
+// Auth API
+export const authApi = {
+	// Signup
+	signup: async (data: {
+		email: string
+		password: string
+		first_name?: string
+		last_name?: string
+	}): Promise<{ message: string; user: User }> => {
+		const response = await api.post('/auth/signup', data)
+		return response.data
+	},
+
+	// Login
+	login: async (data: { email: string; password: string }): Promise<{
+		access_token: string
+		refresh_token: string
+		user: User
+		expires_in: number
+	}> => {
+		const response = await api.post('/auth/login', data)
+		return response.data
+	},
+
+	// Logout
+	logout: async (): Promise<{ message: string }> => {
+		const response = await api.post('/auth/logout')
+		return response.data
+	},
+
+	// Request password reset
+	requestPasswordReset: async (data: { email: string }): Promise<{ message: string }> => {
+		const response = await api.post('/auth/request-password-reset', data)
+		return response.data
+	},
+
+	// Confirm password reset
+	confirmPasswordReset: async (data: { token: string; password: string }): Promise<{ message: string }> => {
+		const response = await api.post('/auth/confirm-password-reset', data)
+		return response.data
+	},
+
+	// Verify email
+	verifyEmail: async (data: { token: string }): Promise<{ message: string }> => {
+		const response = await api.post('/auth/verify-email', data)
+		return response.data
+	},
+
+	// Get profile
+	getProfile: async (): Promise<{ user: User }> => {
+		const response = await api.get('/profile')
+		return response.data
+	},
+
+	// Update profile
+	updateProfile: async (data: { first_name?: string; last_name?: string }): Promise<{ message: string; user: User }> => {
+		const response = await api.put('/profile', data)
 		return response.data
 	},
 } 

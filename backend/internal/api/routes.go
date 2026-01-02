@@ -4,7 +4,11 @@ import (
 	"database/sql"
 	"time"
 
+	"chinese-learning/internal/auth"
 	"chinese-learning/internal/config"
+	"chinese-learning/internal/database"
+	"chinese-learning/internal/middleware"
+	"chinese-learning/internal/models"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -26,6 +30,13 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 	// Initialize handlers
 	vocabHandler := NewVocabularyHandler(db)
 	quizHandler := NewQuizHandler(db)
+	authHandler := NewAuthHandler(db, cfg)
+
+	// Initialize middleware
+	userRepo := database.NewUserRepository(db)
+	userService := models.NewUserService(userRepo)
+	tokenService := auth.NewTokenService(cfg)
+	authMiddleware := middleware.NewAuthMiddleware(tokenService, userService)
 
 	// API v1 group
 	v1 := router.Group("/api/v1")
@@ -33,7 +44,19 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 		// Health check
 		v1.GET("/health", healthCheck)
 
-		// Vocabulary routes
+		// Authentication routes (public)
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/signup", authHandler.Signup)
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/logout", authHandler.Logout)
+			auth.POST("/request-password-reset", authHandler.RequestPasswordReset)
+			auth.POST("/confirm-password-reset", authHandler.ConfirmPasswordReset)
+			auth.POST("/verify-email", authHandler.VerifyEmail)
+		}
+
+		// Public content routes (no authentication required)
+		// Vocabulary routes (public)
 		vocabulary := v1.Group("/vocabulary")
 		{
 			vocabulary.GET("", vocabHandler.GetVocabularyList)  // Handle /vocabulary
@@ -43,26 +66,44 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			vocabulary.GET("/:id", vocabHandler.GetVocabularyItem)
 		}
 
-		// Quiz routes
-		quiz := v1.Group("/quiz")
-		{
-			quiz.POST("/generate", quizHandler.GenerateQuiz)
-			quiz.POST("/submit", quizHandler.SubmitQuiz)
-			quiz.GET("/history", quizHandler.GetQuizHistory)
-		}
-
-		// Dictionary routes
+		// Dictionary routes (public)
 		dictionary := v1.Group("/dictionary")
 		{
 			dictionary.GET("/search", searchDictionary)
 			dictionary.GET("/:word", getWordDefinition)
 		}
 
-		// Chat routes
-		chat := v1.Group("/chat")
+		// Quiz routes (optional auth - can use without login, but tracks history if logged in)
+		quiz := v1.Group("/quiz")
+		quiz.Use(authMiddleware.OptionalAuth())
 		{
-			chat.POST("/message", sendChatMessage)
-			chat.GET("/history", getChatHistory)
+			quiz.POST("/generate", quizHandler.GenerateQuiz)
+			quiz.POST("/submit", quizHandler.SubmitQuiz)
+		}
+
+		// Protected routes (require authentication)
+		protected := v1.Group("/")
+		protected.Use(authMiddleware.RequireAuth())
+		{
+			// User profile routes
+			profile := protected.Group("/profile")
+			{
+				profile.GET("", authHandler.GetProfile)
+				profile.PUT("", authHandler.UpdateProfile)
+			}
+
+			// Quiz history (requires authentication to track)
+			quizHistory := protected.Group("/quiz")
+			{
+				quizHistory.GET("/history", quizHandler.GetQuizHistory)
+			}
+
+			// Chat routes (protected)
+			chat := protected.Group("/chat")
+			{
+				chat.POST("/message", sendChatMessage)
+				chat.GET("/history", getChatHistory)
+			}
 		}
 	}
 }
