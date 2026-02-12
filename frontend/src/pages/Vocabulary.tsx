@@ -1,54 +1,75 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { RefreshCw, BookOpen, Target, Zap } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { vocabularyApi, VocabularyFilters } from '@/lib/api'
 import { VocabularyCard } from '@/components/VocabularyCard'
-import { VocabularyFilters as VocabularyFiltersComponent } from '@/components/VocabularyFilters'
+import { Pagination } from '@/components/Pagination'
 
 export function Vocabulary() {
-  const [filters, setFilters] = useState<VocabularyFilters>({})
-  const [showTranslations, setShowTranslations] = useState(true)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [filters, setFilters] = useState<VocabularyFilters>({ 
+    limit: 50, 
+    sort_by: 'pinyin', 
+    sort_order: 'asc' 
+  })
+  const [search, setSearch] = useState('')
+  const [selectedLevel, setSelectedLevel] = useState<number | undefined>(undefined)
+
+  // Initialize filters from URL parameters
+  useEffect(() => {
+    const hskLevel = searchParams.get('hsk_level')
+    if (hskLevel) {
+      const level = parseInt(hskLevel)
+      if (!isNaN(level) && level >= 1 && level <= 6) {
+        setSelectedLevel(level)
+        setFilters(prev => ({ ...prev, hsk_level: level, page: 1 }))
+      }
+    }
+  }, [searchParams])
 
   // Fetch vocabulary data
   const {
     data: vocabularyData,
     isLoading,
     error,
-    refetch
   } = useQuery({
     queryKey: ['vocabulary', filters],
     queryFn: () => vocabularyApi.getAll(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
-  // Fetch random vocabulary for practice
-  const {
-    data: randomData,
-    refetch: refetchRandom
-  } = useQuery({
-    queryKey: ['vocabulary-random'],
-    queryFn: () => vocabularyApi.getRandom(5),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  })
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value)
+    setFilters(prev => ({ ...prev, search: e.target.value, page: 1 }))
+  }, [])
 
-  const handleFiltersChange = (newFilters: { hsk_level?: number; search?: string }) => {
-    setFilters(newFilters)
-  }
+  const handleLevelChange = useCallback((level: number | undefined) => {
+    setSelectedLevel(level)
+    setFilters(prev => ({ ...prev, hsk_level: level, page: 1 }))
+    
+    // Update URL parameters
+    if (level) {
+      setSearchParams({ hsk_level: level.toString() })
+    } else {
+      setSearchParams({})
+    }
+  }, [setSearchParams])
 
-  const handleRefresh = () => {
-    refetch()
-  }
+  const handlePageChange = useCallback((page: number) => {
+    setFilters(prev => ({ ...prev, page }))
+  }, [])
 
-  const handleRefreshRandom = () => {
-    refetchRandom()
-  }
+  const handleSortChange = useCallback((sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setFilters(prev => ({ ...prev, sort_by: sortBy, sort_order: sortOrder, page: 1 }))
+  }, [])
 
   if (error) {
     return (
       <div className="space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Vocabulary Practice</h1>
-          <p className="text-gray-600">Master HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
+          <p className="text-gray-600">Master Mandarin Chinese HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
         </div>
         
         <div className="card">
@@ -56,10 +77,6 @@ export function Vocabulary() {
             <div className="text-6xl mb-4">⚠️</div>
             <h2 className="text-xl font-semibold mb-2">Error Loading Vocabulary</h2>
             <p className="text-gray-600 mb-4">Failed to load vocabulary data. Please try again.</p>
-            <button onClick={handleRefresh} className="btn-primary">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Retry
-            </button>
           </div>
         </div>
       </div>
@@ -71,57 +88,88 @@ export function Vocabulary() {
       {/* Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Vocabulary Practice</h1>
-        <p className="text-gray-600">Master HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
+        <p className="text-gray-600">Master Mandarin Chinese HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
       </div>
 
-      {/* Quick Practice Section */}
-      {randomData && randomData.vocabulary.length > 0 && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-5 h-5 text-yellow-600" />
-              <h2 className="text-xl font-semibold">Quick Practice</h2>
+      {/* Search and Filters */}
+      <div className="card">
+        <div className="space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search vocabulary..."
+              value={search}
+              onChange={handleSearchChange}
+              className="input-field pl-10 pr-4"
+            />
+          </div>
+
+          {/* HSK Level Filters */}
+          <div>
+            <div className="text-sm font-medium text-gray-700 mb-2">HSK Level</div>
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 4, 5, 6].map((level) => (
+                <button
+                  key={level}
+                  onClick={() => handleLevelChange(selectedLevel === level ? undefined : level)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    selectedLevel === level
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  HSK {level}
+                </button>
+              ))}
             </div>
-            <button
-              onClick={handleRefreshRandom}
-              className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>New Words</span>
-            </button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {randomData.vocabulary.map((vocab) => (
-              <VocabularyCard
-                key={vocab.id}
-                vocabulary={vocab}
-                showTranslation={showTranslations}
-                className="h-full"
-              />
-            ))}
+
+          {/* Sorting Controls */}
+          <div className="flex flex-wrap gap-4">
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-2">Sort By</div>
+              <select
+                value={filters.sort_by || 'pinyin'}
+                onChange={(e) => setFilters(prev => ({ ...prev, sort_by: e.target.value, page: 1 }))}
+                className="input-field"
+              >
+                <option value="pinyin">Pinyin</option>
+                <option value="chinese">Chinese</option>
+                <option value="english">English</option>
+                <option value="hsk_level">HSK Level</option>
+                <option value="created_at">Date Added</option>
+              </select>
+            </div>
+            
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-2">Order</div>
+              <select
+                value={filters.sort_order || 'asc'}
+                onChange={(e) => setFilters(prev => ({ ...prev, sort_order: e.target.value as 'asc' | 'desc', page: 1 }))}
+                className="input-field"
+              >
+                <option value="asc">Ascending (A→Z)</option>
+                <option value="desc">Descending (Z→A)</option>
+              </select>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Top Pagination */}
+      {vocabularyData && vocabularyData.total > vocabularyData.limit && (
+        <div className="mb-6">
+          <Pagination
+            currentPage={vocabularyData.page}
+            totalPages={Math.ceil(vocabularyData.total / vocabularyData.limit)}
+            onPageChange={handlePageChange}
+            totalItems={vocabularyData.total}
+            itemsPerPage={vocabularyData.limit}
+          />
         </div>
       )}
-
-      {/* Filters */}
-      <div className="card">
-        <VocabularyFiltersComponent onFiltersChange={handleFiltersChange} />
-      </div>
-
-      {/* Translation Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Target className="w-5 h-5 text-primary-600" />
-          <span className="font-medium">Practice Mode</span>
-        </div>
-        <button
-          onClick={() => setShowTranslations(!showTranslations)}
-          className="btn-outline"
-        >
-          {showTranslations ? 'Hide' : 'Show'} Translations
-        </button>
-      </div>
 
       {/* Vocabulary List */}
       <div className="space-y-6">
@@ -132,32 +180,16 @@ export function Vocabulary() {
               <p className="text-gray-600">Loading vocabulary...</p>
             </div>
           </div>
-        ) : vocabularyData && vocabularyData.vocabulary.length > 0 ? (
+        ) : vocabularyData && vocabularyData.vocabulary && vocabularyData.vocabulary.length > 0 ? (
           <>
-            {/* Results Summary */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <BookOpen className="w-5 h-5 text-primary-600" />
-                <span className="text-sm text-gray-600">
-                  Showing {vocabularyData.vocabulary.length} of {vocabularyData.total} words
-                </span>
-              </div>
-              <button
-                onClick={handleRefresh}
-                className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Refresh</span>
-              </button>
-            </div>
+
 
             {/* Vocabulary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {vocabularyData.vocabulary.map((vocab) => (
+              {vocabularyData.vocabulary?.map((vocab) => (
                 <VocabularyCard
                   key={vocab.id}
                   vocabulary={vocab}
-                  showTranslation={showTranslations}
                   className="h-full"
                 />
               ))}
@@ -165,12 +197,14 @@ export function Vocabulary() {
 
             {/* Pagination */}
             {vocabularyData.total > vocabularyData.limit && (
-              <div className="flex justify-center">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">
-                    Page {vocabularyData.page} of {Math.ceil(vocabularyData.total / vocabularyData.limit)}
-                  </span>
-                </div>
+              <div className="mt-8">
+                <Pagination
+                  currentPage={vocabularyData.page}
+                  totalPages={Math.ceil(vocabularyData.total / vocabularyData.limit)}
+                  onPageChange={handlePageChange}
+                  totalItems={vocabularyData.total}
+                  itemsPerPage={vocabularyData.limit}
+                />
               </div>
             )}
           </>

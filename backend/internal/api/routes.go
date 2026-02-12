@@ -17,9 +17,9 @@ import (
 
 // SetupRoutes configures all API routes
 func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg *config.Config) {
-	// Add CORS middleware FIRST
+	// Add CORS middleware FIRST — use configured origins, never wildcard in production
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     cfg.CORS.AllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "Accept", "Cache-Control"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
@@ -50,6 +50,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			auth.POST("/signup", authHandler.Signup)
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/logout", authHandler.Logout)
+			auth.POST("/refresh", authHandler.RefreshToken)
 			auth.POST("/request-password-reset", authHandler.RequestPasswordReset)
 			auth.POST("/confirm-password-reset", authHandler.ConfirmPasswordReset)
 			auth.POST("/verify-email", authHandler.VerifyEmail)

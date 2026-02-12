@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -63,6 +64,44 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 			ShowPinyin:       false,
 			ShowAnswer:       false,
 		}
+
+		// For scored quizzes, generate multiple choice options
+		if req.Type == models.QuizTypeScored {
+			// Get additional random vocabulary for wrong answers
+			// We need more than 3 to ensure we have enough unique wrong answers
+			wrongAnswers, err := h.vocabRepo.GetRandom(6, req.HSKLevel)
+			if err == nil && len(wrongAnswers) >= 3 {
+				// Create multiple choice options starting with correct answer
+				options := []string{vocab.English} // Correct answer first
+
+				// Add wrong answers, ensuring they're different from the correct answer
+				for _, wrong := range wrongAnswers {
+					if wrong.ID != vocab.ID && wrong.English != vocab.English {
+						options = append(options, wrong.English)
+						// Stop when we have 4 total options
+						if len(options) >= 4 {
+							break
+						}
+					}
+				}
+
+				// If we don't have enough wrong answers, add some generic options
+				for len(options) < 4 {
+					genericOptions := []string{"I don't know", "None of the above", "Maybe", "Not sure"}
+					option := genericOptions[len(options)-1]
+					if !contains(options, option) {
+						options = append(options, option)
+					}
+				}
+
+				// Shuffle the options to randomize the order
+				shuffleStrings(options)
+
+				card.MultipleChoice = options
+				card.CorrectAnswer = vocab.English
+			}
+		}
+
 		cards = append(cards, card)
 	}
 
@@ -88,14 +127,54 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 		return
 	}
 
-	// For now, we'll just return a mock result
-	// In a real implementation, you'd validate answers against the database
+	// Validate each answer and calculate score
+	correct := 0
+	total := len(submission.Answers)
+
+	// Track detailed results for each card
+	var cardResults []models.CardResult
+
+	// Validate each answer
+	for cardID, userAnswer := range submission.Answers {
+		// Convert string ID to UUID
+		vocabID, err := uuid.Parse(cardID)
+		if err != nil {
+			continue
+		}
+
+		// Get the vocabulary item to check the correct answer
+		vocab, err := h.vocabRepo.GetByID(vocabID)
+		if err == nil && vocab != nil {
+			isCorrect := vocab.English == userAnswer
+			if isCorrect {
+				correct++
+			}
+
+			// Store card result for detailed feedback
+			cardResults = append(cardResults, models.CardResult{
+				CardID:        vocabID,
+				UserAnswer:    userAnswer,
+				CorrectAnswer: vocab.English,
+				IsCorrect:     isCorrect,
+			})
+		}
+	}
+
+	// Calculate score
+	score := 0.0
+	percentage := 0.0
+	if total > 0 {
+		score = float64(correct) / float64(total) * 100
+		percentage = score
+	}
+
 	result := models.QuizResult{
 		QuizID:      submission.QuizID,
-		Total:       10,
-		Correct:     8, // Mock data
-		Score:       80.0,
-		Percentage:  80.0,
+		Total:       total,
+		Correct:     correct,
+		Score:       score,
+		Percentage:  percentage,
+		CardResults: cardResults,
 		CompletedAt: time.Now(),
 	}
 
@@ -135,4 +214,22 @@ func (h *QuizHandler) GetQuizHistory(c *gin.Context) {
 		"history": history,
 		"total":   len(history),
 	})
+}
+
+// Helper function to check if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// Helper function to shuffle a slice of strings
+func shuffleStrings(slice []string) {
+	for i := len(slice) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		slice[i], slice[j] = slice[j], slice[i]
+	}
 }

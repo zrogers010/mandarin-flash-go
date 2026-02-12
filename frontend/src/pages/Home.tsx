@@ -10,10 +10,10 @@ const features = [
     color: 'bg-blue-500',
   },
   {
-    name: 'Interactive Quizzes',
-    description: 'Test your knowledge with multiple choice and matching exercises.',
+    name: 'Flashcards',
+    description: 'Practice vocabulary with interactive flashcards or take multiple choice quizzes.',
     icon: Brain,
-    href: '/quiz',
+    href: '/flashcards',
     color: 'bg-green-500',
   },
   {
@@ -49,8 +49,8 @@ export function Home() {
             Start Learning
             <ArrowRight className="ml-2 w-4 h-4" />
           </Link>
-          <Link to="/quiz" className="btn-outline inline-flex items-center">
-            Take a Quiz
+          <Link to="/flashcards" className="btn-outline inline-flex items-center">
+            Practice Flashcards
             <Brain className="ml-2 w-4 h-4" />
           </Link>
         </div>
@@ -84,8 +84,14 @@ export function Home() {
         <h2 className="text-2xl font-bold text-center mb-8">HSK Vocabulary Coverage</h2>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-6 text-center">
           {[1, 2, 3, 4, 5, 6].map((level) => (
-            <div key={level} className="space-y-2">
-              <div className="text-2xl font-bold text-primary-600">HSK {level}</div>
+            <Link
+              key={level}
+              to={`/vocabulary?hsk_level=${level}`}
+              className="space-y-2 p-4 rounded-lg hover:bg-gray-50 transition-colors group"
+            >
+              <div className="text-2xl font-bold text-primary-600 group-hover:text-primary-700 transition-colors">
+                HSK {level}
+              </div>
               <div className="text-sm text-gray-600">
                 {level === 1 && '150 words'}
                 {level === 2 && '300 words'}
@@ -94,7 +100,7 @@ export function Home() {
                 {level === 5 && '2500 words'}
                 {level === 6 && '5000 words'}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

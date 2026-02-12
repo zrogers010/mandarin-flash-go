@@ -66,8 +66,7 @@ func main() {
 		_, err := db.Exec(`
 			INSERT INTO vocabulary (chinese, pinyin, english, hsk_level, example_sentences)
 			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (chinese) DO NOTHING
-		`, vocab.chinese, vocab.pinyin, vocab.english, vocab.level, fmt.Sprintf(`["%s"]`, vocab.exampleSentence))
+		`, vocab.chinese, vocab.pinyin, vocab.english, vocab.level, fmt.Sprintf(`[{"chinese": "%s", "pinyin": "%s", "english": "%s", "type": "simple"}]`, vocab.chinese, vocab.pinyin, vocab.exampleSentence))
 
 		if err != nil {
 			log.Printf("Error inserting %s: %v", vocab.chinese, err)

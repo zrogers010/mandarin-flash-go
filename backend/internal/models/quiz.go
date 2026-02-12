@@ -26,6 +26,8 @@ type QuizCard struct {
 	IsCorrect        *bool             `json:"is_correct,omitempty"`
 	ShowPinyin       bool              `json:"show_pinyin"`
 	ShowAnswer       bool              `json:"show_answer"`
+	MultipleChoice   []string          `json:"multiple_choice,omitempty"`
+	CorrectAnswer    string            `json:"correct_answer,omitempty"`
 }
 
 // Quiz represents a complete quiz session
@@ -56,12 +58,21 @@ type QuizSubmission struct {
 
 // QuizResult represents the result of a quiz
 type QuizResult struct {
-	QuizID      uuid.UUID `json:"quiz_id"`
-	Total       int       `json:"total"`
-	Correct     int       `json:"correct"`
-	Score       float64   `json:"score"`
-	Percentage  float64   `json:"percentage"`
-	CompletedAt time.Time `json:"completed_at"`
+	QuizID      uuid.UUID    `json:"quiz_id"`
+	Total       int          `json:"total"`
+	Correct     int          `json:"correct"`
+	Score       float64      `json:"score"`
+	Percentage  float64      `json:"percentage"`
+	CardResults []CardResult `json:"card_results,omitempty"`
+	CompletedAt time.Time    `json:"completed_at"`
+}
+
+// CardResult represents the result of a single card in a quiz
+type CardResult struct {
+	CardID        uuid.UUID `json:"card_id"`
+	UserAnswer    string    `json:"user_answer"`
+	CorrectAnswer string    `json:"correct_answer"`
+	IsCorrect     bool      `json:"is_correct"`
 }
 
 // QuizHistory represents a quiz history entry

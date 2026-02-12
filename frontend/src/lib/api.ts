@@ -219,9 +219,11 @@ export const authApi = {
 		return response.data
 	},
 
-	// Logout
-	logout: async (): Promise<{ message: string }> => {
-		const response = await api.post('/auth/logout')
+	// Logout — send refresh token so the server can invalidate the session
+	logout: async (refreshToken?: string): Promise<{ message: string }> => {
+		const response = await api.post('/auth/logout', {
+			refresh_token: refreshToken || localStorage.getItem('refresh_token') || '',
+		})
 		return response.data
 	},
 

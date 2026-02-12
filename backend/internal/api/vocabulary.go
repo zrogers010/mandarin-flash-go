@@ -27,7 +27,7 @@ func NewVocabularyHandler(db *sql.DB) *VocabularyHandler {
 func (h *VocabularyHandler) GetVocabularyList(c *gin.Context) {
 	// Parse query parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	search := c.Query("search")
 
 	var hskLevel *int

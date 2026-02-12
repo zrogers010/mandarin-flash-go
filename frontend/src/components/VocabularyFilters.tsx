@@ -1,24 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search, Filter, X } from 'lucide-react'
 
 interface VocabularyFiltersProps {
-  onFiltersChange: (filters: { hsk_level?: number; search?: string }) => void
+  onFiltersChange: (filters: { hsk_level?: number; search?: string; limit?: number }) => void
   className?: string
 }
 
 export function VocabularyFilters({ onFiltersChange, className = '' }: VocabularyFiltersProps) {
   const [search, setSearch] = useState('')
   const [selectedLevel, setSelectedLevel] = useState<number | undefined>(undefined)
+  const [selectedLimit, setSelectedLimit] = useState(50)
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const hskLevels = [0, 1, 2, 3, 4, 5, 6]
+  const hskLevels = [1, 2, 3, 4, 5, 6]
 
-  useEffect(() => {
-    const filters: { hsk_level?: number; search?: string } = {}
+  const updateFilters = useCallback(() => {
+    const filters: { hsk_level?: number; search?: string; limit?: number } = {}
     if (selectedLevel) filters.hsk_level = selectedLevel
     if (search.trim()) filters.search = search.trim()
+    filters.limit = selectedLimit
     onFiltersChange(filters)
-  }, [search, selectedLevel, onFiltersChange])
+  }, [selectedLevel, search, selectedLimit, onFiltersChange])
+
+  useEffect(() => {
+    updateFilters()
+  }, [updateFilters])
 
   const clearFilters = () => {
     setSearch('')
@@ -77,7 +83,24 @@ export function VocabularyFilters({ onFiltersChange, className = '' }: Vocabular
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {level === 0 ? 'Beginner' : `HSK ${level}`}
+                {`HSK ${level}`}
+              </button>
+            ))}
+          </div>
+          
+          <div className="text-sm font-medium text-gray-700">Words per page</div>
+          <div className="flex flex-wrap gap-2">
+            {[25, 50, 100].map((limit) => (
+              <button
+                key={limit}
+                onClick={() => setSelectedLimit(limit)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  selectedLimit === limit
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {limit}
               </button>
             ))}
           </div>

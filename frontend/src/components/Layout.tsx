@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Brain, Search, MessageCircle, Home } from 'lucide-react'
+import { BookOpen, Brain, Search, MessageCircle, Home, User, LogOut, LogIn, UserPlus } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface LayoutProps {
   children: ReactNode
@@ -9,13 +10,14 @@ interface LayoutProps {
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Vocabulary', href: '/vocabulary', icon: BookOpen },
-  { name: 'Quiz', href: '/quiz', icon: Brain },
+  { name: 'Flashcards', href: '/flashcards', icon: Brain },
   { name: 'Dictionary', href: '/dictionary', icon: Search },
   { name: 'Chat', href: '/chat', icon: MessageCircle },
 ]
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation()
+  const { user, isAuthenticated, logout } = useAuth()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -32,25 +34,65 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             </div>
             
-            <nav className="hidden md:flex space-x-8">
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'text-primary-600 bg-primary-50'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                )
-              })}
-            </nav>
+            <div className="flex items-center space-x-4">
+              <nav className="hidden md:flex space-x-8">
+                {navigation.map((item) => {
+                  const isActive = location.pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'text-primary-600 bg-primary-50'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </Link>
+                  )
+                })}
+              </nav>
+
+              {/* Auth buttons */}
+              <div className="flex items-center space-x-2">
+                {isAuthenticated ? (
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <User className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm text-gray-700">
+                        {user?.first_name || user?.email}
+                      </span>
+                    </div>
+                    <button
+                      onClick={logout}
+                      className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Link
+                      to="/login"
+                      className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      <span>Login</span>
+                    </Link>
+                    <Link
+                      to="/signup"
+                      className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Sign Up</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </header>

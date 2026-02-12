@@ -53,9 +53,10 @@ type Vocabulary struct {
 	ID               uuid.UUID       `json:"id" db:"id"`
 	Chinese          string          `json:"chinese" db:"chinese"`
 	Pinyin           string          `json:"pinyin" db:"pinyin"`
+	PinyinNoTones   string          `json:"pinyin_no_tones" db:"pinyin_no_tones"`
 	English          string          `json:"english" db:"english"`
+	PartOfSpeech     *string         `json:"part_of_speech,omitempty" db:"part_of_speech"`
 	HSKLevel         int             `json:"hsk_level" db:"hsk_level"`
-	ToneMarks        *string         `json:"tone_marks,omitempty" db:"tone_marks"`
 	ExampleSentences json.RawMessage `json:"example_sentences" db:"example_sentences"`
 	CreatedAt        time.Time       `json:"created_at" db:"created_at"`
 	UpdatedAt        time.Time       `json:"updated_at" db:"updated_at"`
@@ -89,6 +90,14 @@ func (v *Vocabulary) GetExampleSentences() ([]ExampleSentence, error) {
 	return sentences, nil
 }
 
+// GeneratePinyinNoTones generates the no-tone pinyin from the regular pinyin
+func (v *Vocabulary) GeneratePinyinNoTones() string {
+	if v.PinyinNoTones != "" {
+		return v.PinyinNoTones
+	}
+	return stripTones(v.Pinyin)
+}
+
 // VocabularyListResponse represents the response for listing vocabulary
 type VocabularyListResponse struct {
 	Vocabulary []Vocabulary `json:"vocabulary"`
@@ -103,6 +112,8 @@ type VocabularyFilters struct {
 	Search   *string `json:"search,omitempty"`
 	Page     int     `json:"page"`
 	Limit    int     `json:"limit"`
+	SortBy   string  `json:"sort_by,omitempty"`   // Field to sort by: pinyin, chinese, english, hsk_level
+	SortOrder string `json:"sort_order,omitempty"` // asc or desc
 }
 
 // VocabularyRepository handles database operations for vocabulary
@@ -118,7 +129,7 @@ func NewVocabularyRepository(db *sql.DB) *VocabularyRepository {
 // GetAll retrieves all vocabulary with optional filters
 func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyListResponse, error) {
 	query := `
-		SELECT id, chinese, pinyin, english, hsk_level, tone_marks, example_sentences, created_at, updated_at
+		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 		WHERE 1=1
 	`
@@ -133,17 +144,46 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 
 	if filters.Search != nil && *filters.Search != "" {
 		searchTerm := "%" + *filters.Search + "%"
-		// Search in Chinese, English, pinyin, and tone-stripped pinyin
+		// Search in Chinese, English, and pinyin
 		query += fmt.Sprintf(` AND (
 			chinese ILIKE $%d OR 
 			english ILIKE $%d OR 
-			pinyin ILIKE $%d OR 
-			strip_pinyin_tones(pinyin) ILIKE $%d
-		)`, argIndex, argIndex, argIndex, argIndex)
+			pinyin ILIKE $%d
+		)`, argIndex, argIndex, argIndex)
 		args = append(args, searchTerm)
 		argIndex++
 	}
 
+	// Add sorting before pagination
+	if filters.SortBy == "" {
+		filters.SortBy = "pinyin" // default sort
+	}
+	if filters.SortOrder == "" {
+		filters.SortOrder = "asc" // default order
+	}
+	
+	// Validate sort field to prevent SQL injection
+	validSortFields := map[string]string{
+		"pinyin": "pinyin_no_tones", // Use pinyin_no_tones for better alphabetical sorting
+		"chinese": "chinese", 
+		"english": "english",
+		"hsk_level": "hsk_level",
+		"created_at": "created_at",
+	}
+	
+	sortField, valid := validSortFields[filters.SortBy]
+	if !valid {
+		sortField = "pinyin" // fallback to default
+	}
+	
+	// Validate sort order
+	if filters.SortOrder != "asc" && filters.SortOrder != "desc" {
+		filters.SortOrder = "asc"
+	}
+	
+	// Add sorting
+	query += fmt.Sprintf(" ORDER BY %s %s", sortField, filters.SortOrder)
+	
 	// Get total count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM (%s) as subquery", query)
 	var total int
@@ -161,7 +201,7 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 	}
 
 	offset := (filters.Page - 1) * filters.Limit
-	query += fmt.Sprintf(" ORDER BY hsk_level, chinese LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
 	args = append(args, filters.Limit, offset)
 
 	rows, err := r.db.Query(query, args...)
@@ -177,9 +217,10 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 			&v.ID,
 			&v.Chinese,
 			&v.Pinyin,
+			&v.PinyinNoTones,
 			&v.English,
+			&v.PartOfSpeech,
 			&v.HSKLevel,
-			&v.ToneMarks,
 			&v.ExampleSentences,
 			&v.CreatedAt,
 			&v.UpdatedAt,
@@ -201,7 +242,7 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 // GetByID retrieves a vocabulary item by ID
 func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 	query := `
-		SELECT id, chinese, pinyin, english, hsk_level, tone_marks, example_sentences, created_at, updated_at
+		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 		WHERE id = $1
 	`
@@ -211,9 +252,10 @@ func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 		&v.ID,
 		&v.Chinese,
 		&v.Pinyin,
+		&v.PinyinNoTones,
 		&v.English,
+		&v.PartOfSpeech,
 		&v.HSKLevel,
-		&v.ToneMarks,
 		&v.ExampleSentences,
 		&v.CreatedAt,
 		&v.UpdatedAt,
@@ -232,7 +274,7 @@ func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 // GetByHSKLevel retrieves vocabulary by HSK level
 func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 	query := `
-		SELECT id, chinese, pinyin, english, hsk_level, tone_marks, example_sentences, created_at, updated_at
+		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 		WHERE hsk_level = $1
 		ORDER BY chinese
@@ -251,9 +293,10 @@ func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 			&v.ID,
 			&v.Chinese,
 			&v.Pinyin,
+			&v.PinyinNoTones,
 			&v.English,
+			&v.PartOfSpeech,
 			&v.HSKLevel,
-			&v.ToneMarks,
 			&v.ExampleSentences,
 			&v.CreatedAt,
 			&v.UpdatedAt,
@@ -270,7 +313,7 @@ func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 // GetRandom retrieves random vocabulary items
 func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, error) {
 	query := `
-		SELECT id, chinese, pinyin, english, hsk_level, tone_marks, example_sentences, created_at, updated_at
+		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 	`
 	args := []interface{}{}
@@ -301,9 +344,10 @@ func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, e
 			&v.ID,
 			&v.Chinese,
 			&v.Pinyin,
+			&v.PinyinNoTones,
 			&v.English,
+			&v.PartOfSpeech,
 			&v.HSKLevel,
-			&v.ToneMarks,
 			&v.ExampleSentences,
 			&v.CreatedAt,
 			&v.UpdatedAt,

@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Install git and ca-certificates
 RUN apk add --no-cache git ca-certificates
@@ -20,10 +20,10 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/server/main.go
 
 # Development stage with Air for hot reload
-FROM golang:1.21-alpine AS development
+FROM golang:1.24-alpine AS development
 
-# Install Air for hot reload
-RUN go install github.com/cosmtrek/air@latest
+# Install Air for hot reload (using a specific working version)
+RUN go install github.com/cosmtrek/air@v1.49.0
 
 # Install git and ca-certificates
 RUN apk add --no-cache git ca-certificates
@@ -76,6 +76,7 @@ RUN echo 'root = "."' > .air.toml && \
     echo '  watcher = "cyan"' >> .air.toml && \
     echo '' >> .air.toml && \
     echo '[log]' >> .air.toml && \
+    echo '  main = ""' >> .air.toml && \
     echo '  main_only = false' >> .air.toml && \
     echo '  time = false' >> .air.toml && \
     echo '' >> .air.toml && \
@@ -86,7 +87,7 @@ RUN echo 'root = "."' > .air.toml && \
 EXPOSE 8080
 
 # Run Air for development
-CMD ["air"]
+CMD ["/go/bin/air"]
 
 # Production stage
 FROM alpine:latest AS production

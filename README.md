@@ -2,6 +2,68 @@
 
 A comprehensive Chinese learning platform built with Go (backend) and React (frontend) for mastering HSK vocabulary, featuring interactive quizzes, AI-powered conversation practice, and a smart dictionary.
 
+## 🚀 Quick Start
+
+**⚠️ IMPORTANT: You need Docker Desktop running to start the application!**
+
+1. **Start Docker Desktop**
+   ```bash
+   # On macOS, start Docker Desktop
+   open -a Docker
+   # Wait for Docker to fully start (you'll see the whale icon in your menu bar)
+   ```
+
+2. **Stop local Postgres.app (if running)**
+   ```bash
+   # If you have Postgres.app running locally, stop it to avoid port conflicts
+   pkill -f "postgres" || echo "No local postgres running"
+   ```
+
+3. **Clone and setup the project**
+   ```bash
+   git clone <repository-url>
+   cd mandarinflash-go
+   make setup
+   ```
+
+4. **Start the entire application**
+   ```bash
+   make dev
+   ```
+
+5. **Access the application**
+   - 🌐 **Frontend**: http://localhost:3000
+   - 🔧 **Backend API**: http://localhost:8080
+
+That's it! The `make dev` command will:
+- Start PostgreSQL and Redis in Docker containers
+- Run database migrations automatically
+- Start the Go backend server with hot reloading
+- Start the React frontend development server
+
+## 🛠️ Alternative Startup Methods
+
+### Option 1: Manual Docker Compose (if you prefer more control)
+```bash
+# Start just the database and Redis
+docker-compose up -d postgres redis
+
+# Run migrations
+make migrate-up
+
+# Start backend (in one terminal)
+cd backend && go run cmd/server/main.go
+
+# Start frontend (in another terminal)
+cd frontend && npm run dev
+```
+
+### Option 2: Full Docker Compose (production-like)
+```bash
+# Start everything in Docker containers
+make docker-run
+```
+
 ## 🚀 Features
 
 - **HSK Vocabulary Practice**: Complete HSK 3.0 Level 1 vocabulary with 499 words
@@ -38,66 +100,9 @@ A comprehensive Chinese learning platform built with Go (backend) and React (fro
 ## 📦 Installation
 
 ### Prerequisites
+- **Docker Desktop** (required for database and Redis)
 - Go 1.21+
 - Node.js 18+
-- PostgreSQL 15+
-- Redis 7+
-- Docker (optional)
-
-### Quick Start with Docker
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd mandarinflash-go
-   ```
-
-2. **Start the services**
-   ```bash
-   # Start database and Redis
-   docker-compose up -d postgres redis
-   
-   # Run migrations
-   make migrate-up
-   
-   # Start backend
-   cd backend && go run cmd/server/main.go
-   
-   # Start frontend (in another terminal)
-   cd frontend && npm run dev
-   ```
-
-3. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8080
-
-### Manual Setup
-
-1. **Backend Setup**
-   ```bash
-   cd backend
-   go mod download
-   
-   # Set environment variables
-   export DB_HOST=localhost
-   export DB_PORT=5432
-   export DB_NAME=chinese_learning
-   export DB_USER=postgres
-   export DB_PASSWORD=password
-   
-   # Run migrations
-   make migrate-up
-   
-   # Start server
-   go run cmd/server/main.go
-   ```
-
-2. **Frontend Setup**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
 
 ## 🗄️ Database Setup
 
@@ -145,6 +150,25 @@ The vocabulary search supports multiple input methods:
 - `xia` → finds: xià (下), xiā (虾), xiǎ (夏), etc.
 - `ma` → finds: mǎ (马), ma (吗), má (麻), etc.
 - `ni` → finds: nǐ (你), ní (尼), nì (逆), etc.
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**"Failed to ping database" or "Postgres.app failed to verify trust authentication" error**
+- Stop local Postgres.app: `pkill -f "postgres"`
+- Make sure Docker Desktop is running
+- Run `docker ps` to verify containers are running
+- If containers aren't running, try `make dev` again
+
+**"Cannot connect to Docker daemon" error**
+- Start Docker Desktop: `open -a Docker`
+- Wait for Docker to fully start (whale icon in menu bar)
+- Try the command again
+
+**Port already in use errors**
+- Stop any existing services: `make docker-stop`
+- Or kill processes using the ports: `lsof -ti:3000 | xargs kill -9`
 
 ## 🧪 Development
 
