@@ -60,12 +60,12 @@ type CORSConfig struct {
 	AllowedOrigins []string
 }
 
-// EmailConfig holds email configuration
+// EmailConfig holds email configuration (AWS SES)
 type EmailConfig struct {
-	SendGridAPIKey string
-	FromEmail      string
-	FromName       string
-	SupportEmail   string
+	AWSRegion    string
+	FromEmail    string
+	FromName     string
+	SupportEmail string
 }
 
 // Load loads configuration from environment variables
@@ -138,10 +138,10 @@ func Load() *Config {
 			AllowedOrigins: allowedOrigins,
 		},
 		Email: EmailConfig{
-			SendGridAPIKey: getEnv("SENDGRID_API_KEY", ""),
-			FromEmail:      getEnv("EMAIL_FROM", "noreply@mandarinflash.com"),
-			FromName:       getEnv("EMAIL_FROM_NAME", "MandarinFlash"),
-			SupportEmail:   getEnv("SUPPORT_EMAIL", "support@mandarinflash.com"),
+			AWSRegion:    getEnv("AWS_REGION", ""),
+			FromEmail:    getEnv("EMAIL_FROM", "noreply@mandarinflash.com"),
+			FromName:     getEnv("EMAIL_FROM_NAME", "MandarinFlash"),
+			SupportEmail: getEnv("SUPPORT_EMAIL", "support@mandarinflash.com"),
 		},
 		AI: AIConfig{
 			APIKey:    getEnv("AI_API_KEY", ""),

@@ -2,34 +2,56 @@ package auth
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"html/template"
 	"log"
-	"net/http"
 	"time"
 
 	"chinese-learning/internal/config"
+
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
+	sestypes "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
 )
 
-// EmailService handles sending emails
+// EmailService handles sending emails via AWS SES
 type EmailService struct {
-	sendGridAPIKey string
-	fromEmail      string
-	fromName       string
-	frontendURL    string
-	supportEmail   string
+	sesClient    *sesv2.Client
+	fromEmail    string
+	fromName     string
+	frontendURL  string
+	supportEmail string
+	enabled      bool
 }
 
-// NewEmailService creates a new email service using the application config
+// NewEmailService creates a new email service using the application config.
+// If AWS_REGION is not set, emails are logged to console (dev mode).
 func NewEmailService(cfg *config.Config) *EmailService {
-	return &EmailService{
-		sendGridAPIKey: cfg.Email.SendGridAPIKey,
-		fromEmail:      cfg.Email.FromEmail,
-		fromName:       cfg.Email.FromName,
-		frontendURL:    cfg.FrontendURL,
-		supportEmail:   cfg.Email.SupportEmail,
+	es := &EmailService{
+		fromEmail:    cfg.Email.FromEmail,
+		fromName:     cfg.Email.FromName,
+		frontendURL:  cfg.FrontendURL,
+		supportEmail: cfg.Email.SupportEmail,
 	}
+
+	if cfg.Email.AWSRegion == "" {
+		log.Println("[Email] No AWS_REGION set — running in dev mode (emails logged to console)")
+		return es
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(),
+		awsconfig.WithRegion(cfg.Email.AWSRegion),
+	)
+	if err != nil {
+		log.Printf("[Email] WARNING: Failed to load AWS config: %v — falling back to dev mode", err)
+		return es
+	}
+
+	es.sesClient = sesv2.NewFromConfig(awsCfg)
+	es.enabled = true
+	log.Printf("[Email] AWS SES enabled (region: %s)", cfg.Email.AWSRegion)
+	return es
 }
 
 // EmailTemplate represents an email template
@@ -54,82 +76,39 @@ type PasswordResetData struct {
 	SupportEmail string
 }
 
-// sendGridEmail represents the SendGrid API v3 email payload
-type sendGridEmail struct {
-	Personalizations []sendGridPersonalization `json:"personalizations"`
-	From             sendGridAddress           `json:"from"`
-	Subject          string                    `json:"subject"`
-	Content          []sendGridContent         `json:"content"`
-}
-
-type sendGridPersonalization struct {
-	To []sendGridAddress `json:"to"`
-}
-
-type sendGridAddress struct {
-	Email string `json:"email"`
-	Name  string `json:"name,omitempty"`
-}
-
-type sendGridContent struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
-
-// sendEmail sends an email using SendGrid API v3 or falls back to logging
 func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody string) error {
-	// If no SendGrid API key is configured, fall back to logging (dev mode)
-	if es.sendGridAPIKey == "" {
+	if !es.enabled {
 		log.Println("════════════════════════════════════════════════════════")
 		log.Printf("  [DEV MODE] Email to: %s <%s>", toName, toEmail)
 		log.Printf("  Subject: %s", subject)
-		log.Println("  Set SENDGRID_API_KEY env var to enable real email delivery")
+		log.Println("  Set AWS_REGION to enable real email delivery via SES")
 		log.Println("════════════════════════════════════════════════════════")
 		return nil
 	}
 
-	// Build SendGrid API v3 payload
-	payload := sendGridEmail{
-		Personalizations: []sendGridPersonalization{
-			{
-				To: []sendGridAddress{
-					{Email: toEmail, Name: toName},
+	fromAddr := fmt.Sprintf("%s <%s>", es.fromName, es.fromEmail)
+
+	input := &sesv2.SendEmailInput{
+		FromEmailAddress: &fromAddr,
+		Destination: &sestypes.Destination{
+			ToAddresses: []string{toEmail},
+		},
+		Content: &sestypes.EmailContent{
+			Simple: &sestypes.Message{
+				Subject: &sestypes.Content{Data: &subject},
+				Body: &sestypes.Body{
+					Html: &sestypes.Content{Data: &htmlBody},
 				},
 			},
 		},
-		From:    sendGridAddress{Email: es.fromEmail, Name: es.fromName},
-		Subject: subject,
-		Content: []sendGridContent{
-			{Type: "text/html", Value: htmlBody},
-		},
 	}
 
-	jsonPayload, err := json.Marshal(payload)
+	_, err := es.sesClient.SendEmail(context.Background(), input)
 	if err != nil {
-		return fmt.Errorf("failed to marshal email payload: %w", err)
+		return fmt.Errorf("SES SendEmail failed: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.sendgrid.com/v3/mail/send", bytes.NewBuffer(jsonPayload))
-	if err != nil {
-		return fmt.Errorf("failed to create email request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+es.sendGridAPIKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// SendGrid returns 202 Accepted on success
-	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("SendGrid API returned status %d", resp.StatusCode)
-	}
-
-	log.Printf("📧 Email sent successfully to: %s", toEmail)
+	log.Printf("Email sent successfully to: %s", toEmail)
 	return nil
 }
 
@@ -137,8 +116,7 @@ func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody string) err
 func (es *EmailService) SendEmailVerification(email, name, token string) error {
 	verifyURL := fmt.Sprintf("%s/verify-email?token=%s", es.frontendURL, token)
 
-	// In dev mode, log the verification URL directly for convenience
-	if es.sendGridAPIKey == "" {
+	if !es.enabled {
 		log.Println("════════════════════════════════════════════════════════")
 		log.Printf("  [DEV] Email verification for: %s", email)
 		log.Printf("  Verify URL: %s", verifyURL)
@@ -170,8 +148,7 @@ func (es *EmailService) SendEmailVerification(email, name, token string) error {
 func (es *EmailService) SendPasswordReset(email, name, token string) error {
 	resetURL := fmt.Sprintf("%s/reset-password?token=%s", es.frontendURL, token)
 
-	// In dev mode, log the reset URL directly for convenience
-	if es.sendGridAPIKey == "" {
+	if !es.enabled {
 		log.Println("════════════════════════════════════════════════════════")
 		log.Printf("  [DEV] Password reset for: %s", email)
 		log.Printf("  Reset URL: %s", resetURL)
@@ -199,7 +176,6 @@ func (es *EmailService) SendPasswordReset(email, name, token string) error {
 	return es.sendEmail(email, name, emailTemplate.Subject, emailBody)
 }
 
-// getEmailVerificationTemplate returns the email verification template
 func (es *EmailService) getEmailVerificationTemplate() (*EmailTemplate, error) {
 	subject := "Verify Your Email - MandarinFlash"
 
@@ -211,12 +187,12 @@ func (es *EmailService) getEmailVerificationTemplate() (*EmailTemplate, error) {
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #0ea5e9, #eab308); padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header { background: linear-gradient(135deg, #0d7377, #0ea5a5); padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
         .header h1 { color: white; margin: 0; }
         .content { padding: 20px; background: #ffffff; }
         .button { 
             display: inline-block; 
-            background-color: #0ea5e9; 
+            background-color: #0d7377; 
             color: white; 
             padding: 12px 24px; 
             text-decoration: none; 
@@ -230,7 +206,7 @@ func (es *EmailService) getEmailVerificationTemplate() (*EmailTemplate, error) {
 <body>
     <div class="container">
         <div class="header">
-            <h1>Welcome to MandarinFlash! 🎯</h1>
+            <h1>Welcome to MandarinFlash!</h1>
         </div>
         <div class="content">
             <p>Hello {{.UserName}},</p>
@@ -257,7 +233,6 @@ func (es *EmailService) getEmailVerificationTemplate() (*EmailTemplate, error) {
 	}, nil
 }
 
-// getPasswordResetTemplate returns the password reset template
 func (es *EmailService) getPasswordResetTemplate() (*EmailTemplate, error) {
 	subject := "Reset Your Password - MandarinFlash"
 
@@ -315,7 +290,6 @@ func (es *EmailService) getPasswordResetTemplate() (*EmailTemplate, error) {
 	}, nil
 }
 
-// renderTemplate renders an email template with the given data
 func (es *EmailService) renderTemplate(emailTpl *EmailTemplate, data interface{}) (string, error) {
 	tmpl, err := template.New("email").Parse(emailTpl.Body)
 	if err != nil {
