@@ -9,6 +9,9 @@
 # Stale/generated docs
 AUTHENTICATION_SETUP.md
 
+# Vocabulary seed data (proprietary)
+backend/db/seeds/
+
 # ════════════════════════════════════════
 # Go
 # ════════════════════════════════════════
