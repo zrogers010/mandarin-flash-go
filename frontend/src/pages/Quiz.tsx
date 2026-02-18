@@ -34,8 +34,13 @@ export function Quiz() {
 
 	// Submit quiz mutation
 	const submitQuizMutation = useMutation({
-		mutationFn: (data: { quizId: string; answers: Record<string, string>; completed: boolean }) =>
-			quizApi.submit(data.quizId, data.answers, data.completed),
+		mutationFn: (data: {
+			quizId: string
+			answers: Record<string, string>
+			completed: boolean
+			quizType: 'practice' | 'scored'
+			hskLevel?: number
+		}) => quizApi.submit(data.quizId, data.answers, data.completed, data.quizType, data.hskLevel),
 		onSuccess: (data) => {
 			setQuizResult(data)
 			setShowResults(true)
@@ -108,6 +113,8 @@ export function Quiz() {
 				quizId: currentQuiz.id,
 				answers: userAnswers,
 				completed: true,
+				quizType: quizType,
+				hskLevel: selectedLevel,
 			})
 		} else {
 			// For practice mode, just show completion

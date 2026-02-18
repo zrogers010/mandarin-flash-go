@@ -211,9 +211,17 @@ export const quizApi = {
 	},
 
 	// Submit quiz answers
-	submit: async (quizId: string, answers: Record<string, string>, completed: boolean): Promise<any> => {
+	submit: async (
+		quizId: string,
+		answers: Record<string, string>,
+		completed: boolean,
+		quizType: 'practice' | 'scored',
+		hskLevel?: number
+	): Promise<any> => {
 		const response = await api.post('/quiz/submit', {
 			quiz_id: quizId,
+			quiz_type: quizType,
+			hsk_level: hskLevel,
 			answers,
 			completed,
 		})
