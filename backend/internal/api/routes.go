@@ -131,6 +131,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			{
 				quizProtected.GET("/history", quizHandler.GetQuizHistory)
 				quizProtected.GET("/stats", quizHandler.GetQuizStats)
+				quizProtected.GET("/:id", quizHandler.GetQuizDetail)
 			}
 
 			// --- Features that require verified email ---

@@ -66,7 +66,11 @@ func (h *TestVocabularyHandler) GetVocabularyList(c *gin.Context) {
 	// Parse query parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	search := c.Query("search")
+
+	var searchPtr *string
+	if search := c.Query("search"); search != "" {
+		searchPtr = &search
+	}
 
 	var hskLevel *int
 	if levelStr := c.Query("hsk_level"); levelStr != "" {
@@ -78,7 +82,7 @@ func (h *TestVocabularyHandler) GetVocabularyList(c *gin.Context) {
 	filters := models.VocabularyFilters{
 		Page:     page,
 		Limit:    limit,
-		Search:   &search,
+		Search:   searchPtr,
 		HSKLevel: hskLevel,
 	}
 

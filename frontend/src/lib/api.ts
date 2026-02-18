@@ -145,6 +145,59 @@ export const vocabularyApi = {
   },
 }
 
+// Quiz types
+export interface CardResult {
+	card_id: string
+	user_answer: string
+	correct_answer: string
+	is_correct: boolean
+}
+
+export interface CardResultDetail {
+	card_id: string
+	chinese: string
+	pinyin: string
+	user_answer: string
+	correct_answer: string
+	is_correct: boolean
+}
+
+export interface QuizHistoryItem {
+	id: string
+	type: 'practice' | 'scored'
+	total: number
+	correct: number
+	score: number
+	percentage: number
+	hsk_level?: number
+	card_results?: CardResult[]
+	created_at: string
+	completed_at: string
+}
+
+export interface QuizDetail {
+	id: string
+	type: 'practice' | 'scored'
+	total: number
+	correct: number
+	score: number
+	percentage: number
+	hsk_level?: number
+	card_results: CardResultDetail[]
+	created_at: string
+	completed_at: string
+}
+
+export interface QuizStats {
+	total_quizzes: number
+	total_questions: number
+	total_correct: number
+	average_score: number
+	best_score: number
+	current_streak: number
+	quizzes_this_week: number
+}
+
 // Quiz API
 export const quizApi = {
 	// Generate a new quiz
@@ -168,8 +221,28 @@ export const quizApi = {
 	},
 
 	// Get quiz history
-	getHistory: async (): Promise<any> => {
-		const response = await api.get('/quiz/history')
+	getHistory: async (page?: number, limit?: number): Promise<{
+		history: QuizHistoryItem[]
+		total: number
+		page: number
+		limit: number
+	}> => {
+		const params = new URLSearchParams()
+		if (page) params.append('page', page.toString())
+		if (limit) params.append('limit', limit.toString())
+		const response = await api.get(`/quiz/history?${params.toString()}`)
+		return response.data
+	},
+
+	// Get quiz detail with enriched vocabulary
+	getDetail: async (quizId: string): Promise<QuizDetail> => {
+		const response = await api.get(`/quiz/${quizId}`)
+		return response.data
+	},
+
+	// Get quiz stats
+	getStats: async (): Promise<{ stats: QuizStats }> => {
+		const response = await api.get('/quiz/stats')
 		return response.data
 	},
 }

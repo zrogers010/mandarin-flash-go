@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Brain, Search, MessageCircle, Home, User, LogOut, LogIn, UserPlus, Settings } from 'lucide-react'
+import { BookOpen, Brain, Search, MessageCircle, Home, User, LogOut, LogIn, UserPlus, Settings, BarChart3 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface LayoutProps {
@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Vocabulary', href: '/vocabulary', icon: BookOpen },
   { name: 'Flashcards', href: '/flashcards', icon: Brain },
   { name: 'Dictionary', href: '/dictionary', icon: Search },
+  { name: 'Progress', href: '/progress', icon: BarChart3 },
   { name: 'Chat', href: '/chat', icon: MessageCircle },
 ]
 

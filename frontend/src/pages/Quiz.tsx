@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Play, Trophy, History, RefreshCw, ArrowLeft, LogIn } from 'lucide-react'
+import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { quizApi } from '@/lib/api'
 import { QuizCard } from '@/components/QuizCard'
@@ -214,73 +214,141 @@ export function Quiz() {
 	}
 
 	if (showResults) {
+		const cardResults = quizResult?.card_results || []
+		const wrongCards = cardResults.filter((cr: any) => !cr.is_correct)
+		const correctCards = cardResults.filter((cr: any) => cr.is_correct)
+
 		return (
 			<div className="space-y-6">
 				{/* Header with Back Button */}
 				<div className="relative">
-					{/* Back Button - Top Left */}
 					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
 						<ArrowLeft className="w-4 h-4 mr-2" />
 						Go Back
 					</button>
-					
-					{/* Title - Centered */}
 					<div className="text-center">
 						<h1 className="text-3xl font-bold text-gray-900 mb-4">Quiz Complete!</h1>
 						<p className="text-gray-600">Great job completing the quiz.</p>
 					</div>
 				</div>
 
+				{/* Score Summary Card */}
 				<div className="card">
 					<div className="text-center py-8">
-						<div className="text-6xl mb-4">🎉</div>
-						<h2 className="text-xl font-semibold mb-2">Quiz Finished</h2>
-						
-						{/* Score Display for Scored Quizzes */}
-						{quizType === 'scored' && quizResult && (
+						<div className="text-6xl mb-4">
+							{quizType === 'scored' && quizResult
+								? quizResult.percentage >= 80 ? '🏆' : quizResult.percentage >= 50 ? '👍' : '💪'
+								: '🎉'
+							}
+						</div>
+
+						{quizType === 'scored' && quizResult ? (
 							<div className="mb-6">
 								<div className="text-4xl font-bold text-primary-600 mb-2">
 									{quizResult.correct}/{quizResult.total} Correct
 								</div>
-								<div className="text-lg text-gray-600">
+								<div className="text-lg text-gray-600 mb-4">
 									Score: {quizResult.percentage.toFixed(1)}%
 								</div>
-								<div className="mt-4 p-4 bg-gray-50 rounded-lg">
-									<div className="text-sm text-gray-600 mb-2">Performance:</div>
-									<div className="flex justify-center space-x-2">
-										{Array.from({ length: quizResult.total }, (_, i) => (
-											<div
-												key={i}
-												className={`w-4 h-4 rounded-full ${
-													i < quizResult.correct ? 'bg-green-500' : 'bg-red-500'
-												}`}
-												title={i < quizResult.correct ? 'Correct' : 'Incorrect'}
-											/>
-										))}
+								{/* Visual score bar */}
+								<div className="max-w-xs mx-auto">
+									<div className="w-full bg-gray-200 rounded-full h-3">
+										<div
+											className={`h-3 rounded-full transition-all duration-500 ${
+												quizResult.percentage >= 80 ? 'bg-green-500'
+													: quizResult.percentage >= 50 ? 'bg-yellow-500'
+													: 'bg-red-500'
+											}`}
+											style={{ width: `${quizResult.percentage}%` }}
+										/>
 									</div>
 								</div>
 							</div>
+						) : (
+							<p className="text-gray-600 mb-6">
+								You've practiced {currentQuiz?.cards.length} words.
+							</p>
 						)}
-						
-						{/* General completion message */}
-						<p className="text-gray-600 mb-6">
-							You've completed {quizType === 'scored' ? 'a quiz' : 'practice vocabulary'} with {currentQuiz?.cards.length} words.
-						</p>
-						
+
 						<div className="flex justify-center space-x-4">
 							<button onClick={handleNewQuiz} className="btn-primary">
 								<Play className="w-4 h-4 mr-2" />
 								New Quiz
 							</button>
-							{quizType === 'scored' && (
-								<button onClick={() => setShowResults(false)} className="btn-outline">
-									<ArrowLeft className="w-4 h-4 mr-2" />
-									Review Quiz
-								</button>
+							{isAuthenticated && (
+								<Link to="/progress" className="btn-outline inline-flex items-center">
+									<BarChart3 className="w-4 h-4 mr-2" />
+									View All Stats
+								</Link>
 							)}
 						</div>
 					</div>
 				</div>
+
+				{/* Word-by-Word Results (scored quizzes only) */}
+				{quizType === 'scored' && cardResults.length > 0 && (
+					<>
+						{/* Wrong Answers */}
+						{wrongCards.length > 0 && (
+							<div className="card">
+								<div className="flex items-center space-x-2 mb-4">
+									<XCircle className="w-5 h-5 text-red-500" />
+									<h3 className="text-lg font-semibold text-gray-900">
+										Words to Review ({wrongCards.length})
+									</h3>
+								</div>
+								<div className="space-y-3">
+									{wrongCards.map((cr: any) => {
+										const card = currentQuiz?.cards.find((c: any) => c.id === cr.card_id)
+										return (
+											<div key={cr.card_id} className="flex items-center justify-between p-4 bg-red-50 border border-red-100 rounded-lg">
+												<div className="flex-1">
+													<div className="flex items-center gap-3">
+														<span className="text-xl font-medium">{card?.chinese || '—'}</span>
+														<span className="text-sm text-gray-500">{card?.pinyin || ''}</span>
+													</div>
+													<div className="mt-1 text-sm">
+														<span className="text-red-600">Your answer: {cr.user_answer}</span>
+														<span className="mx-2 text-gray-300">|</span>
+														<span className="text-green-700 font-medium">Correct: {cr.correct_answer}</span>
+													</div>
+												</div>
+												<XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+											</div>
+										)
+									})}
+								</div>
+							</div>
+						)}
+
+						{/* Correct Answers */}
+						{correctCards.length > 0 && (
+							<div className="card">
+								<div className="flex items-center space-x-2 mb-4">
+									<CheckCircle2 className="w-5 h-5 text-green-500" />
+									<h3 className="text-lg font-semibold text-gray-900">
+										Correct ({correctCards.length})
+									</h3>
+								</div>
+								<div className="space-y-2">
+									{correctCards.map((cr: any) => {
+										const card = currentQuiz?.cards.find((c: any) => c.id === cr.card_id)
+										return (
+											<div key={cr.card_id} className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-lg">
+												<div className="flex items-center gap-3">
+													<span className="text-lg font-medium">{card?.chinese || '—'}</span>
+													<span className="text-sm text-gray-500">{card?.pinyin || ''}</span>
+													<span className="text-sm text-gray-600">{cr.correct_answer}</span>
+												</div>
+												<CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+											</div>
+										)
+									})}
+								</div>
+							</div>
+						)}
+					</>
+				)}
 			</div>
 		)
 	}
@@ -428,40 +496,57 @@ export function Quiz() {
 				</div>
 			</div>
 
-			{/* Quiz History */}
+			{/* Quiz History / Progress Link */}
 			{isAuthenticated ? (
 				historyData && historyData.history && historyData.history.length > 0 && (
 					<div className="card">
-						<div className="flex items-center justify-between mb-6">
+						<div className="flex items-center justify-between mb-4">
 							<div className="flex items-center space-x-2">
 								<History className="w-5 h-5 text-primary-600" />
 								<h2 className="text-xl font-semibold">Recent Quizzes</h2>
 							</div>
-							<button
-								onClick={() => window.location.reload()}
-								className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+							<Link
+								to="/progress"
+								className="flex items-center space-x-1 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
 							>
-								<RefreshCw className="w-4 h-4" />
-								<span>Refresh</span>
-							</button>
+								<BarChart3 className="w-4 h-4" />
+								<span>View All Stats</span>
+							</Link>
 						</div>
 
-						<div className="space-y-4">
-							{historyData.history.slice(0, 5).map((quiz: any) => (
-								<div key={quiz.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-									<div>
-										<div className="font-medium">
-											{quiz.type === 'scored' ? 'Take Quiz' : 'Practice Vocabulary'}
+						<div className="space-y-3">
+							{historyData.history.slice(0, 3).map((quiz: any) => {
+								const scoreColor = quiz.percentage >= 80
+									? 'text-green-600 bg-green-50'
+									: quiz.percentage >= 50
+										? 'text-yellow-600 bg-yellow-50'
+										: 'text-red-600 bg-red-50'
+								return (
+									<Link
+										key={quiz.id}
+										to="/progress"
+										className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+									>
+										<div className="flex items-center gap-3">
+											<div className={`px-2.5 py-1 rounded-lg text-sm font-semibold ${scoreColor}`}>
+												{quiz.percentage.toFixed(0)}%
+											</div>
+											<div>
+												<div className="font-medium text-gray-900">
+													{quiz.type === 'scored' ? 'Scored Quiz' : 'Practice'}
+													{quiz.hsk_level && <span className="text-gray-500 ml-1">HSK {quiz.hsk_level}</span>}
+												</div>
+												<div className="text-sm text-gray-500">
+													{quiz.correct}/{quiz.total} correct
+												</div>
+											</div>
 										</div>
-										<div className="text-sm text-gray-600">
-											{quiz.correct}/{quiz.total} correct ({quiz.percentage}%)
+										<div className="text-sm text-gray-400">
+											{new Date(quiz.completed_at).toLocaleDateString()}
 										</div>
-									</div>
-									<div className="text-sm text-gray-500">
-										{new Date(quiz.completed_at).toLocaleDateString()}
-									</div>
-								</div>
-							))}
+									</Link>
+								)
+							})}
 						</div>
 					</div>
 				)

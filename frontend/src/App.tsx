@@ -14,6 +14,7 @@ import { ForgotPassword } from '@/pages/ForgotPassword'
 import { ResetPassword } from '@/pages/ResetPassword'
 import { VerifyEmail } from '@/pages/VerifyEmail'
 import { Settings } from '@/pages/Settings'
+import { Progress } from '@/pages/Progress'
 
 function App() {
   return (
@@ -30,14 +31,8 @@ function App() {
           <Route path="/vocabulary/:id" element={<VocabularyDetail />} />
           <Route path="/flashcards" element={<Quiz />} />
           <Route path="/dictionary" element={<Dictionary />} />
-          <Route 
-            path="/chat" 
-            element={
-              <ProtectedRoute requireVerification>
-                <Chat />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/progress" element={<Progress />} />
           <Route
             path="/settings"
             element={

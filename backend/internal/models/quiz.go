@@ -79,15 +79,40 @@ type CardResult struct {
 
 // QuizHistory represents a quiz history entry
 type QuizHistory struct {
-	ID          uuid.UUID `json:"id"`
-	Type        QuizType  `json:"type"`
-	Total       int       `json:"total"`
-	Correct     int       `json:"correct"`
-	Score       float64   `json:"score"`
-	Percentage  float64   `json:"percentage"`
-	HSKLevel    *int      `json:"hsk_level,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	CompletedAt time.Time `json:"completed_at"`
+	ID          uuid.UUID    `json:"id"`
+	Type        QuizType     `json:"type"`
+	Total       int          `json:"total"`
+	Correct     int          `json:"correct"`
+	Score       float64      `json:"score"`
+	Percentage  float64      `json:"percentage"`
+	HSKLevel    *int         `json:"hsk_level,omitempty"`
+	CardResults []CardResult `json:"card_results,omitempty"`
+	CreatedAt   time.Time    `json:"created_at"`
+	CompletedAt time.Time    `json:"completed_at"`
+}
+
+// CardResultDetail is a CardResult enriched with the vocabulary word info
+type CardResultDetail struct {
+	CardID        uuid.UUID `json:"card_id"`
+	Chinese       string    `json:"chinese"`
+	Pinyin        string    `json:"pinyin"`
+	UserAnswer    string    `json:"user_answer"`
+	CorrectAnswer string    `json:"correct_answer"`
+	IsCorrect     bool      `json:"is_correct"`
+}
+
+// QuizHistoryDetail is a full quiz result with enriched card details
+type QuizHistoryDetail struct {
+	ID          uuid.UUID          `json:"id"`
+	Type        QuizType           `json:"type"`
+	Total       int                `json:"total"`
+	Correct     int                `json:"correct"`
+	Score       float64            `json:"score"`
+	Percentage  float64            `json:"percentage"`
+	HSKLevel    *int               `json:"hsk_level,omitempty"`
+	CardResults []CardResultDetail `json:"card_results"`
+	CreatedAt   time.Time          `json:"created_at"`
+	CompletedAt time.Time          `json:"completed_at"`
 }
 
 // QuizResultRecord is the database-level representation of a persisted quiz result

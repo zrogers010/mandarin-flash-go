@@ -68,7 +68,7 @@ func (r *QuizRepositoryImpl) GetQuizHistory(userID uuid.UUID, limit, offset int)
 	}
 
 	query := `
-		SELECT id, quiz_type, hsk_level, total, correct, score, percentage, created_at, completed_at
+		SELECT id, quiz_type, hsk_level, total, correct, score, percentage, card_results, created_at, completed_at
 		FROM quiz_results
 		WHERE user_id = $1
 		ORDER BY completed_at DESC
@@ -85,6 +85,7 @@ func (r *QuizRepositoryImpl) GetQuizHistory(userID uuid.UUID, limit, offset int)
 	for rows.Next() {
 		var h models.QuizHistory
 		var hskLevel sql.NullInt32
+		var cardResultsJSON []byte
 
 		err := rows.Scan(
 			&h.ID,
@@ -94,6 +95,7 @@ func (r *QuizRepositoryImpl) GetQuizHistory(userID uuid.UUID, limit, offset int)
 			&h.Correct,
 			&h.Score,
 			&h.Percentage,
+			&cardResultsJSON,
 			&h.CreatedAt,
 			&h.CompletedAt,
 		)
@@ -106,10 +108,81 @@ func (r *QuizRepositoryImpl) GetQuizHistory(userID uuid.UUID, limit, offset int)
 			h.HSKLevel = &level
 		}
 
+		if len(cardResultsJSON) > 0 {
+			json.Unmarshal(cardResultsJSON, &h.CardResults)
+		}
+
 		history = append(history, h)
 	}
 
 	return history, total, nil
+}
+
+// GetQuizDetail retrieves a single quiz result with enriched vocabulary details
+func (r *QuizRepositoryImpl) GetQuizDetail(userID, quizID uuid.UUID) (*models.QuizHistoryDetail, error) {
+	query := `
+		SELECT id, quiz_type, hsk_level, total, correct, score, percentage, card_results, created_at, completed_at
+		FROM quiz_results
+		WHERE id = $1 AND user_id = $2
+	`
+
+	var detail models.QuizHistoryDetail
+	var hskLevel sql.NullInt32
+	var cardResultsJSON []byte
+
+	err := r.db.QueryRow(query, quizID, userID).Scan(
+		&detail.ID,
+		&detail.Type,
+		&hskLevel,
+		&detail.Total,
+		&detail.Correct,
+		&detail.Score,
+		&detail.Percentage,
+		&cardResultsJSON,
+		&detail.CreatedAt,
+		&detail.CompletedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get quiz detail: %w", err)
+	}
+
+	if hskLevel.Valid {
+		level := int(hskLevel.Int32)
+		detail.HSKLevel = &level
+	}
+
+	// Parse card results and enrich with vocabulary data
+	var rawResults []models.CardResult
+	if len(cardResultsJSON) > 0 {
+		json.Unmarshal(cardResultsJSON, &rawResults)
+	}
+
+	for _, cr := range rawResults {
+		enriched := models.CardResultDetail{
+			CardID:        cr.CardID,
+			UserAnswer:    cr.UserAnswer,
+			CorrectAnswer: cr.CorrectAnswer,
+			IsCorrect:     cr.IsCorrect,
+		}
+
+		// Look up vocabulary word for Chinese + Pinyin
+		var chinese, pinyin sql.NullString
+		vocabQuery := `SELECT chinese, pinyin FROM vocabulary WHERE id = $1`
+		r.db.QueryRow(vocabQuery, cr.CardID).Scan(&chinese, &pinyin)
+		if chinese.Valid {
+			enriched.Chinese = chinese.String
+		}
+		if pinyin.Valid {
+			enriched.Pinyin = pinyin.String
+		}
+
+		detail.CardResults = append(detail.CardResults, enriched)
+	}
+
+	return &detail, nil
 }
 
 // GetQuizStats returns summary statistics for a user

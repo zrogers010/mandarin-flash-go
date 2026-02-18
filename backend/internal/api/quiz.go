@@ -246,6 +246,44 @@ func (h *QuizHandler) GetQuizHistory(c *gin.Context) {
 	})
 }
 
+// GetQuizDetail handles GET /api/v1/quiz/:id
+func (h *QuizHandler) GetQuizDetail(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required",
+		})
+		return
+	}
+
+	uid := userID.(uuid.UUID)
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid quiz ID",
+		})
+		return
+	}
+
+	detail, err := h.quizRepo.GetQuizDetail(uid, quizID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch quiz detail",
+		})
+		return
+	}
+
+	if detail == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Quiz not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, detail)
+}
+
 // GetQuizStats handles GET /api/v1/quiz/stats
 func (h *QuizHandler) GetQuizStats(c *gin.Context) {
 	userID, exists := c.Get("user_id")
