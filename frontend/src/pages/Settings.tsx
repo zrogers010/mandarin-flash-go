@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { AlertCircle, CheckCircle, Mail, RefreshCw, User } from 'lucide-react'
 
 export const Settings: React.FC = () => {
-  const { user, resendVerification, updateProfile, refreshUser } = useAuth()
+  const { user, resendVerification, updateProfile } = useAuth()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSendingVerification, setIsSendingVerification] = useState(false)

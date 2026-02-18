@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
-	BarChart3, Trophy, Target, Flame, Calendar, ChevronDown, ChevronUp,
+	BarChart3, Trophy, Target, Flame, ChevronDown, ChevronUp,
 	CheckCircle2, XCircle, ArrowLeft, Brain, TrendingUp
 } from 'lucide-react'
 import { quizApi, QuizHistoryItem, QuizDetail, QuizStats } from '@/lib/api'
