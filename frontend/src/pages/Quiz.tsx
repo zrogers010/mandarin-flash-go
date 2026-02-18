@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { quizApi } from '@/lib/api'
@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 type QuizType = 'practice' | 'scored'
 
 export function Quiz() {
+	const queryClient = useQueryClient()
 	const { isAuthenticated } = useAuth()
 	const [quizType, setQuizType] = useState<QuizType>('practice')
 	const [selectedLevel, setSelectedLevel] = useState<number | undefined>(undefined)
@@ -44,6 +45,8 @@ export function Quiz() {
 		onSuccess: (data) => {
 			setQuizResult(data)
 			setShowResults(true)
+			queryClient.invalidateQueries({ queryKey: ['quiz-history'] })
+			queryClient.invalidateQueries({ queryKey: ['quiz-stats'] })
 		},
 	})
 
