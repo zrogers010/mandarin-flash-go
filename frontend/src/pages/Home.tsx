@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Brain, Search, BarChart3, ArrowRight, Zap } from 'lucide-react'
+import { BookOpen, Brain, Search, BarChart3, ArrowRight, Zap, X, Sparkles } from 'lucide-react'
 
 const features = [
   {
@@ -32,9 +33,77 @@ const features = [
   },
 ]
 
+function WelcomeBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    return localStorage.getItem('mf_welcome_dismissed') === '1'
+  })
+
+  if (dismissed) return null
+
+  const handleDismiss = () => {
+    localStorage.setItem('mf_welcome_dismissed', '1')
+    setDismissed(true)
+  }
+
+  return (
+    <div className="relative bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white shadow-lg">
+      <button
+        onClick={handleDismiss}
+        className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/20 transition-colors"
+        aria-label="Dismiss"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <div className="flex items-start gap-4">
+        <div className="p-2.5 bg-white/20 rounded-xl flex-shrink-0">
+          <Sparkles className="w-6 h-6" />
+        </div>
+        <div className="space-y-3">
+          <h2 className="text-xl font-bold">Welcome to the New MandarinFlash!</h2>
+          <p className="text-primary-100 text-sm leading-relaxed">
+            We've rebuilt MandarinFlash from the ground up with a faster, more modern experience. Here's what's new:
+          </p>
+          <ul className="text-sm text-primary-50 space-y-1.5">
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
+              Scored quizzes with detailed results -- see exactly which words you got wrong
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
+              Progress tracking -- your quiz history and stats are saved to your account
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
+              Improved dictionary with search by Chinese, pinyin, or English
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
+              Faster flashcards and a cleaner design throughout
+            </li>
+          </ul>
+          <div className="pt-2 flex flex-wrap gap-3">
+            <Link
+              to="/signup"
+              className="inline-flex items-center px-4 py-2 bg-white text-primary-700 font-semibold text-sm rounded-lg hover:bg-primary-50 transition-colors"
+            >
+              Create an Account
+              <ArrowRight className="ml-1.5 w-4 h-4" />
+            </Link>
+            <span className="text-primary-200 text-sm self-center">
+              Previous accounts didn't carry over -- sign up to start tracking your progress.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Home() {
   return (
     <div className="space-y-12">
+      <WelcomeBanner />
+
       {/* Hero Section */}
       <div className="text-center space-y-6">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-secondary-50 border border-secondary-200 rounded-full text-secondary-700 text-sm font-medium mb-2">
