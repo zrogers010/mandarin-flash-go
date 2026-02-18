@@ -25,11 +25,18 @@ else
     dnf update -y
 fi
 
+# ---------- Install essentials ----------
+echo "[2/7] Installing essentials (git, curl)..."
+if [ "$PKG_MGR" = "apt" ]; then
+    apt-get install -y git curl ca-certificates gnupg
+else
+    dnf install -y git curl
+fi
+
 # ---------- Install Docker ----------
-echo "[2/6] Installing Docker..."
+echo "[3/7] Installing Docker..."
 if ! command -v docker &>/dev/null; then
     if [ "$PKG_MGR" = "apt" ]; then
-        apt-get install -y ca-certificates curl gnupg
         install -m 0755 -d /etc/apt/keyrings
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
         chmod a+r /etc/apt/keyrings/docker.gpg
@@ -49,7 +56,7 @@ else
 fi
 
 # ---------- Install Docker Compose (standalone, if plugin not available) ----------
-echo "[3/6] Verifying Docker Compose..."
+echo "[4/7] Verifying Docker Compose..."
 if docker compose version &>/dev/null; then
     echo "  Docker Compose plugin available."
 elif command -v docker-compose &>/dev/null; then
@@ -64,7 +71,7 @@ else
 fi
 
 # ---------- Create deploy user ----------
-echo "[4/6] Creating deploy user..."
+echo "[5/7] Creating deploy user..."
 if ! id -u deploy &>/dev/null 2>&1; then
     useradd -m -s /bin/bash -G docker deploy
     mkdir -p /home/deploy/.ssh
@@ -85,7 +92,7 @@ else
 fi
 
 # ---------- Firewall ----------
-echo "[5/6] Configuring firewall..."
+echo "[6/7] Configuring firewall..."
 if command -v ufw &>/dev/null; then
     ufw --force reset
     ufw default deny incoming
@@ -106,7 +113,7 @@ else
 fi
 
 # ---------- Docker log rotation ----------
-echo "[6/6] Configuring Docker log rotation..."
+echo "[7/7] Configuring Docker log rotation..."
 mkdir -p /etc/docker
 cat > /etc/docker/daemon.json <<'EOF'
 {
