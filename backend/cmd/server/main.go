@@ -3,10 +3,12 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"chinese-learning/internal/api"
 	"chinese-learning/internal/config"
 	"chinese-learning/internal/database"
+	"chinese-learning/internal/models"
 	"chinese-learning/internal/redis"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +43,10 @@ func main() {
 	}
 	defer redisClient.Close()
 
+	// Start background token cleanup
+	userRepo := database.NewUserRepository(db)
+	go startTokenCleanup(userRepo)
+
 	// Set Gin mode
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -73,8 +79,33 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("🚀 Server starting on port %s", port)
+	log.Printf("Server starting on port %s", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// startTokenCleanup runs periodic cleanup of expired tokens and sessions.
+// Runs every hour to delete expired email verification tokens,
+// password reset tokens, and user sessions.
+func startTokenCleanup(repo models.UserRepository) {
+	// Run an initial cleanup on startup (after a short delay)
+	time.Sleep(10 * time.Second)
+	if err := repo.CleanupExpiredTokens(); err != nil {
+		log.Printf("Initial token cleanup failed: %v", err)
+	} else {
+		log.Println("Initial expired token cleanup completed")
+	}
+
+	// Then run every hour
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if err := repo.CleanupExpiredTokens(); err != nil {
+			log.Printf("Token cleanup failed: %v", err)
+		} else {
+			log.Println("Expired token cleanup completed")
+		}
 	}
 }

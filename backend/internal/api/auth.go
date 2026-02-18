@@ -27,7 +27,7 @@ func NewAuthHandler(db *sql.DB, cfg *config.Config) *AuthHandler {
 	userRepo := database.NewUserRepository(db)
 	userService := models.NewUserService(userRepo)
 	tokenService := auth.NewTokenService(cfg)
-	emailService := auth.NewEmailService()
+	emailService := auth.NewEmailService(cfg)
 
 	return &AuthHandler{
 		userService:  userService,
@@ -39,10 +39,9 @@ func NewAuthHandler(db *sql.DB, cfg *config.Config) *AuthHandler {
 
 // SignupRequest represents a signup request
 type SignupRequest struct {
-	Email     string `json:"email" binding:"required,email"`
-	Password  string `json:"password" binding:"required,min=8"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	Email    string  `json:"email" binding:"required,email"`
+	Password string  `json:"password" binding:"required,min=8"`
+	Username *string `json:"username"`
 }
 
 // LoginRequest represents a login request
@@ -113,9 +112,8 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 	user := &models.User{
 		ID:           uuid.New(),
 		Email:        req.Email,
+		Username:     req.Username,
 		PasswordHash: hashedPassword,
-		FirstName:    &req.FirstName,
-		LastName:     &req.LastName,
 		IsVerified:   false,
 		IsActive:     true,
 	}
@@ -153,13 +151,8 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 	}
 
 	// Send verification email
-	name := req.FirstName
-	if name == "" {
-		name = "User"
-	}
-	if err := ah.emailService.SendEmailVerification(user.Email, name, verificationToken); err != nil {
+	if err := ah.emailService.SendEmailVerification(user.Email, user.DisplayName(), verificationToken); err != nil {
 		// Log error but don't fail the signup
-		// In production, you might want to queue this for retry
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -167,8 +160,7 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 		"user": gin.H{
 			"id":          user.ID,
 			"email":       user.Email,
-			"first_name":  user.FirstName,
-			"last_name":   user.LastName,
+			"username":    user.Username,
 			"is_verified": user.IsVerified,
 		},
 	})
@@ -405,11 +397,7 @@ func (ah *AuthHandler) RequestPasswordReset(c *gin.Context) {
 	}
 
 	// Send password reset email
-	name := "User"
-	if user.FirstName != nil {
-		name = *user.FirstName
-	}
-	if err := ah.emailService.SendPasswordReset(user.Email, name, resetToken); err != nil {
+	if err := ah.emailService.SendPasswordReset(user.Email, user.DisplayName(), resetToken); err != nil {
 		// Log error but don't fail the request
 	}
 
@@ -578,8 +566,7 @@ func (ah *AuthHandler) UpdateProfile(c *gin.Context) {
 	currentUser := user.(*models.User)
 
 	var req struct {
-		FirstName *string `json:"first_name"`
-		LastName  *string `json:"last_name"`
+		Username *string `json:"username"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -591,11 +578,8 @@ func (ah *AuthHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	// Update user fields
-	if req.FirstName != nil {
-		currentUser.FirstName = req.FirstName
-	}
-	if req.LastName != nil {
-		currentUser.LastName = req.LastName
+	if req.Username != nil {
+		currentUser.Username = req.Username
 	}
 
 	if err := ah.userService.UpdateUser(currentUser); err != nil {
@@ -608,5 +592,118 @@ func (ah *AuthHandler) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Profile updated successfully",
 		"user":    currentUser,
+	})
+}
+
+// GetSessions returns all active sessions for the current user
+func (ah *AuthHandler) GetSessions(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	sessions, err := ah.userRepo.GetUserSessions(userID.(uuid.UUID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve sessions",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sessions": sessions,
+		"count":    len(sessions),
+	})
+}
+
+// RevokeSession revokes a specific session by ID
+func (ah *AuthHandler) RevokeSession(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	sessionID := c.Param("id")
+	parsedSessionID, err := uuid.Parse(sessionID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid session ID",
+		})
+		return
+	}
+
+	// Delete the session (only if it belongs to the current user)
+	if err := ah.userRepo.DeleteSessionByID(parsedSessionID, userID.(uuid.UUID)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Session not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Session revoked successfully",
+	})
+}
+
+// ResendVerification resends the email verification email
+func (ah *AuthHandler) ResendVerification(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	currentUser := user.(*models.User)
+
+	if currentUser.IsVerified {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Email is already verified",
+		})
+		return
+	}
+
+	// Generate new verification token
+	verificationToken, err := auth.GenerateSecureToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to generate verification token",
+		})
+		return
+	}
+
+	// Store verification token
+	emailToken := &models.EmailVerificationToken{
+		ID:        uuid.New(),
+		UserID:    currentUser.ID,
+		Token:     verificationToken,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		CreatedAt: time.Now(),
+	}
+
+	if err := ah.userRepo.CreateEmailVerificationToken(emailToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to create verification token",
+		})
+		return
+	}
+
+	// Send verification email
+	if err := ah.emailService.SendEmailVerification(currentUser.Email, currentUser.DisplayName(), verificationToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to send verification email",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Verification email sent. Please check your inbox.",
 	})
 }

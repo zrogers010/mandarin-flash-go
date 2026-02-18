@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
+	"chinese-learning/internal/database"
 	"chinese-learning/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +17,7 @@ import (
 // QuizHandler handles quiz-related HTTP requests
 type QuizHandler struct {
 	vocabRepo *models.VocabularyRepository
+	quizRepo  *database.QuizRepositoryImpl
 	db        *sql.DB
 }
 
@@ -22,6 +25,7 @@ type QuizHandler struct {
 func NewQuizHandler(db *sql.DB) *QuizHandler {
 	return &QuizHandler{
 		vocabRepo: models.NewVocabularyRepository(db),
+		quizRepo:  database.NewQuizRepository(db),
 		db:        db,
 	}
 }
@@ -67,25 +71,19 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 
 		// For scored quizzes, generate multiple choice options
 		if req.Type == models.QuizTypeScored {
-			// Get additional random vocabulary for wrong answers
-			// We need more than 3 to ensure we have enough unique wrong answers
 			wrongAnswers, err := h.vocabRepo.GetRandom(6, req.HSKLevel)
 			if err == nil && len(wrongAnswers) >= 3 {
-				// Create multiple choice options starting with correct answer
-				options := []string{vocab.English} // Correct answer first
+				options := []string{vocab.English}
 
-				// Add wrong answers, ensuring they're different from the correct answer
 				for _, wrong := range wrongAnswers {
 					if wrong.ID != vocab.ID && wrong.English != vocab.English {
 						options = append(options, wrong.English)
-						// Stop when we have 4 total options
 						if len(options) >= 4 {
 							break
 						}
 					}
 				}
 
-				// If we don't have enough wrong answers, add some generic options
 				for len(options) < 4 {
 					genericOptions := []string{"I don't know", "None of the above", "Maybe", "Not sure"}
 					option := genericOptions[len(options)-1]
@@ -94,7 +92,6 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 					}
 				}
 
-				// Shuffle the options to randomize the order
 				shuffleStrings(options)
 
 				card.MultipleChoice = options
@@ -131,18 +128,14 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 	correct := 0
 	total := len(submission.Answers)
 
-	// Track detailed results for each card
 	var cardResults []models.CardResult
 
-	// Validate each answer
 	for cardID, userAnswer := range submission.Answers {
-		// Convert string ID to UUID
 		vocabID, err := uuid.Parse(cardID)
 		if err != nil {
 			continue
 		}
 
-		// Get the vocabulary item to check the correct answer
 		vocab, err := h.vocabRepo.GetByID(vocabID)
 		if err == nil && vocab != nil {
 			isCorrect := vocab.English == userAnswer
@@ -150,7 +143,6 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 				correct++
 			}
 
-			// Store card result for detailed feedback
 			cardResults = append(cardResults, models.CardResult{
 				CardID:        vocabID,
 				UserAnswer:    userAnswer,
@@ -160,7 +152,6 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 		}
 	}
 
-	// Calculate score
 	score := 0.0
 	percentage := 0.0
 	if total > 0 {
@@ -178,41 +169,94 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 		CompletedAt: time.Now(),
 	}
 
+	// If user is authenticated, persist the quiz result to the database
+	if userID, exists := c.Get("user_id"); exists {
+		uid := userID.(uuid.UUID)
+
+		record := &models.QuizResultRecord{
+			ID:          uuid.New(),
+			UserID:      uid,
+			QuizType:    submission.QuizType,
+			HSKLevel:    submission.HSKLevel,
+			Total:       total,
+			Correct:     correct,
+			Score:       score,
+			Percentage:  percentage,
+			CardResults: cardResults,
+			CreatedAt:   time.Now(),
+			CompletedAt: time.Now(),
+		}
+
+		if err := h.quizRepo.SaveQuizResult(record); err != nil {
+			// Log but don't fail the response — the user still sees their score
+			// log.Printf("Failed to save quiz result: %v", err)
+		}
+	}
+
 	c.JSON(http.StatusOK, result)
 }
 
 // GetQuizHistory handles GET /api/v1/quiz/history
 func (h *QuizHandler) GetQuizHistory(c *gin.Context) {
-	// For now, return mock history data
-	// In a real implementation, you'd fetch from the database
-	history := []models.QuizHistory{
-		{
-			ID:          uuid.New(),
-			Type:        models.QuizTypeScored,
-			Total:       10,
-			Correct:     8,
-			Score:       80.0,
-			Percentage:  80.0,
-			HSKLevel:    &[]int{1}[0],
-			CreatedAt:   time.Now().Add(-24 * time.Hour),
-			CompletedAt: time.Now().Add(-24 * time.Hour),
-		},
-		{
-			ID:          uuid.New(),
-			Type:        models.QuizTypePractice,
-			Total:       10,
-			Correct:     6,
-			Score:       60.0,
-			Percentage:  60.0,
-			HSKLevel:    &[]int{1}[0],
-			CreatedAt:   time.Now().Add(-48 * time.Hour),
-			CompletedAt: time.Now().Add(-48 * time.Hour),
-		},
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required",
+		})
+		return
+	}
+
+	uid := userID.(uuid.UUID)
+
+	// Parse pagination params
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if limit <= 0 {
+		limit = 20
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+
+	history, total, err := h.quizRepo.GetQuizHistory(uid, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch quiz history",
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"history": history,
-		"total":   len(history),
+		"total":   total,
+		"page":    page,
+		"limit":   limit,
+	})
+}
+
+// GetQuizStats handles GET /api/v1/quiz/stats
+func (h *QuizHandler) GetQuizStats(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required",
+		})
+		return
+	}
+
+	uid := userID.(uuid.UUID)
+
+	stats, err := h.quizRepo.GetQuizStats(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch quiz statistics",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"stats": stats,
 	})
 }
 

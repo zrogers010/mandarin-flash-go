@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Brain, Search, MessageCircle, Home, User, LogOut, LogIn, UserPlus } from 'lucide-react'
+import { BookOpen, Brain, Search, MessageCircle, Home, User, LogOut, LogIn, UserPlus, Settings } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface LayoutProps {
@@ -62,9 +62,16 @@ export function Layout({ children }: LayoutProps) {
                     <div className="flex items-center space-x-2">
                       <User className="w-4 h-4 text-gray-600" />
                       <span className="text-sm text-gray-700">
-                        {user?.first_name || user?.email}
+                        {user?.username || user?.email}
                       </span>
                     </div>
+                    <Link
+                      to="/settings"
+                      className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </Link>
                     <button
                       onClick={logout}
                       className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"

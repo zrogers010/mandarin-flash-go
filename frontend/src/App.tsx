@@ -12,6 +12,8 @@ import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
 import { ForgotPassword } from '@/pages/ForgotPassword'
 import { ResetPassword } from '@/pages/ResetPassword'
+import { VerifyEmail } from '@/pages/VerifyEmail'
+import { Settings } from '@/pages/Settings'
 
 function App() {
   return (
@@ -23,6 +25,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/vocabulary" element={<Vocabulary />} />
           <Route path="/vocabulary/:id" element={<VocabularyDetail />} />
           <Route path="/flashcards" element={<Quiz />} />
@@ -30,10 +33,18 @@ function App() {
           <Route 
             path="/chat" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireVerification>
                 <Chat />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </Layout>
@@ -41,4 +52,4 @@ function App() {
   )
 }
 
-export default App 
+export default App

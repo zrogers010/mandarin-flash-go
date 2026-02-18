@@ -60,10 +60,6 @@ export function Vocabulary() {
     setFilters(prev => ({ ...prev, page }))
   }, [])
 
-  const handleSortChange = useCallback((sortBy: string, sortOrder: 'asc' | 'desc') => {
-    setFilters(prev => ({ ...prev, sort_by: sortBy, sort_order: sortOrder, page: 1 }))
-  }, [])
-
   if (error) {
     return (
       <div className="space-y-6">

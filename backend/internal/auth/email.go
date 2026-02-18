@@ -7,8 +7,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"time"
+
+	"chinese-learning/internal/config"
 )
 
 // EmailService handles sending emails
@@ -20,22 +21,15 @@ type EmailService struct {
 	supportEmail   string
 }
 
-// NewEmailService creates a new email service
-func NewEmailService() *EmailService {
+// NewEmailService creates a new email service using the application config
+func NewEmailService(cfg *config.Config) *EmailService {
 	return &EmailService{
-		sendGridAPIKey: os.Getenv("SENDGRID_API_KEY"),
-		fromEmail:      getEnvDefault("EMAIL_FROM", "noreply@mandarinflash.com"),
-		fromName:       getEnvDefault("EMAIL_FROM_NAME", "MandarinFlash"),
-		frontendURL:    getEnvDefault("FRONTEND_URL", "http://localhost:3000"),
-		supportEmail:   getEnvDefault("SUPPORT_EMAIL", "support@mandarinflash.com"),
+		sendGridAPIKey: cfg.Email.SendGridAPIKey,
+		fromEmail:      cfg.Email.FromEmail,
+		fromName:       cfg.Email.FromName,
+		frontendURL:    cfg.FrontendURL,
+		supportEmail:   cfg.Email.SupportEmail,
 	}
-}
-
-func getEnvDefault(key, fallback string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return fallback
 }
 
 // EmailTemplate represents an email template
@@ -86,9 +80,11 @@ type sendGridContent struct {
 func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody string) error {
 	// If no SendGrid API key is configured, fall back to logging (dev mode)
 	if es.sendGridAPIKey == "" {
-		log.Printf("📧 [DEV MODE] Email would be sent to: %s <%s>", toName, toEmail)
-		log.Printf("   Subject: %s", subject)
-		log.Printf("   (Set SENDGRID_API_KEY env var to enable real email delivery)")
+		log.Println("════════════════════════════════════════════════════════")
+		log.Printf("  [DEV MODE] Email to: %s <%s>", toName, toEmail)
+		log.Printf("  Subject: %s", subject)
+		log.Println("  Set SENDGRID_API_KEY env var to enable real email delivery")
+		log.Println("════════════════════════════════════════════════════════")
 		return nil
 	}
 
@@ -141,6 +137,15 @@ func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody string) err
 func (es *EmailService) SendEmailVerification(email, name, token string) error {
 	verifyURL := fmt.Sprintf("%s/verify-email?token=%s", es.frontendURL, token)
 
+	// In dev mode, log the verification URL directly for convenience
+	if es.sendGridAPIKey == "" {
+		log.Println("════════════════════════════════════════════════════════")
+		log.Printf("  [DEV] Email verification for: %s", email)
+		log.Printf("  Verify URL: %s", verifyURL)
+		log.Println("════════════════════════════════════════════════════════")
+		return nil
+	}
+
 	data := EmailVerificationData{
 		UserName:     name,
 		VerifyURL:    verifyURL,
@@ -164,6 +169,15 @@ func (es *EmailService) SendEmailVerification(email, name, token string) error {
 // SendPasswordReset sends a password reset email
 func (es *EmailService) SendPasswordReset(email, name, token string) error {
 	resetURL := fmt.Sprintf("%s/reset-password?token=%s", es.frontendURL, token)
+
+	// In dev mode, log the reset URL directly for convenience
+	if es.sendGridAPIKey == "" {
+		log.Println("════════════════════════════════════════════════════════")
+		log.Printf("  [DEV] Password reset for: %s", email)
+		log.Printf("  Reset URL: %s", resetURL)
+		log.Println("════════════════════════════════════════════════════════")
+		return nil
+	}
 
 	data := PasswordResetData{
 		UserName:     name,

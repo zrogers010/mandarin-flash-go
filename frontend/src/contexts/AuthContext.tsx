@@ -7,12 +7,14 @@ interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>
+  signup: (email: string, password: string, username?: string) => Promise<void>
   logout: () => void
   requestPasswordReset: (email: string) => Promise<void>
   confirmPasswordReset: (token: string, password: string) => Promise<void>
   verifyEmail: (token: string) => Promise<void>
-  updateProfile: (firstName?: string, lastName?: string) => Promise<void>
+  resendVerification: () => Promise<void>
+  updateProfile: (username?: string) => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -65,17 +67,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const signup = async (email: string, password: string, firstName?: string, lastName?: string) => {
+  const signup = async (email: string, password: string, username?: string) => {
     try {
-      const response = await authApi.signup({
+      await authApi.signup({
         email,
         password,
-        first_name: firstName,
-        last_name: lastName,
+        username: username || undefined,
       })
       
       // Don't automatically log in after signup - user needs to verify email first
-      return response
     } catch (error) {
       throw error
     }
@@ -121,13 +121,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const updateProfile = async (firstName?: string, lastName?: string) => {
+  const resendVerification = async () => {
+    try {
+      await authApi.resendVerification()
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const updateProfile = async (username?: string) => {
     try {
       const response = await authApi.updateProfile({
-        first_name: firstName,
-        last_name: lastName,
+        username,
       })
       setUser(response.user)
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const refreshUser = async () => {
+    try {
+      const userData = await authApi.getProfile()
+      setUser(userData.user)
     } catch (error) {
       throw error
     }
@@ -144,7 +160,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     requestPasswordReset,
     confirmPasswordReset,
     verifyEmail,
+    resendVerification,
     updateProfile,
+    refreshUser,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

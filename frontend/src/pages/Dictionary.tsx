@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Search, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react'
+import { Search, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react'
 import { vocabularyApi, VocabularyFilters } from '@/lib/api'
 import { Pagination } from '@/components/Pagination'
 

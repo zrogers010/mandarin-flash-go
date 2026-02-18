@@ -52,6 +52,8 @@ type QuizRequest struct {
 // QuizSubmission represents a quiz submission
 type QuizSubmission struct {
 	QuizID    uuid.UUID         `json:"quiz_id" binding:"required"`
+	QuizType  QuizType          `json:"quiz_type"`
+	HSKLevel  *int              `json:"hsk_level,omitempty"`
 	Answers   map[string]string `json:"answers" binding:"required"`
 	Completed bool              `json:"completed"`
 }
@@ -86,4 +88,30 @@ type QuizHistory struct {
 	HSKLevel    *int      `json:"hsk_level,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	CompletedAt time.Time `json:"completed_at"`
+}
+
+// QuizResultRecord is the database-level representation of a persisted quiz result
+type QuizResultRecord struct {
+	ID          uuid.UUID    `json:"id"`
+	UserID      uuid.UUID    `json:"user_id"`
+	QuizType    QuizType     `json:"quiz_type"`
+	HSKLevel    *int         `json:"hsk_level,omitempty"`
+	Total       int          `json:"total"`
+	Correct     int          `json:"correct"`
+	Score       float64      `json:"score"`
+	Percentage  float64      `json:"percentage"`
+	CardResults []CardResult `json:"card_results,omitempty"`
+	CreatedAt   time.Time    `json:"created_at"`
+	CompletedAt time.Time    `json:"completed_at"`
+}
+
+// QuizStats represents aggregate quiz statistics for a user
+type QuizStats struct {
+	TotalQuizzes   int     `json:"total_quizzes"`
+	TotalQuestions int     `json:"total_questions"`
+	TotalCorrect   int     `json:"total_correct"`
+	AverageScore   float64 `json:"average_score"`
+	BestScore      float64 `json:"best_score"`
+	CurrentStreak  int     `json:"current_streak"`
+	QuizzesThisWeek int    `json:"quizzes_this_week"`
 }

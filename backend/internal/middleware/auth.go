@@ -70,6 +70,32 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	}
 }
 
+// RequireVerified is a middleware that requires the user's email to be verified.
+// Must be used after RequireAuth.
+func (m *AuthMiddleware) RequireVerified() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userVal, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Authentication required",
+			})
+			c.Abort()
+			return
+		}
+
+		user, ok := userVal.(*models.User)
+		if !ok || !user.IsVerified {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Email verification required. Please verify your email before accessing this feature.",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
 // OptionalAuth is a middleware that optionally authenticates the user
 // If a valid token is provided, the user is set in context
 // If no token or invalid token, the request continues without user

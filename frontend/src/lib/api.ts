@@ -174,6 +174,170 @@ export const quizApi = {
 	},
 }
 
+// Chat API
+export interface ChatMessage {
+	id: string
+	conversation_id: string
+	role: 'user' | 'assistant' | 'system'
+	content: string
+	created_at: string
+}
+
+export interface ChatConversation {
+	id: string
+	last_message: string
+	message_count: number
+	created_at: string
+	last_activity_at: string
+}
+
+export const chatApi = {
+	// Send a message to the AI tutor
+	sendMessage: async (message: string, conversationId?: string): Promise<{
+		message: string
+		conversation_id: string
+		message_id: string
+	}> => {
+		const response = await api.post('/chat/message', {
+			message,
+			conversation_id: conversationId || undefined,
+		})
+		return response.data
+	},
+
+	// Get conversation messages
+	getMessages: async (conversationId: string, limit?: number): Promise<{
+		messages: ChatMessage[]
+		conversation_id: string
+		count: number
+	}> => {
+		const params = new URLSearchParams()
+		params.append('conversation_id', conversationId)
+		if (limit) params.append('limit', limit.toString())
+		const response = await api.get(`/chat/history?${params.toString()}`)
+		return response.data
+	},
+
+	// Get list of conversations
+	getConversations: async (page?: number, limit?: number): Promise<{
+		conversations: ChatConversation[]
+		total: number
+		page: number
+		limit: number
+	}> => {
+		const params = new URLSearchParams()
+		if (page) params.append('page', page.toString())
+		if (limit) params.append('limit', limit.toString())
+		const response = await api.get(`/chat/history?${params.toString()}`)
+		return response.data
+	},
+}
+
+// Learning / Spaced Repetition API
+export interface ReviewItem {
+	id: string
+	chinese: string
+	pinyin: string
+	english: string
+	hsk_level: number
+	example_sentences: ExampleSentence[]
+	progress?: {
+		ease_factor: number
+		interval_days: number
+		repetitions: number
+		next_review_at: string
+		times_seen: number
+		times_correct: number
+	}
+}
+
+export interface LearningStats {
+	total_words_learned: number
+	words_mastered: number
+	words_due_for_review: number
+	average_ease_factor: number
+	current_streak: number
+	total_reviews: number
+	accuracy_rate: number
+	words_by_level: Record<string, {
+		total_words: number
+		words_learned: number
+		words_mastered: number
+		words_due: number
+	}>
+}
+
+export const learningApi = {
+	// Get items due for review
+	getReviewItems: async (hskLevel?: number, limit?: number): Promise<{
+		items: ReviewItem[]
+		count: number
+	}> => {
+		const params = new URLSearchParams()
+		if (hskLevel) params.append('hsk_level', hskLevel.toString())
+		if (limit) params.append('limit', limit.toString())
+		const response = await api.get(`/learn/review?${params.toString()}`)
+		return response.data
+	},
+
+	// Get new words to study
+	getNewWords: async (hskLevel?: number, limit?: number): Promise<{
+		items: ReviewItem[]
+		count: number
+	}> => {
+		const params = new URLSearchParams()
+		if (hskLevel) params.append('hsk_level', hskLevel.toString())
+		if (limit) params.append('limit', limit.toString())
+		const response = await api.get(`/learn/new?${params.toString()}`)
+		return response.data
+	},
+
+	// Submit review results
+	submitReviews: async (reviews: { vocabulary_id: string; quality: number }[]): Promise<{
+		message: string
+		processed: number
+		results: any[]
+	}> => {
+		const response = await api.post('/learn/review', { reviews })
+		return response.data
+	},
+
+	// Get learning stats
+	getStats: async (): Promise<{ stats: LearningStats }> => {
+		const response = await api.get('/learn/stats')
+		return response.data
+	},
+}
+
+// Dictionary API
+export const dictionaryApi = {
+	// Search the dictionary
+	search: async (query: string, hskLevel?: number, page?: number, limit?: number): Promise<{
+		results: (Vocabulary & { match_type: string })[]
+		total: number
+		page: number
+		limit: number
+		query: string
+	}> => {
+		const params = new URLSearchParams()
+		params.append('q', query)
+		if (hskLevel) params.append('hsk_level', hskLevel.toString())
+		if (page) params.append('page', page.toString())
+		if (limit) params.append('limit', limit.toString())
+		const response = await api.get(`/dictionary/search?${params.toString()}`)
+		return response.data
+	},
+
+	// Look up a specific word
+	getWord: async (word: string): Promise<{
+		word: Vocabulary
+		related_words: Vocabulary[]
+	}> => {
+		const response = await api.get(`/dictionary/${encodeURIComponent(word)}`)
+		return response.data
+	},
+}
+
 // Health check
 export const healthApi = {
 	check: async (): Promise<{ status: string; service: string; version: string }> => {
@@ -186,13 +350,22 @@ export const healthApi = {
 export interface User {
 	id: string
 	email: string
-	first_name?: string
-	last_name?: string
+	username?: string
 	is_verified: boolean
 	is_active: boolean
 	last_login_at?: string
 	created_at: string
 	updated_at: string
+}
+
+// Session type
+export interface UserSession {
+	id: string
+	user_id: string
+	expires_at: string
+	ip_address?: string
+	user_agent?: string
+	created_at: string
 }
 
 // Auth API
@@ -201,8 +374,7 @@ export const authApi = {
 	signup: async (data: {
 		email: string
 		password: string
-		first_name?: string
-		last_name?: string
+		username?: string
 	}): Promise<{ message: string; user: User }> => {
 		const response = await api.post('/auth/signup', data)
 		return response.data
@@ -252,8 +424,26 @@ export const authApi = {
 	},
 
 	// Update profile
-	updateProfile: async (data: { first_name?: string; last_name?: string }): Promise<{ message: string; user: User }> => {
+	updateProfile: async (data: { username?: string }): Promise<{ message: string; user: User }> => {
 		const response = await api.put('/profile', data)
 		return response.data
 	},
-} 
+
+	// Resend verification email
+	resendVerification: async (): Promise<{ message: string }> => {
+		const response = await api.post('/auth/resend-verification')
+		return response.data
+	},
+
+	// Get active sessions
+	getSessions: async (): Promise<{ sessions: UserSession[]; count: number }> => {
+		const response = await api.get('/sessions')
+		return response.data
+	},
+
+	// Revoke a specific session
+	revokeSession: async (sessionId: string): Promise<{ message: string }> => {
+		const response = await api.delete(`/sessions/${sessionId}`)
+		return response.data
+	},
+}

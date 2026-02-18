@@ -20,7 +20,16 @@ type Config struct {
 	JWT          JWTConfig
 	CORS         CORSConfig
 	Email        EmailConfig
+	AI           AIConfig
 	FrontendURL  string
+}
+
+// AIConfig holds AI service configuration (OpenAI-compatible API)
+type AIConfig struct {
+	APIKey    string
+	BaseURL   string // OpenAI: https://api.openai.com/v1  (or any compatible endpoint)
+	Model     string // e.g. "gpt-4o-mini", "gpt-4o", "claude-3-haiku-20240307"
+	MaxTokens int
 }
 
 // DatabaseConfig holds database configuration
@@ -133,6 +142,12 @@ func Load() *Config {
 			FromEmail:      getEnv("EMAIL_FROM", "noreply@mandarinflash.com"),
 			FromName:       getEnv("EMAIL_FROM_NAME", "MandarinFlash"),
 			SupportEmail:   getEnv("SUPPORT_EMAIL", "support@mandarinflash.com"),
+		},
+		AI: AIConfig{
+			APIKey:    getEnv("AI_API_KEY", ""),
+			BaseURL:   getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
+			Model:     getEnv("AI_MODEL", "gpt-4o-mini"),
+			MaxTokens: 1024,
 		},
 	}
 }

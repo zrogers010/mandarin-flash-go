@@ -30,6 +30,9 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 	// Initialize handlers
 	vocabHandler := NewVocabularyHandler(db)
 	quizHandler := NewQuizHandler(db)
+	dictHandler := NewDictionaryHandler(db)
+	learningHandler := NewLearningHandler(db)
+	chatHandler := NewChatHandler(db, cfg)
 	authHandler := NewAuthHandler(db, cfg)
 
 	// Initialize middleware
@@ -37,6 +40,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 	userService := models.NewUserService(userRepo)
 	tokenService := auth.NewTokenService(cfg)
 	authMiddleware := middleware.NewAuthMiddleware(tokenService, userService)
+	rateLimiter := middleware.NewRateLimiter(redisClient)
 
 	// API v1 group
 	v1 := router.Group("/api/v1")
@@ -44,16 +48,38 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 		// Health check
 		v1.GET("/health", healthCheck)
 
-		// Authentication routes (public)
-		auth := v1.Group("/auth")
+		// Authentication routes (public, rate-limited)
+		authRoutes := v1.Group("/auth")
 		{
-			auth.POST("/signup", authHandler.Signup)
-			auth.POST("/login", authHandler.Login)
-			auth.POST("/logout", authHandler.Logout)
-			auth.POST("/refresh", authHandler.RefreshToken)
-			auth.POST("/request-password-reset", authHandler.RequestPasswordReset)
-			auth.POST("/confirm-password-reset", authHandler.ConfirmPasswordReset)
-			auth.POST("/verify-email", authHandler.VerifyEmail)
+			// Strict rate limits: 5 signup attempts per 15 min per IP
+			authRoutes.POST("/signup",
+				rateLimiter.Limit(5, 15*time.Minute, "signup"),
+				authHandler.Signup,
+			)
+			// Strict rate limits: 10 login attempts per 15 min per IP
+			authRoutes.POST("/login",
+				rateLimiter.Limit(10, 15*time.Minute, "login"),
+				authHandler.Login,
+			)
+			authRoutes.POST("/logout", authHandler.Logout)
+			authRoutes.POST("/refresh", authHandler.RefreshToken)
+			// Strict rate limits: 3 password reset requests per 15 min per IP
+			authRoutes.POST("/request-password-reset",
+				rateLimiter.Limit(3, 15*time.Minute, "password-reset-request"),
+				authHandler.RequestPasswordReset,
+			)
+			// Strict rate limits: 5 password reset confirms per 15 min per IP
+			authRoutes.POST("/confirm-password-reset",
+				rateLimiter.Limit(5, 15*time.Minute, "password-reset-confirm"),
+				authHandler.ConfirmPasswordReset,
+			)
+			authRoutes.POST("/verify-email", authHandler.VerifyEmail)
+			// Resend verification email (rate-limited)
+			authRoutes.POST("/resend-verification",
+				rateLimiter.Limit(3, 15*time.Minute, "resend-verification"),
+				authMiddleware.RequireAuth(),
+				authHandler.ResendVerification,
+			)
 		}
 
 		// Public content routes (no authentication required)
@@ -70,8 +96,8 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 		// Dictionary routes (public)
 		dictionary := v1.Group("/dictionary")
 		{
-			dictionary.GET("/search", searchDictionary)
-			dictionary.GET("/:word", getWordDefinition)
+			dictionary.GET("/search", dictHandler.Search)
+			dictionary.GET("/:word", dictHandler.GetWord)
 		}
 
 		// Quiz routes (optional auth - can use without login, but tracks history if logged in)
@@ -86,24 +112,46 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 		protected := v1.Group("/")
 		protected.Use(authMiddleware.RequireAuth())
 		{
-			// User profile routes
+			// User profile routes (work even without verified email)
 			profile := protected.Group("/profile")
 			{
 				profile.GET("", authHandler.GetProfile)
 				profile.PUT("", authHandler.UpdateProfile)
 			}
 
-			// Quiz history (requires authentication to track)
-			quizHistory := protected.Group("/quiz")
+			// Session management routes (work even without verified email)
+			sessions := protected.Group("/sessions")
 			{
-				quizHistory.GET("/history", quizHandler.GetQuizHistory)
+				sessions.GET("", authHandler.GetSessions)
+				sessions.DELETE("/:id", authHandler.RevokeSession)
 			}
 
-			// Chat routes (protected)
-			chat := protected.Group("/chat")
+			// Quiz history & stats (requires authentication)
+			quizProtected := protected.Group("/quiz")
 			{
-				chat.POST("/message", sendChatMessage)
-				chat.GET("/history", getChatHistory)
+				quizProtected.GET("/history", quizHandler.GetQuizHistory)
+				quizProtected.GET("/stats", quizHandler.GetQuizStats)
+			}
+
+			// --- Features that require verified email ---
+			verified := protected.Group("/")
+			verified.Use(authMiddleware.RequireVerified())
+			{
+				// Spaced repetition / learning routes
+				learn := verified.Group("/learn")
+				{
+					learn.GET("/review", learningHandler.GetReviewItems)
+					learn.POST("/review", learningHandler.SubmitReview)
+					learn.GET("/new", learningHandler.GetNewWords)
+					learn.GET("/stats", learningHandler.GetLearningStats)
+				}
+
+				// Chat routes
+				chat := verified.Group("/chat")
+				{
+					chat.POST("/message", chatHandler.SendMessage)
+					chat.GET("/history", chatHandler.GetHistory)
+				}
 			}
 		}
 	}
@@ -115,35 +163,5 @@ func healthCheck(c *gin.Context) {
 		"status":  "healthy",
 		"service": "chinese-learning-api",
 		"version": "1.0.0",
-	})
-}
-
-// Dictionary endpoints
-func searchDictionary(c *gin.Context) {
-	query := c.Query("q")
-	c.JSON(200, gin.H{
-		"message": "Search dictionary endpoint - to be implemented",
-		"query":   query,
-	})
-}
-
-func getWordDefinition(c *gin.Context) {
-	word := c.Param("word")
-	c.JSON(200, gin.H{
-		"message": "Get word definition endpoint - to be implemented",
-		"word":    word,
-	})
-}
-
-// Chat endpoints
-func sendChatMessage(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Send chat message endpoint - to be implemented",
-	})
-}
-
-func getChatHistory(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Get chat history endpoint - to be implemented",
 	})
 }
