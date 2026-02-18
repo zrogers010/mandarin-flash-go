@@ -54,6 +54,17 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 		return
 	}
 
+	if len(vocabulary) == 0 {
+		level := "the selected"
+		if req.HSKLevel != nil {
+			level = "HSK Level " + strconv.Itoa(*req.HSKLevel)
+		}
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "No vocabulary available for " + level + ". Please choose a different level.",
+		})
+		return
+	}
+
 	// Convert vocabulary to quiz cards
 	var cards []models.QuizCard
 	for _, vocab := range vocabulary {

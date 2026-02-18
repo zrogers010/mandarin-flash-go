@@ -27,6 +27,9 @@ export function Quiz() {
 			setShowResults(false)
 			setUserAnswers({})
 		},
+		onError: () => {
+			setCurrentQuiz(null)
+		},
 	})
 
 	// Submit quiz mutation
@@ -142,6 +145,68 @@ export function Quiz() {
 					<div className="text-center py-12">
 						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
 						<p className="text-gray-600">Generating quiz...</p>
+					</div>
+				</div>
+			</div>
+		)
+	}
+
+	if (generateQuizMutation.isError) {
+		const errorMessage = (generateQuizMutation.error as any)?.response?.data?.error
+			|| 'Failed to generate quiz. Please try again.'
+		return (
+			<div className="space-y-6">
+				<div className="relative">
+					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
+						<ArrowLeft className="w-4 h-4 mr-2" />
+						Go Back
+					</button>
+					<div className="text-center">
+						<h1 className="text-3xl font-bold text-gray-900 mb-4">Flashcards</h1>
+						<p className="text-gray-600">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
+					</div>
+				</div>
+				<div className="card">
+					<div className="text-center py-12">
+						<div className="text-6xl mb-4">📭</div>
+						<h2 className="text-xl font-semibold mb-2">No Vocabulary Available</h2>
+						<p className="text-gray-600 mb-6">{errorMessage}</p>
+						<button onClick={handleNewQuiz} className="btn-primary">
+							<ArrowLeft className="w-4 h-4 mr-2" />
+							Choose a Different Level
+						</button>
+					</div>
+				</div>
+			</div>
+		)
+	}
+
+	if (currentQuiz && (!currentQuiz.cards || currentQuiz.cards.length === 0)) {
+		return (
+			<div className="space-y-6">
+				<div className="relative">
+					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
+						<ArrowLeft className="w-4 h-4 mr-2" />
+						Go Back
+					</button>
+					<div className="text-center">
+						<h1 className="text-3xl font-bold text-gray-900 mb-4">Flashcards</h1>
+						<p className="text-gray-600">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
+					</div>
+				</div>
+				<div className="card">
+					<div className="text-center py-12">
+						<div className="text-6xl mb-4">📭</div>
+						<h2 className="text-xl font-semibold mb-2">No Vocabulary Available</h2>
+						<p className="text-gray-600 mb-6">
+							{selectedLevel
+								? `HSK Level ${selectedLevel} doesn't have any vocabulary yet. Please choose a different level.`
+								: 'No vocabulary is available right now. Please try again later.'}
+						</p>
+						<button onClick={handleNewQuiz} className="btn-primary">
+							<ArrowLeft className="w-4 h-4 mr-2" />
+							Choose a Different Level
+						</button>
 					</div>
 				</div>
 			</div>
