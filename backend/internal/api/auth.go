@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"time"
 
@@ -152,7 +153,7 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 
 	// Send verification email
 	if err := ah.emailService.SendEmailVerification(user.Email, user.DisplayName(), verificationToken); err != nil {
-		// Log error but don't fail the signup
+		log.Printf("ERROR: Failed to send verification email to %s: %v", user.Email, err)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{

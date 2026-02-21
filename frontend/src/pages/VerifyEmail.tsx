@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
@@ -7,6 +7,7 @@ export const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const { verifyEmail } = useAuth()
+  const hasAttempted = useRef(false)
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
@@ -17,6 +18,9 @@ export const VerifyEmail: React.FC = () => {
       setMessage('No verification token provided. Please check the link in your email.')
       return
     }
+
+    if (hasAttempted.current) return
+    hasAttempted.current = true
 
     const verify = async () => {
       try {
