@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Volume2, ArrowRight } from 'lucide-react'
 import { Vocabulary } from '@/lib/api'
+import { speakText } from '@/lib/speech'
 
 interface VocabularyCardProps {
   vocabulary: Vocabulary
@@ -36,8 +37,12 @@ export function VocabularyCard({
             {vocabulary.pinyin}
           </div>
           <button 
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              speakText(vocabulary.chinese, 'zh')
+            }}
             className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            aria-label="Listen to pronunciation"
           >
             <Volume2 className="w-4 h-4 text-gray-600" />
           </button>

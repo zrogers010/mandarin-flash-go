@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Volume2, BookOpen, Target, ExternalLink } from 'lucide-react'
 import { vocabularyApi } from '@/lib/api'
+import { speakText } from '@/lib/speech'
 
 export function VocabularyDetail() {
   const { id } = useParams<{ id: string }>()
@@ -88,7 +89,10 @@ export function VocabularyDetail() {
 
         {/* Audio Button */}
         <div className="flex justify-center mb-8">
-          <button className="flex items-center space-x-2 px-4 py-2 rounded-full bg-primary-100 hover:bg-primary-200 transition-colors">
+          <button
+            onClick={() => speakText(vocabulary.chinese, 'zh')}
+            className="flex items-center space-x-2 px-4 py-2 rounded-full bg-primary-100 hover:bg-primary-200 transition-colors"
+          >
             <Volume2 className="w-5 h-5 text-primary-600" />
             <span className="text-primary-700 font-medium">Listen to Pronunciation</span>
           </button>
@@ -107,8 +111,17 @@ export function VocabularyDetail() {
             {vocabulary.example_sentences.map((sentence, index) => (
               <div key={index} className="border-l-4 border-primary-200 pl-6 py-4">
                 {/* Chinese */}
-                <div className="text-lg chinese-text text-gray-900 leading-relaxed mb-2">
-                  {sentence.chinese}
+                <div className="flex items-start gap-2 mb-2">
+                  <div className="text-lg chinese-text text-gray-900 leading-relaxed">
+                    {sentence.chinese}
+                  </div>
+                  <button
+                    onClick={() => speakText(sentence.chinese, 'zh')}
+                    className="flex-shrink-0 p-1.5 rounded-full bg-primary-50 hover:bg-primary-100 transition-colors mt-0.5"
+                    aria-label="Listen to Chinese sentence"
+                  >
+                    <Volume2 className="w-4 h-4 text-primary-600" />
+                  </button>
                 </div>
                 
                 {/* Pinyin */}
@@ -120,8 +133,17 @@ export function VocabularyDetail() {
                 
                 {/* English */}
                 {sentence.english && (
-                  <div className="text-base text-gray-700 italic">
-                    {sentence.english}
+                  <div className="flex items-start gap-2">
+                    <div className="text-base text-gray-700 italic">
+                      {sentence.english}
+                    </div>
+                    <button
+                      onClick={() => speakText(sentence.english, 'en')}
+                      className="flex-shrink-0 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors mt-0.5"
+                      aria-label="Listen to English translation"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-gray-500" />
+                    </button>
                   </div>
                 )}
               </div>
