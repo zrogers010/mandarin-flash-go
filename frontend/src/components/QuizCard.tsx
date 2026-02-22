@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Volume2 } from 'lucide-react'
+import { speakText } from '@/lib/speech'
 
 interface QuizCardProps {
 	card: {
@@ -55,14 +56,6 @@ export function QuizCard({
 	const handleAnswerSelect = (answer: string) => {
 		if (onAnswer) {
 			onAnswer(card.id, answer)
-		}
-	}
-
-	const speakText = (text: string, lang: 'zh' | 'en') => {
-		if ('speechSynthesis' in window) {
-			const utterance = new SpeechSynthesisUtterance(text)
-			utterance.lang = lang === 'zh' ? 'zh-CN' : 'en-US'
-			speechSynthesis.speak(utterance)
 		}
 	}
 
@@ -202,10 +195,28 @@ export function QuizCard({
 								{card.example_sentences && card.example_sentences.length > 0 && (
 									<div className="space-y-3 w-full">
 										{card.example_sentences.slice(0, 2).map((sentence, index) => (
-											<div key={index} className="p-3 bg-white rounded-lg shadow-sm border border-gray-100">
-												<div className="text-sm chinese-text font-medium mb-1">{sentence.chinese}</div>
+											<div key={index} className="p-3 bg-white rounded-lg shadow-sm border border-gray-100" onClick={(e) => e.stopPropagation()}>
+												<div className="flex items-center gap-1.5 mb-1">
+													<div className="text-sm chinese-text font-medium">{sentence.chinese}</div>
+													<button
+														onClick={() => speakText(sentence.chinese, 'zh')}
+														className="flex-shrink-0 p-1 rounded-full hover:bg-blue-50 transition-colors"
+														aria-label="Listen to Chinese sentence"
+													>
+														<Volume2 className="w-3.5 h-3.5 text-blue-500" />
+													</button>
+												</div>
 												<div className="text-xs text-gray-600 mb-1">{sentence.pinyin}</div>
-												<div className="text-xs text-gray-700 italic">{sentence.english}</div>
+												<div className="flex items-center gap-1.5">
+													<div className="text-xs text-gray-700 italic">{sentence.english}</div>
+													<button
+														onClick={() => speakText(sentence.english, 'en')}
+														className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 transition-colors"
+														aria-label="Listen to English translation"
+													>
+														<Volume2 className="w-3 h-3 text-gray-400" />
+													</button>
+												</div>
 											</div>
 										))}
 									</div>
