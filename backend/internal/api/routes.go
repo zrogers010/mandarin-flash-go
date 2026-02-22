@@ -34,6 +34,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 	learningHandler := NewLearningHandler(db)
 	chatHandler := NewChatHandler(db, cfg)
 	authHandler := NewAuthHandler(db, cfg)
+	ttsHandler := NewTTSHandler(cfg)
 
 	// Initialize middleware
 	userRepo := database.NewUserRepository(db)
@@ -92,6 +93,12 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			vocabulary.GET("/hsk/:level", vocabHandler.GetHSKVocabulary)
 			vocabulary.GET("/:id", vocabHandler.GetVocabularyItem)
 		}
+
+		// TTS route (public, rate-limited)
+		v1.POST("/tts",
+			rateLimiter.Limit(60, 1*time.Minute, "tts"),
+			ttsHandler.Synthesize,
+		)
 
 		// Dictionary routes (public)
 		dictionary := v1.Group("/dictionary")

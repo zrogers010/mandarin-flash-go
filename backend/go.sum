@@ -18,6 +18,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 h1:0ryTNEd
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4/go.mod h1:HQ4qwNZh32C3CBeO6iJLQlgtMzqeG17ziAA/3KDJFow=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17 h1:RuNSMoozM8oXlgLG/n6WLaFGoea7/CddrCfIiSA+xdY=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17/go.mod h1:F2xxQ9TZz5gDWsclCtPQscGpP0VUOc8RqgFM3vDENmU=
+github.com/aws/aws-sdk-go-v2/service/polly v1.54.10 h1:cEHvQIezzM07ZGBUKgta+iOkL2vdLwbZM+SJBrfzcVI=
+github.com/aws/aws-sdk-go-v2/service/polly v1.54.10/go.mod h1:hrkB7JMICNeghLC9tzcgDrWMTC8CY6iNx4gPWgEsvRQ=
 github.com/aws/aws-sdk-go-v2/service/sesv2 v1.59.1 h1:0Pitfk3kTCUeJp+7xvTYhdgwVQhszqw1i4s8U93Z/ds=
 github.com/aws/aws-sdk-go-v2/service/sesv2 v1.59.1/go.mod h1:lm1VCfakGKIqjexled4IMNMxgOQpDk7buAFd+7lr9pA=
 github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 h1:VrhDvQib/i0lxvr3zqlUwLwJP4fpmpyD9wYG1vfSu+Y=
