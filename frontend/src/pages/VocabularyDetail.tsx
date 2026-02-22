@@ -152,39 +152,6 @@ export function VocabularyDetail() {
         </div>
       )}
 
-      {/* Additional Information */}
-      <div className="card">
-        <div className="flex items-center space-x-2 mb-6">
-          <Target className="w-6 h-6 text-primary-600" />
-          <h2 className="text-2xl font-bold text-gray-900">Study Information</h2>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">HSK Level</h3>
-            <p className="text-gray-600">
-              {vocabulary.hsk_level === 0 ? 'Beginner Level' : `HSK Level ${vocabulary.hsk_level}`}
-            </p>
-          </div>
-          
-
-          
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Added to Database</h3>
-            <p className="text-gray-600">
-              {new Date(vocabulary.created_at).toLocaleDateString()}
-            </p>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Last Updated</h3>
-            <p className="text-gray-600">
-              {new Date(vocabulary.updated_at).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Practice Actions */}
       <div className="card">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Practice This Word</h2>

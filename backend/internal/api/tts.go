@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -60,16 +61,22 @@ func (h *TTSHandler) Synthesize(c *gin.Context) {
 
 	var voiceID pollytypes.VoiceId
 	var langCode string
+	var rate string
 	if req.Lang == "zh" {
 		voiceID = pollytypes.VoiceIdZhiyu
 		langCode = "cmn-CN"
+		rate = "75%"
 	} else {
 		voiceID = pollytypes.VoiceIdMatthew
 		langCode = "en-US"
+		rate = "85%"
 	}
 
+	ssml := fmt.Sprintf(`<speak><prosody rate="%s">%s</prosody></speak>`, rate, req.Text)
+
 	input := &polly.SynthesizeSpeechInput{
-		Text:         &req.Text,
+		Text:         &ssml,
+		TextType:     pollytypes.TextTypeSsml,
 		OutputFormat: pollytypes.OutputFormatMp3,
 		VoiceId:      voiceID,
 		Engine:       pollytypes.EngineNeural,
