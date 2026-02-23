@@ -68,7 +68,10 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 	searchPrefix := searchLower + "%"
 
 	query := `
-		SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at,
+		SELECT id, chinese, traditional, pinyin, COALESCE(pinyin_no_tones, '') as pinyin_no_tones,
+			english, part_of_speech, hsk_level,
+			COALESCE(example_sentences, '[]'::jsonb) as example_sentences,
+			created_at, updated_at,
 			CASE
 				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 OR english ILIKE $1 THEN 'exact'
 				WHEN chinese ILIKE $2 OR pinyin ILIKE $2 OR pinyin_no_tones ILIKE $2 OR english ILIKE $2 THEN 'prefix'
@@ -124,7 +127,7 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var results []DictionarySearchResult
+	results := make([]DictionarySearchResult, 0)
 	for rows.Next() {
 		var r DictionarySearchResult
 		err := rows.Scan(
@@ -159,13 +162,13 @@ func (h *DictionaryHandler) GetWord(c *gin.Context) {
 		return
 	}
 
+	vocabSelect := `id, chinese, traditional, pinyin, COALESCE(pinyin_no_tones, '') as pinyin_no_tones,
+		english, part_of_speech, hsk_level,
+		COALESCE(example_sentences, '[]'::jsonb) as example_sentences,
+		created_at, updated_at`
+
 	// Try exact match on Chinese characters first
-	query := `
-		SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
-		FROM vocabulary
-		WHERE chinese = $1
-		LIMIT 1
-	`
+	query := fmt.Sprintf("SELECT %s FROM vocabulary WHERE chinese = $1 LIMIT 1", vocabSelect)
 
 	var v models.Vocabulary
 	err := h.db.QueryRow(query, word).Scan(
@@ -175,13 +178,9 @@ func (h *DictionaryHandler) GetWord(c *gin.Context) {
 	)
 
 	if err == sql.ErrNoRows {
-		// Try matching by pinyin (with and without tones)
-		pinyinQuery := `
-			SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
-			FROM vocabulary
+		pinyinQuery := fmt.Sprintf(`SELECT %s FROM vocabulary
 			WHERE LOWER(pinyin) = LOWER($1) OR LOWER(pinyin_no_tones) = LOWER($1)
-			LIMIT 1
-		`
+			LIMIT 1`, vocabSelect)
 		err = h.db.QueryRow(pinyinQuery, word).Scan(
 			&v.ID, &v.Chinese, &v.Traditional, &v.Pinyin, &v.PinyinNoTones,
 			&v.English, &v.PartOfSpeech, &v.HSKLevel,
@@ -203,16 +202,10 @@ func (h *DictionaryHandler) GetWord(c *gin.Context) {
 		return
 	}
 
-	// Get related words (same HSK level, random sample)
-	relatedQuery := `
-		SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
-		FROM vocabulary
-		WHERE hsk_level = $1 AND id != $2
-		ORDER BY RANDOM()
-		LIMIT 5
-	`
+	relatedQuery := fmt.Sprintf(`SELECT %s FROM vocabulary
+		WHERE hsk_level = $1 AND id != $2 ORDER BY RANDOM() LIMIT 5`, vocabSelect)
 	rows, err := h.db.Query(relatedQuery, v.HSKLevel, v.ID)
-	var related []models.Vocabulary
+	related := make([]models.Vocabulary, 0)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
