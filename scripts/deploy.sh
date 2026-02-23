@@ -73,10 +73,12 @@ done
 
 for migration in backend/db/migrations/*.sql; do
     if [ -f "$migration" ]; then
-        echo "  Applying $(basename "$migration")..."
+        MIGRATION_NAME="$(basename "$migration")"
+        echo "  Applying $MIGRATION_NAME..."
         $DC $COMPOSE_FILE exec -T postgres psql \
             -U "${DB_USER:-postgres}" \
-            -d "${DB_NAME:-chinese_learning}" < "$migration" 2>&1 | tail -5
+            -d "${DB_NAME:-chinese_learning}" \
+            -f "/docker-entrypoint-initdb.d/$MIGRATION_NAME" 2>&1 | tail -5
     fi
 done
 echo "  Migrations applied."
