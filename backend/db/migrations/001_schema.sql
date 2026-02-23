@@ -7,6 +7,7 @@
 -- Extensions
 -- ───────────────────────────────────────────────────────────────────
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- ───────────────────────────────────────────────────────────────────
 -- Utility: auto-update updated_at on row changes
@@ -25,6 +26,7 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS vocabulary (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     chinese TEXT NOT NULL,
+    traditional TEXT,
     pinyin TEXT NOT NULL,
     pinyin_no_tones VARCHAR(255),
     english TEXT NOT NULL,
@@ -38,6 +40,10 @@ CREATE TABLE IF NOT EXISTS vocabulary (
 
 CREATE INDEX IF NOT EXISTS idx_vocabulary_hsk_level ON vocabulary(hsk_level);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_chinese ON vocabulary(chinese);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_chinese_trgm ON vocabulary USING gin (chinese gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_english_trgm ON vocabulary USING gin (english gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_pinyin_trgm ON vocabulary USING gin (pinyin gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_traditional ON vocabulary(traditional);
 
 CREATE TRIGGER update_vocabulary_updated_at BEFORE UPDATE ON vocabulary
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

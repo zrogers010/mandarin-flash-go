@@ -80,15 +80,18 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 			ShowAnswer:       false,
 		}
 
-		// For scored quizzes, generate multiple choice options
+		// For scored quizzes, generate multiple choice options using
+		// primary (first) definitions to keep buttons concise
 		if req.Type == models.QuizTypeScored {
 			wrongAnswers, err := h.vocabRepo.GetRandom(6, req.HSKLevel)
+			correctOption := primaryDefinition(vocab.English)
 			if err == nil && len(wrongAnswers) >= 3 {
-				options := []string{vocab.English}
+				options := []string{correctOption}
 
 				for _, wrong := range wrongAnswers {
-					if wrong.ID != vocab.ID && wrong.English != vocab.English {
-						options = append(options, wrong.English)
+					wrongOption := primaryDefinition(wrong.English)
+					if wrong.ID != vocab.ID && wrongOption != correctOption {
+						options = append(options, wrongOption)
 						if len(options) >= 4 {
 							break
 						}
@@ -106,7 +109,7 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 				shuffleStrings(options)
 
 				card.MultipleChoice = options
-				card.CorrectAnswer = vocab.English
+				card.CorrectAnswer = correctOption
 			}
 		}
 
@@ -149,7 +152,8 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 
 		vocab, err := h.vocabRepo.GetByID(vocabID)
 		if err == nil && vocab != nil {
-			isCorrect := vocab.English == userAnswer
+			correctAnswer := primaryDefinition(vocab.English)
+			isCorrect := correctAnswer == userAnswer
 			if isCorrect {
 				correct++
 			}
@@ -157,7 +161,7 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 			cardResults = append(cardResults, models.CardResult{
 				CardID:        vocabID,
 				UserAnswer:    userAnswer,
-				CorrectAnswer: vocab.English,
+				CorrectAnswer: correctAnswer,
 				IsCorrect:     isCorrect,
 			})
 		}
@@ -307,6 +311,17 @@ func (h *QuizHandler) GetQuizStats(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"stats": stats,
 	})
+}
+
+// primaryDefinition returns the first definition from a semicolon-separated
+// definition string, keeping quiz options concise.
+func primaryDefinition(english string) string {
+	for i, ch := range english {
+		if ch == ';' {
+			return english[:i]
+		}
+	}
+	return english
 }
 
 // Helper function to check if a slice contains a string

@@ -127,3 +127,6 @@ pids/
 coverage/
 *.lcov
 .nyc_output
+
+# CC-CEDICT cache
+scripts/cedict_cache.txt.gz
