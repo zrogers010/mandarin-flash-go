@@ -23,13 +23,8 @@ else
     DC="docker-compose"
 fi
 
-# Detect the internal network name (project_internal)
-NETWORK=$($DC -f docker-compose.prod.yml network ls 2>/dev/null | grep internal | awk '{print $1}' || true)
-if [ -z "$NETWORK" ]; then
-    # Fall back to docker network ls
-    PROJECT_NAME=$(basename "$PROJECT_DIR" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
-    NETWORK=$(docker network ls --format '{{.Name}}' | grep -E "${PROJECT_NAME}.*internal" | head -1 || true)
-fi
+# Get the network from the running postgres container (container_name: mf_postgres)
+NETWORK=$(docker inspect mf_postgres --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null | tr ' ' '\n' | grep internal | head -1 || true)
 
 if [ -z "$NETWORK" ]; then
     echo "ERROR: Could not find the Docker internal network."
