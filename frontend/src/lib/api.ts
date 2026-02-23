@@ -81,6 +81,7 @@ export interface ExampleSentence {
 export interface Vocabulary {
   id: string
   chinese: string
+  traditional?: string
   pinyin: string
   english: string
   hsk_level: number

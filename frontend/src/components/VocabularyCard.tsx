@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Volume2, ArrowRight } from 'lucide-react'
 import { Vocabulary } from '@/lib/api'
 import { speakText } from '@/lib/speech'
+import { shortDefinition } from '@/lib/definitions'
 
 interface VocabularyCardProps {
   vocabulary: Vocabulary
@@ -57,7 +58,7 @@ export function VocabularyCard({
       {/* English Translation */}
       <div className="text-center">
         <div className="text-lg font-semibold text-gray-900">
-          {vocabulary.english}
+          {shortDefinition(vocabulary.english)}
         </div>
       </div>
     </div>

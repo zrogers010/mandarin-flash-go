@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Volume2, BookOpen, Target, ExternalLink } from 'lucide-react'
 import { vocabularyApi } from '@/lib/api'
 import { speakText } from '@/lib/speech'
+import { parseDefinitions } from '@/lib/definitions'
 
 export function VocabularyDetail() {
   const { id } = useParams<{ id: string }>()
@@ -65,26 +66,52 @@ export function VocabularyDetail() {
       <div className="card">
         <div className="text-center mb-8">
           {/* Chinese Character */}
-          <div className="text-6xl md:text-8xl font-bold chinese-text text-gray-900 mb-4">
+          <div className="text-6xl md:text-8xl font-bold chinese-text text-gray-900 mb-2">
             {vocabulary.chinese}
           </div>
+
+          {/* Traditional (if different from simplified) */}
+          {vocabulary.traditional && vocabulary.traditional !== vocabulary.chinese && (
+            <div className="text-2xl chinese-text text-gray-400 mb-2">
+              {vocabulary.traditional}
+            </div>
+          )}
           
           {/* Pinyin */}
           <div className="text-2xl text-gray-600 mb-3">
             {vocabulary.pinyin}
           </div>
           
-          {/* HSK Level */}
-          <div className="bg-primary-100 text-primary-800 text-sm font-medium px-3 py-1 rounded-full">
-            HSK {vocabulary.hsk_level}
+          {/* Badges */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            {vocabulary.hsk_level > 0 && (
+              <span className="bg-primary-100 text-primary-800 text-sm font-medium px-3 py-1 rounded-full">
+                HSK {vocabulary.hsk_level}
+              </span>
+            )}
           </div>
 
-          {/* English Translation */}
-          <div className="text-3xl font-semibold text-gray-900 mb-4">
-            {vocabulary.english}
-          </div>
-
-
+          {/* English Definitions */}
+          {(() => {
+            const defs = parseDefinitions(vocabulary.english)
+            if (defs.length <= 1) {
+              return (
+                <div className="text-3xl font-semibold text-gray-900">
+                  {vocabulary.english}
+                </div>
+              )
+            }
+            return (
+              <div className="text-left max-w-lg mx-auto space-y-1.5">
+                {defs.map((def, i) => (
+                  <div key={i} className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-primary-600 flex-shrink-0">{i + 1}.</span>
+                    <span className="text-lg text-gray-900">{def}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Audio Button */}

@@ -52,6 +52,7 @@ type ExampleSentence struct {
 type Vocabulary struct {
 	ID               uuid.UUID       `json:"id" db:"id"`
 	Chinese          string          `json:"chinese" db:"chinese"`
+	Traditional      *string         `json:"traditional,omitempty" db:"traditional"`
 	Pinyin           string          `json:"pinyin" db:"pinyin"`
 	PinyinNoTones   string          `json:"pinyin_no_tones" db:"pinyin_no_tones"`
 	English          string          `json:"english" db:"english"`
@@ -129,7 +130,7 @@ func NewVocabularyRepository(db *sql.DB) *VocabularyRepository {
 // GetAll retrieves all vocabulary with optional filters
 func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyListResponse, error) {
 	query := `
-		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
+		SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 		WHERE 1=1
 	`
@@ -140,6 +141,8 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 		query += fmt.Sprintf(" AND hsk_level = $%d", argIndex)
 		args = append(args, *filters.HSKLevel)
 		argIndex++
+	} else {
+		query += " AND hsk_level >= 1"
 	}
 
 	if filters.Search != nil && *filters.Search != "" {
@@ -216,6 +219,7 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 		err := rows.Scan(
 			&v.ID,
 			&v.Chinese,
+			&v.Traditional,
 			&v.Pinyin,
 			&v.PinyinNoTones,
 			&v.English,
@@ -242,7 +246,7 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 // GetByID retrieves a vocabulary item by ID
 func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 	query := `
-		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
+		SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 		WHERE id = $1
 	`
@@ -251,6 +255,7 @@ func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 	err := r.db.QueryRow(query, id).Scan(
 		&v.ID,
 		&v.Chinese,
+		&v.Traditional,
 		&v.Pinyin,
 		&v.PinyinNoTones,
 		&v.English,
@@ -274,7 +279,7 @@ func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 // GetByHSKLevel retrieves vocabulary by HSK level
 func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 	query := `
-		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
+		SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 		WHERE hsk_level = $1
 		ORDER BY chinese
@@ -292,6 +297,7 @@ func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 		err := rows.Scan(
 			&v.ID,
 			&v.Chinese,
+			&v.Traditional,
 			&v.Pinyin,
 			&v.PinyinNoTones,
 			&v.English,
@@ -313,7 +319,7 @@ func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 // GetRandom retrieves random vocabulary items
 func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, error) {
 	query := `
-		SELECT id, chinese, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
+		SELECT id, chinese, traditional, pinyin, pinyin_no_tones, english, part_of_speech, hsk_level, example_sentences, created_at, updated_at
 		FROM vocabulary
 	`
 	args := []interface{}{}
@@ -321,6 +327,8 @@ func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, e
 	if level != nil {
 		query += " WHERE hsk_level = $1"
 		args = append(args, *level)
+	} else {
+		query += " WHERE hsk_level >= 1"
 	}
 
 	query += " ORDER BY RANDOM() LIMIT $"
@@ -343,6 +351,7 @@ func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, e
 		err := rows.Scan(
 			&v.ID,
 			&v.Chinese,
+			&v.Traditional,
 			&v.Pinyin,
 			&v.PinyinNoTones,
 			&v.English,

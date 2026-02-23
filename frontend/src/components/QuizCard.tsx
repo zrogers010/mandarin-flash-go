@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Volume2 } from 'lucide-react'
 import { speakText } from '@/lib/speech'
+import { shortDefinition } from '@/lib/definitions'
 
 interface QuizCardProps {
 	card: {
@@ -186,7 +187,7 @@ export function QuizCard({
 						<div className="absolute w-full h-full backface-hidden rotate-y-180">
 							<div className="card h-full flex flex-col justify-center items-center p-6 text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg overflow-y-auto">
 								{/* English Translation */}
-								<div className="text-xl font-semibold mb-3 text-gray-800">{card.english}</div>
+								<div className="text-xl font-semibold mb-3 text-gray-800">{shortDefinition(card.english)}</div>
 								
 								{/* Pinyin */}
 								<div className="text-base text-gray-600 mb-4">{card.pinyin}</div>

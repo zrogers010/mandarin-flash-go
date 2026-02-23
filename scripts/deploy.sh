@@ -71,14 +71,15 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
-if [ -f backend/db/migrations/001_schema.sql ]; then
-    echo "  Applying schema migration..."
-    $DC $COMPOSE_FILE exec -T postgres psql \
-        -U "${DB_USER:-postgres}" \
-        -d "${DB_NAME:-chinese_learning}" \
-        -f /docker-entrypoint-initdb.d/001_schema.sql 2>&1 | tail -5
-    echo "  Schema applied."
-fi
+for migration in backend/db/migrations/*.sql; do
+    if [ -f "$migration" ]; then
+        echo "  Applying $(basename "$migration")..."
+        $DC $COMPOSE_FILE exec -T postgres psql \
+            -U "${DB_USER:-postgres}" \
+            -d "${DB_NAME:-chinese_learning}" < "$migration" 2>&1 | tail -5
+    fi
+done
+echo "  Migrations applied."
 
 # Seed vocabulary data if seed files exist and vocabulary table is empty
 VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "0")
