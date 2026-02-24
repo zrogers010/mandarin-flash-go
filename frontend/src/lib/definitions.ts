@@ -1,8 +1,15 @@
 /**
- * Parse a semicolon-separated definition string into individual definitions.
- * e.g. "to love; to be fond of; affection" -> ["to love", "to be fond of", "affection"]
+ * Parse a definition string into distinct meaning groups.
+ * Uses "|" as the primary group separator (CC-CEDICT grouped format),
+ * falling back to ";" for older data that hasn't been re-imported.
  */
 export function parseDefinitions(english: string): string[] {
+  if (english.includes('|')) {
+    return english
+      .split('|')
+      .map(d => d.trim())
+      .filter(Boolean)
+  }
   return english
     .split(';')
     .map(d => d.trim())
@@ -11,7 +18,7 @@ export function parseDefinitions(english: string): string[] {
 
 /**
  * Get a short display string for compact contexts (cards, quiz options).
- * Shows up to maxDefs definitions joined by "; ".
+ * Shows up to maxDefs groups joined by "; ".
  */
 export function shortDefinition(english: string, maxDefs = 3): string {
   const defs = parseDefinitions(english)
@@ -20,7 +27,7 @@ export function shortDefinition(english: string, maxDefs = 3): string {
 }
 
 /**
- * Get the primary (first) definition for quiz/flashcard contexts.
+ * Get the primary (first) definition group for quiz/flashcard contexts.
  */
 export function primaryDefinition(english: string): string {
   return parseDefinitions(english)[0] || english
