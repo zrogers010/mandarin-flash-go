@@ -40,18 +40,16 @@ export function Layout({ children }: LayoutProps) {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link to="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                  <span className="text-gold font-bold text-sm">中</span>
-                </div>
-                <span className="text-xl font-bold text-gradient">MandarinFlash</span>
-              </Link>
-            </div>
+          <div className="flex items-center h-16 gap-6">
+            <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
+              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <span className="text-gold font-bold text-sm">闪</span>
+              </div>
+              <span className="text-xl font-bold text-gradient">MandarinFlash</span>
+            </Link>
             
-            <div className="flex items-center space-x-4">
-              <nav className="hidden md:flex space-x-6">
+            <div className="flex items-center justify-end flex-1 gap-4">
+              <nav className="hidden md:flex space-x-1">
                 {navigation.map((item) => {
                   const isActive = location.pathname === item.href
                   return (
