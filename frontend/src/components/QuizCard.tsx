@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Volume2 } from 'lucide-react'
 import { speakText } from '@/lib/speech'
-import { shortDefinition } from '@/lib/definitions'
+import { parseDefinitions } from '@/lib/definitions'
 
 interface QuizCardProps {
 	card: {
@@ -185,35 +185,85 @@ export function QuizCard({
 					{/* Back of card - Only for practice mode */}
 					{!isScored && (
 						<div className="absolute w-full h-full backface-hidden rotate-y-180">
-							<div className="card h-full flex flex-col justify-center items-center p-6 text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg overflow-y-auto">
-								{/* English Translation */}
-								<div className="text-xl font-semibold mb-3 text-gray-800">{shortDefinition(card.english)}</div>
-								
-								{/* Pinyin */}
-								<div className="text-base text-gray-600 mb-4">{card.pinyin}</div>
+							<div className="card h-full flex flex-col p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg overflow-y-auto">
+								{/* Pinyin + Audio */}
+								<div className="flex items-center justify-center gap-2 mb-3">
+									<span className="text-base text-gray-500">{card.pinyin}</span>
+									<button
+										onClick={(e) => {
+											e.stopPropagation()
+											speakText(card.chinese, 'zh')
+										}}
+										className="p-1.5 rounded-full bg-green-100 hover:bg-green-200 transition-colors"
+										aria-label="Listen to pronunciation"
+									>
+										<Volume2 className="w-4 h-4 text-green-600" />
+									</button>
+								</div>
+
+								{/* English Definitions as numbered list */}
+								<div className="mb-4" onClick={(e) => e.stopPropagation()}>
+									{(() => {
+										const defs = parseDefinitions(card.english)
+										if (defs.length <= 1) {
+											return (
+												<div className="flex items-center justify-center gap-2">
+													<span className="text-lg font-semibold text-gray-800">{card.english}</span>
+													<button
+														onClick={() => speakText(card.english, 'en')}
+														className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 transition-colors"
+														aria-label="Listen to English"
+													>
+														<Volume2 className="w-3.5 h-3.5 text-gray-400" />
+													</button>
+												</div>
+											)
+										}
+										return (
+											<div className="space-y-1 max-w-md mx-auto">
+												<div className="flex items-center justify-between mb-1">
+													<span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Definitions</span>
+													<button
+														onClick={() => speakText(defs[0], 'en')}
+														className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 transition-colors"
+														aria-label="Listen to English"
+													>
+														<Volume2 className="w-3.5 h-3.5 text-gray-400" />
+													</button>
+												</div>
+												{defs.map((def, i) => (
+													<div key={i} className="flex items-baseline gap-1.5">
+														<span className="text-xs font-semibold text-green-600 flex-shrink-0">{i + 1}.</span>
+														<span className="text-sm text-gray-800">{def}</span>
+													</div>
+												))}
+											</div>
+										)
+									})()}
+								</div>
 
 								{/* Example Sentences */}
 								{card.example_sentences && card.example_sentences.length > 0 && (
-									<div className="space-y-3 w-full">
+									<div className="space-y-2 w-full" onClick={(e) => e.stopPropagation()}>
 										{card.example_sentences.slice(0, 2).map((sentence, index) => (
-											<div key={index} className="p-3 bg-white rounded-lg shadow-sm border border-gray-100" onClick={(e) => e.stopPropagation()}>
-												<div className="flex items-center gap-1.5 mb-1">
-													<div className="text-sm chinese-text font-medium">{sentence.chinese}</div>
+											<div key={index} className="p-2.5 bg-white rounded-lg shadow-sm border border-gray-100">
+												<div className="flex items-center gap-1.5 mb-0.5">
+													<span className="text-sm chinese-text font-medium text-gray-900">{sentence.chinese}</span>
 													<button
 														onClick={() => speakText(sentence.chinese, 'zh')}
 														className="flex-shrink-0 p-1 rounded-full hover:bg-blue-50 transition-colors"
-														aria-label="Listen to Chinese sentence"
 													>
-														<Volume2 className="w-3.5 h-3.5 text-blue-500" />
+														<Volume2 className="w-3 h-3 text-blue-500" />
 													</button>
 												</div>
-												<div className="text-xs text-gray-600 mb-1">{sentence.pinyin}</div>
+												{sentence.pinyin && (
+													<div className="text-xs text-gray-500 mb-0.5">{sentence.pinyin}</div>
+												)}
 												<div className="flex items-center gap-1.5">
-													<div className="text-xs text-gray-700 italic">{sentence.english}</div>
+													<span className="text-xs text-gray-600 italic">{sentence.english}</span>
 													<button
 														onClick={() => speakText(sentence.english, 'en')}
 														className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 transition-colors"
-														aria-label="Listen to English translation"
 													>
 														<Volume2 className="w-3 h-3 text-gray-400" />
 													</button>
@@ -224,8 +274,8 @@ export function QuizCard({
 								)}
 
 								{/* Flip Instructions */}
-								<div className="text-sm text-gray-500 mt-3">
-									Click to show front
+								<div className="text-xs text-gray-400 text-center mt-auto pt-2">
+									Click to flip back
 								</div>
 							</div>
 						</div>
