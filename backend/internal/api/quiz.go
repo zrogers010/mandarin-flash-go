@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"chinese-learning/internal/database"
@@ -316,6 +317,11 @@ func (h *QuizHandler) GetQuizStats(c *gin.Context) {
 // primaryDefinition returns the first definition from a semicolon-separated
 // definition string, keeping quiz options concise.
 func primaryDefinition(english string) string {
+	for i, ch := range english {
+		if ch == '|' {
+			return strings.TrimSpace(english[:i])
+		}
+	}
 	for i, ch := range english {
 		if ch == ';' {
 			return english[:i]
