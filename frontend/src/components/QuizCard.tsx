@@ -185,56 +185,52 @@ export function QuizCard({
 					{/* Back of card - Only for practice mode */}
 					{!isScored && (
 						<div className="absolute w-full h-full backface-hidden rotate-y-180">
-							<div className="card h-full flex flex-col p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg overflow-y-auto">
-								{/* Pinyin + Audio */}
-								<div className="flex items-center justify-center gap-2 mb-3">
-									<span className="text-base text-gray-500">{card.pinyin}</span>
+							<div className="card h-full flex flex-col p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg">
+								{/* Character + Pinyin + Audio */}
+								<div className="flex items-center justify-center gap-2 mb-2">
+									<span className="text-lg chinese-text font-bold text-gray-800">{card.chinese}</span>
+									<span className="text-sm text-gray-500">{card.pinyin}</span>
 									<button
 										onClick={(e) => {
 											e.stopPropagation()
 											speakText(card.chinese, 'zh')
 										}}
-										className="p-1.5 rounded-full bg-green-100 hover:bg-green-200 transition-colors"
+										className="p-1 rounded-full bg-green-100 hover:bg-green-200 transition-colors"
 										aria-label="Listen to pronunciation"
 									>
-										<Volume2 className="w-4 h-4 text-green-600" />
+										<Volume2 className="w-3.5 h-3.5 text-green-600" />
 									</button>
 								</div>
 
-								{/* English Definitions as numbered list */}
-								<div className="mb-4" onClick={(e) => e.stopPropagation()}>
+								{/* English Definitions */}
+								<div className="mb-2" onClick={(e) => e.stopPropagation()}>
 									{(() => {
 										const defs = parseDefinitions(card.english)
 										if (defs.length <= 1) {
 											return (
-												<div className="flex items-center justify-center gap-2">
-													<span className="text-lg font-semibold text-gray-800">{card.english}</span>
+												<div className="flex items-center justify-center gap-1.5">
+													<span className="text-base font-semibold text-gray-800">{card.english}</span>
 													<button
 														onClick={() => speakText(card.english, 'en')}
-														className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 transition-colors"
-														aria-label="Listen to English"
+														className="flex-shrink-0 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
 													>
-														<Volume2 className="w-3.5 h-3.5 text-gray-400" />
+														<Volume2 className="w-3 h-3 text-gray-400" />
 													</button>
 												</div>
 											)
 										}
 										return (
-											<div className="space-y-1 max-w-md mx-auto">
-												<div className="flex items-center justify-between mb-1">
-													<span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Definitions</span>
-													<button
-														onClick={() => speakText(defs[0], 'en')}
-														className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 transition-colors"
-														aria-label="Listen to English"
-													>
-														<Volume2 className="w-3.5 h-3.5 text-gray-400" />
-													</button>
-												</div>
+											<div className="max-w-sm mx-auto">
 												{defs.map((def, i) => (
-													<div key={i} className="flex items-baseline gap-1.5">
-														<span className="text-xs font-semibold text-green-600 flex-shrink-0">{i + 1}.</span>
-														<span className="text-sm text-gray-800">{def}</span>
+													<div key={i} className="flex items-center gap-1 leading-snug py-[1px]">
+														<span className="text-xs font-semibold text-green-600 flex-shrink-0 w-4 text-right">{i + 1}.</span>
+														<span className="text-xs text-gray-800 flex-1">{def}</span>
+														<button
+															onClick={() => speakText(def, 'en')}
+															className="flex-shrink-0 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
+														>
+															<Volume2 className="w-2.5 h-2.5 text-gray-400" />
+														</button>
 													</div>
 												))}
 											</div>
@@ -244,28 +240,28 @@ export function QuizCard({
 
 								{/* Example Sentences */}
 								{card.example_sentences && card.example_sentences.length > 0 && (
-									<div className="space-y-2 w-full" onClick={(e) => e.stopPropagation()}>
+									<div className="space-y-1.5 w-full flex-1" onClick={(e) => e.stopPropagation()}>
 										{card.example_sentences.slice(0, 2).map((sentence, index) => (
-											<div key={index} className="p-2.5 bg-white rounded-lg shadow-sm border border-gray-100">
-												<div className="flex items-center gap-1.5 mb-0.5">
-													<span className="text-sm chinese-text font-medium text-gray-900">{sentence.chinese}</span>
+											<div key={index} className="px-2.5 py-1.5 bg-white rounded-lg border border-gray-100">
+												<div className="flex items-center gap-1 mb-px">
+													<span className="text-xs chinese-text font-medium text-gray-900">{sentence.chinese}</span>
 													<button
 														onClick={() => speakText(sentence.chinese, 'zh')}
-														className="flex-shrink-0 p-1 rounded-full hover:bg-blue-50 transition-colors"
+														className="flex-shrink-0 p-0.5 rounded-full hover:bg-blue-50 transition-colors"
 													>
-														<Volume2 className="w-3 h-3 text-blue-500" />
+														<Volume2 className="w-2.5 h-2.5 text-blue-500" />
 													</button>
 												</div>
 												{sentence.pinyin && (
-													<div className="text-xs text-gray-500 mb-0.5">{sentence.pinyin}</div>
+													<div className="text-[10px] text-gray-400 leading-tight">{sentence.pinyin}</div>
 												)}
-												<div className="flex items-center gap-1.5">
-													<span className="text-xs text-gray-600 italic">{sentence.english}</span>
+												<div className="flex items-center gap-1">
+													<span className="text-[11px] text-gray-600 italic">{sentence.english}</span>
 													<button
 														onClick={() => speakText(sentence.english, 'en')}
-														className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 transition-colors"
+														className="flex-shrink-0 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
 													>
-														<Volume2 className="w-3 h-3 text-gray-400" />
+														<Volume2 className="w-2.5 h-2.5 text-gray-400" />
 													</button>
 												</div>
 											</div>
@@ -273,8 +269,7 @@ export function QuizCard({
 									</div>
 								)}
 
-								{/* Flip Instructions */}
-								<div className="text-xs text-gray-400 text-center mt-auto pt-2">
+								<div className="text-[10px] text-gray-400 text-center pt-1">
 									Click to flip back
 								</div>
 							</div>
