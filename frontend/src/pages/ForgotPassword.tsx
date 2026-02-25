@@ -28,7 +28,7 @@ export const ForgotPassword: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <Link
@@ -38,7 +38,7 @@ export const ForgotPassword: React.FC = () => {
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to login
           </Link>
-          <h2 className="text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
             Forgot your password?
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">

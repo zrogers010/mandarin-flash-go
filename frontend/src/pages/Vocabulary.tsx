@@ -80,11 +80,11 @@ export function Vocabulary() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Vocabulary Practice</h1>
-        <p className="text-gray-600">Master Mandarin Chinese HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-4">Vocabulary Practice</h1>
+        <p className="text-gray-600 text-sm sm:text-base">Master Mandarin Chinese HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
       </div>
 
       {/* Search and Filters */}
@@ -181,7 +181,7 @@ export function Vocabulary() {
 
 
             {/* Vocabulary Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {vocabularyData.vocabulary?.map((vocab) => (
                 <VocabularyCard
                   key={vocab.id}

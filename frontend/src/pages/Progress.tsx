@@ -55,11 +55,11 @@ export function Progress() {
 	const totalPages = historyData ? Math.ceil(historyData.total / historyData.limit) : 0
 
 	return (
-		<div className="space-y-8 max-w-4xl mx-auto">
+		<div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
 			{/* Header */}
 			<div>
-				<h1 className="text-3xl font-bold text-gray-900">Your Progress</h1>
-				<p className="text-gray-600 mt-1">Track your quiz performance and see which words need more practice.</p>
+				<h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Progress</h1>
+				<p className="text-gray-600 mt-1 text-sm sm:text-base">Track your quiz performance and see which words need more practice.</p>
 			</div>
 
 			{/* Stats Overview */}
@@ -114,23 +114,23 @@ export function Progress() {
 
 			{/* Additional stats row */}
 			{stats && stats.total_quizzes > 0 && (
-				<div className="grid grid-cols-3 gap-4">
-					<div className="card">
-						<div className="p-4 text-center">
-							<div className="text-2xl font-bold text-gray-900">{stats.total_questions}</div>
-							<div className="text-sm text-gray-500">Questions Answered</div>
+				<div className="grid grid-cols-3 gap-2 sm:gap-4">
+					<div className="card !p-3 sm:!p-6">
+						<div className="text-center">
+							<div className="text-lg sm:text-2xl font-bold text-gray-900">{stats.total_questions}</div>
+							<div className="text-xs sm:text-sm text-gray-500">Questions</div>
 						</div>
 					</div>
-					<div className="card">
-						<div className="p-4 text-center">
-							<div className="text-2xl font-bold text-green-600">{stats.total_correct}</div>
-							<div className="text-sm text-gray-500">Correct Answers</div>
+					<div className="card !p-3 sm:!p-6">
+						<div className="text-center">
+							<div className="text-lg sm:text-2xl font-bold text-green-600">{stats.total_correct}</div>
+							<div className="text-xs sm:text-sm text-gray-500">Correct</div>
 						</div>
 					</div>
-					<div className="card">
-						<div className="p-4 text-center">
-							<div className="text-2xl font-bold text-primary-600">{stats.quizzes_this_week}</div>
-							<div className="text-sm text-gray-500">This Week</div>
+					<div className="card !p-3 sm:!p-6">
+						<div className="text-center">
+							<div className="text-lg sm:text-2xl font-bold text-primary-600">{stats.quizzes_this_week}</div>
+							<div className="text-xs sm:text-sm text-gray-500">This Week</div>
 						</div>
 					</div>
 				</div>
@@ -199,14 +199,14 @@ function StatCard({ icon, label, value, bgColor }: {
 	bgColor: string
 }) {
 	return (
-		<div className="card">
-			<div className="p-4 flex items-center gap-3">
-				<div className={`p-2.5 rounded-xl ${bgColor}`}>
+		<div className="card !p-3 sm:!p-6">
+			<div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-3">
+				<div className={`p-2 sm:p-2.5 rounded-xl ${bgColor}`}>
 					{icon}
 				</div>
-				<div>
-					<div className="text-xl font-bold text-gray-900">{value}</div>
-					<div className="text-xs text-gray-500">{label}</div>
+				<div className="text-center sm:text-left">
+					<div className="text-base sm:text-xl font-bold text-gray-900">{value}</div>
+					<div className="text-[10px] sm:text-xs text-gray-500">{label}</div>
 				</div>
 			</div>
 		</div>
@@ -237,28 +237,26 @@ function QuizHistoryRow({ quiz, isExpanded, detail, detailLoading, onToggle }: {
 			{/* Summary row */}
 			<button
 				onClick={onToggle}
-				className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
+				className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left gap-2"
 			>
-				<div className="flex items-center gap-4">
-					<div className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${scoreColor} ${scoreBg}`}>
+				<div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
+					<div className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-sm font-semibold flex-shrink-0 ${scoreColor} ${scoreBg}`}>
 						{quiz.percentage.toFixed(0)}%
 					</div>
-					<div>
-						<div className="font-medium text-gray-900">
+					<div className="min-w-0">
+						<div className="font-medium text-gray-900 text-sm sm:text-base">
 							{quiz.type === 'scored' ? 'Scored Quiz' : 'Practice'}
-							{quiz.hsk_level && <span className="text-gray-500 ml-2">HSK {quiz.hsk_level}</span>}
+							{quiz.hsk_level && <span className="text-gray-500 ml-1 sm:ml-2">HSK {quiz.hsk_level}</span>}
 						</div>
-						<div className="text-sm text-gray-500">
+						<div className="text-xs sm:text-sm text-gray-500 truncate">
 							{quiz.correct}/{quiz.total} correct &middot;{' '}
 							{new Date(quiz.completed_at).toLocaleDateString(undefined, {
-								month: 'short', day: 'numeric', year: 'numeric',
-								hour: 'numeric', minute: '2-digit'
+								month: 'short', day: 'numeric',
 							})}
 						</div>
 					</div>
 				</div>
-				<div className="flex items-center gap-2">
-					{/* Mini dots for quick glance */}
+				<div className="flex items-center gap-2 flex-shrink-0">
 					<div className="hidden sm:flex items-center gap-0.5">
 						{quiz.card_results?.slice(0, 10).map((cr, i) => (
 							<div

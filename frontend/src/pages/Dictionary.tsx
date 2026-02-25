@@ -46,8 +46,8 @@ export function Dictionary() {
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Chinese Dictionary</h1>
-        <p className="text-gray-600">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Chinese Dictionary</h1>
+        <p className="text-gray-600 text-sm sm:text-base">
           Search over 120,000 Chinese words by characters, pinyin, or English meaning.
         </p>
       </div>
@@ -106,7 +106,33 @@ export function Dictionary() {
             />
           )}
 
-          <div className="card">
+          {/* Mobile: card layout */}
+          <div className="sm:hidden space-y-2">
+            {searchData.results.map((word) => (
+              <div
+                key={word.id}
+                className="card !p-3 flex items-center gap-3 active:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => navigate(`/vocabulary/${word.id}`)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 mb-0.5">
+                    <span className="text-lg chinese-text font-medium text-gray-900">{word.chinese}</span>
+                    <span className="text-sm text-gray-500 truncate">{word.pinyin}</span>
+                    {word.hsk_level > 0 && (
+                      <span className="inline-block bg-primary-100 text-primary-800 text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0">
+                        HSK {word.hsk_level}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600 truncate">{shortDefinition(word.english, 3)}</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table layout */}
+          <div className="card hidden sm:block">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>

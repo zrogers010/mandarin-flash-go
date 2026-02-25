@@ -63,7 +63,7 @@ export function QuizCard({
 	return (
 		<div className="w-full max-w-4xl mx-auto">
 			{/* Flashcard Container */}
-			<div className="relative w-full h-96 perspective-1000">
+			<div className={`relative w-full perspective-1000 ${isScored ? 'min-h-[20rem] sm:min-h-[24rem]' : 'h-72 sm:h-96'}`}>
 				{/* Flashcard */}
 				<div
 					className={`relative w-full h-full transition-transform duration-700 transform-style-preserve-3d cursor-pointer ${
@@ -72,45 +72,45 @@ export function QuizCard({
 					onClick={handleFlip}
 				>
 					{/* Front of card */}
-					<div className="absolute w-full h-full backface-hidden">
-						<div className="card h-full flex flex-col justify-center items-center p-6 text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg relative">
+					<div className={`${isScored ? '' : 'absolute'} w-full h-full backface-hidden`}>
+						<div className="card h-full flex flex-col justify-center items-center p-4 sm:p-6 text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg relative">
 							{/* Audio Button - Top Right */}
 							<button
 								onClick={(e) => {
 									e.stopPropagation()
 									speakText(card.chinese, 'zh')
 								}}
-								className="absolute top-4 right-4 p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors"
+								className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-blue-100 hover:bg-blue-200 active:bg-blue-300 transition-colors"
 							>
 								<Volume2 className="w-5 h-5 text-blue-600" />
 							</button>
 
 							{/* Chinese Character */}
-							<div className="text-6xl font-bold mb-4 text-gray-800 chinese-text">{card.chinese}</div>
+							<div className="text-4xl sm:text-6xl font-bold mb-3 sm:mb-4 text-gray-800 chinese-text">{card.chinese}</div>
 							
 							{/* Pinyin Toggle Button */}
 							<button
 								onClick={handleShowPinyin}
-								className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors mb-2"
+								className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 active:bg-blue-300 text-blue-700 rounded-lg transition-colors mb-2"
 							>
 								{showPinyin ? 'Hide' : 'Show'} Pinyin
 							</button>
 
 							{/* Pinyin */}
 							{showPinyin && (
-								<div className="text-lg text-gray-600 mb-3">{card.pinyin}</div>
+								<div className="text-base sm:text-lg text-gray-600 mb-2 sm:mb-3">{card.pinyin}</div>
 							)}
 
 							{/* Multiple Choice Options for Scored Quiz */}
 							{isScored && card.multiple_choice && (
-								<div className="w-full max-w-2xl mt-3">
-									<div className="grid grid-cols-2 gap-2">
+								<div className="w-full max-w-2xl mt-2 sm:mt-3">
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 										{card.multiple_choice.slice(0, 4).map((option, index) => {
 											const isCorrect = option === card.correct_answer
 											const isUserAnswer = userAnswer === option
 											const showFeedback = showResults || card.isCorrect !== undefined
 											
-											let buttonClass = "p-2.5 text-center rounded-lg border-2 transition-colors text-sm "
+											let buttonClass = "p-2.5 sm:p-3 text-center rounded-lg border-2 transition-colors text-sm "
 											
 											if (showFeedback) {
 												if (isCorrect) {
@@ -124,7 +124,7 @@ export function QuizCard({
 												if (isUserAnswer) {
 													buttonClass += "border-primary-600 bg-primary-50 text-primary-700"
 												} else {
-													buttonClass += "border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50"
+													buttonClass += "border-gray-200 hover:border-gray-300 active:border-gray-400 bg-white hover:bg-gray-50"
 												}
 											}
 											
@@ -155,7 +155,7 @@ export function QuizCard({
 									
 									{/* Show immediate feedback for scored quizzes */}
 									{card.isCorrect !== undefined && (
-										<div className={`mt-3 p-2 rounded-lg text-center text-sm font-medium ${
+										<div className={`mt-2 sm:mt-3 p-2 rounded-lg text-center text-sm font-medium ${
 											card.isCorrect 
 												? 'bg-green-100 text-green-800 border border-green-200' 
 												: 'bg-red-100 text-red-800 border border-red-200'
@@ -167,13 +167,13 @@ export function QuizCard({
 							)}
 
 							{/* Instructions */}
-							<div className="text-sm text-gray-500 mt-3">
-								{isScored ? 'Select the correct English translation' : 'Click to show answer'}
+							<div className="text-xs sm:text-sm text-gray-500 mt-2 sm:mt-3">
+								{isScored ? 'Select the correct English translation' : 'Tap to show answer'}
 							</div>
 							
 							{/* Show correct answer when reviewing */}
 							{showResults && isScored && card.correct_answer && (
-								<div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+								<div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-green-50 border border-green-200 rounded-lg">
 									<div className="text-sm font-medium text-green-800">
 										Correct Answer: {card.correct_answer}
 									</div>
@@ -279,11 +279,11 @@ export function QuizCard({
 			</div>
 
 			{/* Navigation Controls */}
-			<div className="flex justify-between items-center mt-8">
+			<div className="flex justify-between items-center mt-4 sm:mt-8">
 				<button
 					onClick={onPrevious}
 					disabled={isFirst}
-					className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed"
+					className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base px-3 sm:px-4 py-2"
 				>
 					Previous
 				</button>
@@ -291,14 +291,14 @@ export function QuizCard({
 				{isLast ? (
 					<button
 						onClick={onNext}
-						className="btn-primary"
+						className="btn-primary text-sm sm:text-base px-4 sm:px-4 py-2"
 					>
 						Finish
 					</button>
 				) : (
 					<button
 						onClick={onNext}
-						className="btn-outline"
+						className="btn-outline text-sm sm:text-base px-3 sm:px-4 py-2"
 					>
 						Next
 					</button>

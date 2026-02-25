@@ -138,7 +138,7 @@ export function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Mobile Navigation */}
-      <nav className="md:hidden bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50">
+      <nav className="md:hidden bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href
@@ -146,10 +146,10 @@ export function Layout({ children }: LayoutProps) {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex flex-col items-center py-2 px-3 text-xs transition-colors ${
+                className={`flex flex-col items-center py-2.5 px-3 text-xs font-medium transition-colors min-w-[3.5rem] ${
                   isActive
                     ? 'text-primary-600'
-                    : 'text-gray-600 hover:text-gray-900'
+                    : 'text-gray-500 active:text-gray-900'
                 }`}
               >
                 <item.icon className="w-5 h-5 mb-1" />
@@ -161,7 +161,7 @@ export function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20 md:pb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24 md:pb-8">
         {children}
       </main>
     </div>
