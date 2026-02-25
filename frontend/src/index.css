@@ -22,10 +22,22 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
   }
   
   body {
     @apply bg-gray-50 text-gray-900;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  input, select, textarea, button {
+    font-size: 16px;
+  }
+
+  @media (min-width: 640px) {
+    input, select, textarea, button {
+      font-size: inherit;
+    }
   }
 }
 

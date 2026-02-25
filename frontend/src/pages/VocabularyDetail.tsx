@@ -64,9 +64,9 @@ export function VocabularyDetail() {
 
       {/* Main Vocabulary Card */}
       <div className="card">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           {/* Chinese Character */}
-          <div className="text-6xl md:text-8xl font-bold chinese-text text-gray-900 mb-2">
+          <div className="text-5xl sm:text-6xl md:text-8xl font-bold chinese-text text-gray-900 mb-2">
             {vocabulary.chinese}
           </div>
 

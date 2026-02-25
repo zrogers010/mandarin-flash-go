@@ -136,18 +136,14 @@ export function Quiz() {
 	if (generateQuizMutation.isPending) {
 		return (
 			<div className="space-y-6">
-				{/* Header with Back Button */}
-				<div className="relative">
-					{/* Back Button - Top Left */}
-					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
+				<div>
+					<button onClick={handleNewQuiz} className="btn-outline mb-4">
 						<ArrowLeft className="w-4 h-4 mr-2" />
 						Go Back
 					</button>
-					
-					{/* Title - Centered */}
 					<div className="text-center">
-						<h1 className="text-3xl font-bold text-gray-900 mb-4">Flashcards</h1>
-						<p className="text-gray-600">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
+						<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Flashcards</h1>
+						<p className="text-gray-600 text-sm sm:text-base">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
 					</div>
 				</div>
 				
@@ -166,14 +162,14 @@ export function Quiz() {
 			|| 'Failed to generate quiz. Please try again.'
 		return (
 			<div className="space-y-6">
-				<div className="relative">
-					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
+				<div>
+					<button onClick={handleNewQuiz} className="btn-outline mb-4">
 						<ArrowLeft className="w-4 h-4 mr-2" />
 						Go Back
 					</button>
 					<div className="text-center">
-						<h1 className="text-3xl font-bold text-gray-900 mb-4">Flashcards</h1>
-						<p className="text-gray-600">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
+						<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Flashcards</h1>
+						<p className="text-gray-600 text-sm sm:text-base">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
 					</div>
 				</div>
 				<div className="card">
@@ -194,14 +190,14 @@ export function Quiz() {
 	if (currentQuiz && (!currentQuiz.cards || currentQuiz.cards.length === 0)) {
 		return (
 			<div className="space-y-6">
-				<div className="relative">
-					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
+				<div>
+					<button onClick={handleNewQuiz} className="btn-outline mb-4">
 						<ArrowLeft className="w-4 h-4 mr-2" />
 						Go Back
 					</button>
 					<div className="text-center">
-						<h1 className="text-3xl font-bold text-gray-900 mb-4">Flashcards</h1>
-						<p className="text-gray-600">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
+						<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Flashcards</h1>
+						<p className="text-gray-600 text-sm sm:text-base">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
 					</div>
 				</div>
 				<div className="card">
@@ -230,15 +226,14 @@ export function Quiz() {
 
 		return (
 			<div className="space-y-6">
-				{/* Header with Back Button */}
-				<div className="relative">
-					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
+				<div>
+					<button onClick={handleNewQuiz} className="btn-outline mb-4">
 						<ArrowLeft className="w-4 h-4 mr-2" />
 						Go Back
 					</button>
 					<div className="text-center">
-						<h1 className="text-3xl font-bold text-gray-900 mb-4">Quiz Complete!</h1>
-						<p className="text-gray-600">Great job completing the quiz.</p>
+						<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Quiz Complete!</h1>
+						<p className="text-gray-600 text-sm sm:text-base">Great job completing the quiz.</p>
 					</div>
 				</div>
 
@@ -280,13 +275,13 @@ export function Quiz() {
 							</p>
 						)}
 
-						<div className="flex justify-center space-x-4">
+						<div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
 							<button onClick={handleNewQuiz} className="btn-primary">
 								<Play className="w-4 h-4 mr-2" />
 								New Quiz
 							</button>
 							{isAuthenticated && (
-								<Link to="/progress" className="btn-outline inline-flex items-center">
+								<Link to="/progress" className="btn-outline inline-flex items-center justify-center">
 									<BarChart3 className="w-4 h-4 mr-2" />
 									View All Stats
 								</Link>
@@ -311,19 +306,19 @@ export function Quiz() {
 									{wrongCards.map((cr: any) => {
 										const card = currentQuiz?.cards.find((c: any) => c.id === cr.card_id)
 										return (
-											<div key={cr.card_id} className="flex items-center justify-between p-4 bg-red-50 border border-red-100 rounded-lg">
-												<div className="flex-1">
-													<div className="flex items-center gap-3">
-														<span className="text-xl font-medium">{card?.chinese || '—'}</span>
-														<span className="text-sm text-gray-500">{card?.pinyin || ''}</span>
+											<div key={cr.card_id} className="flex items-start sm:items-center justify-between p-3 sm:p-4 bg-red-50 border border-red-100 rounded-lg gap-2">
+												<div className="flex-1 min-w-0">
+													<div className="flex items-center gap-2 sm:gap-3">
+														<span className="text-lg sm:text-xl font-medium">{card?.chinese || '—'}</span>
+														<span className="text-xs sm:text-sm text-gray-500">{card?.pinyin || ''}</span>
 													</div>
-													<div className="mt-1 text-sm">
+													<div className="mt-1 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-0">
 														<span className="text-red-600">Your answer: {cr.user_answer}</span>
-														<span className="mx-2 text-gray-300">|</span>
+														<span className="hidden sm:inline mx-2 text-gray-300">|</span>
 														<span className="text-green-700 font-medium">Correct: {cr.correct_answer}</span>
 													</div>
 												</div>
-												<XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+												<XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5 sm:mt-0" />
 											</div>
 										)
 									})}
@@ -369,25 +364,18 @@ export function Quiz() {
 		const isLast = currentCardIndex === currentQuiz.cards.length - 1
 
 		return (
-			<div className="space-y-6">
-				{/* Header with Back Button */}
-				<div className="relative">
-					{/* Back Button - Top Left */}
-					<button onClick={handleNewQuiz} className="absolute left-0 top-0 btn-outline">
+			<div className="space-y-4 sm:space-y-6">
+				<div>
+					<button onClick={handleNewQuiz} className="btn-outline mb-3">
 						<ArrowLeft className="w-4 h-4 mr-2" />
 						Go Back
 					</button>
-					
-					{/* Title - Centered */}
 					<div className="text-center">
-						<h1 className="text-3xl font-bold text-gray-900 mb-4">Flashcards</h1>
-						<div className="flex items-center justify-center space-x-4 mb-4">
-							<span className="text-sm text-gray-600">
-								{quizType === 'scored' ? 'Take Quiz' : 'Practice Vocabulary'}
-							</span>
-							<span className="text-sm text-gray-600">
-								Card {currentCardIndex + 1} of {currentQuiz.cards.length}
-							</span>
+						<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Flashcards</h1>
+						<div className="flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-2">
+							<span>{quizType === 'scored' ? 'Take Quiz' : 'Practice Vocabulary'}</span>
+							<span className="text-gray-300">|</span>
+							<span>Card {currentCardIndex + 1} of {currentQuiz.cards.length}</span>
 						</div>
 					</div>
 				</div>
@@ -421,11 +409,11 @@ export function Quiz() {
 	}
 
 	return (
-		<div className="space-y-8">
+		<div className="space-y-6 sm:space-y-8">
 			{/* Header */}
 			<div className="text-center">
-				<h1 className="text-3xl font-bold text-gray-900 mb-4">Flashcards</h1>
-				<p className="text-gray-600">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
+				<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-4">Flashcards</h1>
+				<p className="text-gray-600 text-sm sm:text-base">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
 			</div>
 
 			{/* HSK Level Selection */}

@@ -69,51 +69,51 @@ function WelcomeBanner() {
   }
 
   return (
-    <div className="relative bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white shadow-lg">
+    <div className="relative bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-4 sm:p-6 text-white shadow-lg">
       <button
         onClick={handleDismiss}
-        className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/20 transition-colors"
+        className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-white/20 active:bg-white/30 transition-colors"
         aria-label="Dismiss"
       >
         <X className="w-5 h-5" />
       </button>
-      <div className="flex items-start gap-4">
-        <div className="p-2.5 bg-white/20 rounded-xl flex-shrink-0">
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="p-2 sm:p-2.5 bg-white/20 rounded-xl flex-shrink-0 hidden sm:block">
           <Sparkles className="w-6 h-6" />
         </div>
-        <div className="space-y-3">
-          <h2 className="text-xl font-bold">Welcome to the New MandarinFlash!</h2>
-          <p className="text-primary-100 text-sm leading-relaxed">
+        <div className="space-y-2 sm:space-y-3 pr-6 sm:pr-0">
+          <h2 className="text-lg sm:text-xl font-bold">Welcome to the New MandarinFlash!</h2>
+          <p className="text-primary-100 text-xs sm:text-sm leading-relaxed">
             We've rebuilt MandarinFlash from the ground up with a faster, more modern experience. Here's what's new:
           </p>
-          <ul className="text-sm text-primary-50 space-y-1.5">
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
-              Scored quizzes with detailed results -- see exactly which words you got wrong
+          <ul className="text-xs sm:text-sm text-primary-50 space-y-1.5">
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
+              Scored quizzes with detailed results
             </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
-              Progress tracking -- your quiz history and stats are saved to your account
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
+              Progress tracking saved to your account
             </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
               Improved dictionary with search by Chinese, pinyin, or English
             </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0" />
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
               Faster flashcards and a cleaner design throughout
             </li>
           </ul>
-          <div className="pt-2 flex flex-wrap gap-3">
+          <div className="pt-1 sm:pt-2 space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-3 sm:items-center">
             <Link
               to="/signup"
-              className="inline-flex items-center px-4 py-2 bg-white text-primary-700 font-semibold text-sm rounded-lg hover:bg-primary-50 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-white text-primary-700 font-semibold text-sm rounded-lg hover:bg-primary-50 active:bg-primary-100 transition-colors"
             >
               Create an Account
               <ArrowRight className="ml-1.5 w-4 h-4" />
             </Link>
-            <span className="text-primary-200 text-sm self-center">
-              Previous accounts didn't carry over -- sign up to start tracking your progress.
+            <span className="block sm:inline text-primary-200 text-xs sm:text-sm">
+              Sign up to start tracking your progress.
             </span>
           </div>
         </div>
@@ -124,27 +124,27 @@ function WelcomeBanner() {
 
 export function Home() {
   return (
-    <div className="space-y-12">
+    <div className="space-y-8 sm:space-y-12">
       <WelcomeBanner />
 
       {/* Hero Section */}
-      <div className="text-center space-y-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-secondary-50 border border-secondary-200 rounded-full text-secondary-700 text-sm font-medium mb-2">
-          <Zap className="w-3.5 h-3.5" />
-          Master Chinese HSK vocabulary through interactive flashcards
+      <div className="text-center space-y-4 sm:space-y-6">
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-secondary-50 border border-secondary-200 rounded-full text-secondary-700 text-xs sm:text-sm font-medium">
+          <Zap className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Master Chinese HSK vocabulary through interactive flashcards</span>
         </div>
-        <h1 className="text-4xl md:text-6xl font-bold text-gradient">
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-gradient">
           Welcome to Mandarin Flash!
         </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Master Chinese HSK vocabulary through interactive flashcards, quizzes, and our comprehensive dictionary -- all organized by HSK level so you learn the right words at the right time.
+        <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
+          Master Chinese HSK vocabulary through interactive flashcards, quizzes, and our comprehensive dictionary -- all organized by HSK level.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/flashcards" className="btn-primary inline-flex items-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link to="/flashcards" className="btn-primary inline-flex items-center justify-center">
             Get Started with Flashcards
             <ArrowRight className="ml-2 w-4 h-4" />
           </Link>
-          <Link to="/dictionary" className="btn-outline inline-flex items-center">
+          <Link to="/dictionary" className="btn-outline inline-flex items-center justify-center">
             Explore the Dictionary
             <Search className="ml-2 w-4 h-4" />
           </Link>
@@ -175,13 +175,13 @@ export function Home() {
       </div>
 
       {/* Flashcards & Quizzes Spotlight */}
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 space-y-4">
+      <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8 space-y-3 sm:space-y-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-secondary-600 text-white rounded-xl">
-              <Brain className="w-6 h-6" />
+            <div className="p-2 sm:p-2.5 bg-secondary-600 text-white rounded-xl flex-shrink-0">
+              <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Interactive Flashcard Quizzes</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Interactive Flashcard Quizzes</h2>
           </div>
           <p className="text-gray-600 leading-relaxed">
             Our flashcards cover all levels of the HSK vocabulary list. Learn at your own pace and track your progress easily. Customize your learning experience with various options and settings.
@@ -195,12 +195,12 @@ export function Home() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8 space-y-3 sm:space-y-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary-800 text-white rounded-xl">
-              <Search className="w-6 h-6" />
+            <div className="p-2 sm:p-2.5 bg-primary-800 text-white rounded-xl flex-shrink-0">
+              <Search className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Comprehensive Dictionary</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Comprehensive Dictionary</h2>
           </div>
           <p className="text-gray-600 leading-relaxed">
             Our Mandarin dictionary is designed specifically for HSK learners. Easily search and explore the vocabulary list, with example sentences, pinyin, and detailed word breakdowns.
@@ -216,10 +216,10 @@ export function Home() {
       </div>
 
       {/* HSK Levels Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <h2 className="text-2xl font-bold text-center mb-2">HSK Vocabulary Coverage</h2>
-        <p className="text-gray-500 text-center mb-8 text-sm">Pick a level to start studying</p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-center mb-2">HSK Vocabulary Coverage</h2>
+        <p className="text-gray-500 text-center mb-6 sm:mb-8 text-sm">Pick a level to start studying</p>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-6 text-center">
           {[1, 2, 3, 4, 5].map((level) => (
             <Link
               key={level}
@@ -242,51 +242,51 @@ export function Home() {
       </div>
 
       {/* Chatbot Teaser */}
-      <div className="bg-gradient-to-r from-primary-700 to-primary-900 rounded-xl p-8 text-white text-center space-y-4">
+      <div className="bg-gradient-to-r from-primary-700 to-primary-900 rounded-xl p-5 sm:p-8 text-white text-center space-y-3 sm:space-y-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 rounded-full text-sm font-medium">
           <Sparkles className="w-3.5 h-3.5" />
           Coming Soon
         </div>
-        <div className="flex items-center justify-center gap-3">
-          <MessageCircle className="w-8 h-8" />
-          <h2 className="text-2xl font-bold">AI Chinese Tutor Chatbot</h2>
+        <div className="flex items-center justify-center gap-2 sm:gap-3">
+          <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8" />
+          <h2 className="text-xl sm:text-2xl font-bold">AI Chinese Tutor Chatbot</h2>
         </div>
-        <p className="text-primary-100 max-w-2xl mx-auto leading-relaxed">
-          Soon, you'll be able to practice your Chinese in real-time with our AI-powered chatbot. Get instant feedback and personalized guidance from a virtual Chinese tutor.
+        <p className="text-primary-100 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
+          Practice your Chinese in real-time with our AI-powered chatbot. Get instant feedback and personalized guidance.
         </p>
       </div>
 
       {/* Why Choose MandarinFlash */}
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">Why Choose MandarinFlash?</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Why Choose MandarinFlash?</h2>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {whyChoose.map((item) => (
-            <div key={item.name} className="card text-center space-y-3">
-              <div className="inline-flex p-3 bg-primary-50 text-primary-600 rounded-xl mx-auto">
-                <item.icon className="w-6 h-6" />
+            <div key={item.name} className="card !p-4 sm:!p-6 text-center space-y-2 sm:space-y-3">
+              <div className="inline-flex p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-xl mx-auto">
+                <item.icon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <h3 className="font-semibold text-gray-900">{item.name}</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{item.name}</h3>
+              <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">{item.description}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Bottom CTA */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center space-y-4">
-        <h2 className="text-3xl font-bold text-gray-900">Get Started Today!</h2>
-        <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed">
-          Embark on your journey to mastering Mandarin Chinese with MandarinFlash. Sign up for a free account and unlock a world of interactive flashcards, quizzes, and learning tools.
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8 text-center space-y-3 sm:space-y-4">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Get Started Today!</h2>
+        <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
+          Embark on your journey to mastering Mandarin Chinese. Sign up for a free account and unlock interactive flashcards, quizzes, and learning tools.
         </p>
-        <p className="text-2xl chinese-text">加油 (jiāyóu) -- Let's do this!</p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-          <Link to="/signup" className="btn-primary inline-flex items-center">
+        <p className="text-xl sm:text-2xl chinese-text">加油 (jiāyóu) -- Let's do this!</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+          <Link to="/signup" className="btn-primary inline-flex items-center justify-center">
             Sign Up Free
             <ArrowRight className="ml-2 w-4 h-4" />
           </Link>
-          <Link to="/flashcards" className="btn-outline inline-flex items-center">
+          <Link to="/flashcards" className="btn-outline inline-flex items-center justify-center">
             Start Practicing
             <Brain className="ml-2 w-4 h-4" />
           </Link>
