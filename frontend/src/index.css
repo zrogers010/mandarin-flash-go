@@ -82,4 +82,13 @@
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
   }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.2s ease-out;
+  }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 } 
