@@ -1,6 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Brain, Search, MessageCircle, User, LogOut, LogIn, UserPlus, Settings, BarChart3, ChevronDown } from 'lucide-react'
+import { BookOpen, Brain, Search, MessageCircle, User, LogOut, LogIn, UserPlus, Settings, BarChart3, ChevronDown, Facebook, Instagram, Youtube } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface LayoutProps {
@@ -164,6 +164,75 @@ export function Layout({ children }: LayoutProps) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24 md:pb-8">
         {children}
       </main>
+
+      {/* Footer */}
+      <footer className="hidden md:block bg-white border-t border-gray-200 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {/* Brand */}
+            <div className="space-y-3">
+              <Link to="/" className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <span className="text-gold font-bold text-sm">中</span>
+                </div>
+                <span className="text-lg font-bold text-gradient">MandarinFlash</span>
+              </Link>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Master Mandarin Chinese with interactive flashcards, quizzes, and a comprehensive HSK dictionary.
+              </p>
+            </div>
+
+            {/* Learn */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Learn</h3>
+              <ul className="space-y-2">
+                <li><Link to="/flashcards" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">Flashcards</Link></li>
+                <li><Link to="/vocabulary" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">HSK Vocabulary</Link></li>
+                <li><Link to="/dictionary" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">Dictionary</Link></li>
+                <li><Link to="/progress" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">Progress</Link></li>
+              </ul>
+            </div>
+
+            {/* Account */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Account</h3>
+              <ul className="space-y-2">
+                <li><Link to="/signup" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">Sign Up Free</Link></li>
+                <li><Link to="/login" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">Log In</Link></li>
+                <li><Link to="/settings" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">Settings</Link></li>
+              </ul>
+            </div>
+
+            {/* Social */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Follow Us</h3>
+              <div className="flex space-x-3">
+                <a href="https://facebook.com/mandarinflash" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-gray-100 hover:bg-primary-50 hover:text-primary-600 text-gray-500 transition-colors" aria-label="Facebook">
+                  <Facebook className="w-5 h-5" />
+                </a>
+                <a href="https://instagram.com/mandarinflash" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-gray-100 hover:bg-primary-50 hover:text-primary-600 text-gray-500 transition-colors" aria-label="Instagram">
+                  <Instagram className="w-5 h-5" />
+                </a>
+                <a href="https://youtube.com/@mandarinflash" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-gray-100 hover:bg-primary-50 hover:text-primary-600 text-gray-500 transition-colors" aria-label="YouTube">
+                  <Youtube className="w-5 h-5" />
+                </a>
+                <a href="https://tiktok.com/@mandarinflash" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-gray-100 hover:bg-primary-50 hover:text-primary-600 text-gray-500 transition-colors" aria-label="TikTok">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.56a8.24 8.24 0 0 0 4.76 1.5v-3.4a4.85 4.85 0 0 1-1-.03Z"/></svg>
+                </a>
+              </div>
+              <p className="text-xs text-gray-400 mt-4">
+                help@mandarinflash.com
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 mt-8 pt-6 text-center">
+            <p className="text-xs text-gray-400">
+              &copy; {new Date().getFullYear()} MandarinFlash. Happy learning, and 加油!
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

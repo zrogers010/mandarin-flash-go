@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Brain, Search, BarChart3, ArrowRight, Zap, X, Sparkles, MessageCircle, Users, SlidersHorizontal, TrendingUp } from 'lucide-react'
+import { WordOfTheDay } from '@/components/WordOfTheDay'
 
 const features = [
   {
@@ -172,6 +173,11 @@ export function Home() {
             </p>
           </Link>
         ))}
+      </div>
+
+      {/* Word of the Day */}
+      <div className="max-w-md mx-auto">
+        <WordOfTheDay />
       </div>
 
       {/* Flashcards & Quizzes Spotlight */}
