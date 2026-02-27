@@ -1,11 +1,10 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Brain, Search, BarChart3, ArrowRight, Zap, X, Sparkles, MessageCircle, Users, SlidersHorizontal, TrendingUp } from 'lucide-react'
+import { BookOpen, Brain, Search, BarChart3, ArrowRight, Sparkles, MessageCircle, CheckCircle2 } from 'lucide-react'
 
 const features = [
   {
     name: 'HSK Vocabulary',
-    description: 'Browse thousands of words across HSK levels 1-5 with pinyin, tones, and example sentences in Chinese and English.',
+    description: 'Browse thousands of words across HSK levels 1–5 with pinyin, tones, and example sentences.',
     icon: BookOpen,
     href: '/vocabulary',
     color: 'bg-primary-600',
@@ -19,230 +18,117 @@ const features = [
   },
   {
     name: 'Dictionary',
-    description: 'Look up any word instantly -- search by Chinese characters, pinyin, or English meaning.',
+    description: 'Search by Chinese characters, pinyin, or English meaning to find any word instantly.',
     icon: Search,
     href: '/dictionary',
     color: 'bg-primary-800',
   },
   {
     name: 'Track Progress',
-    description: 'See your quiz scores, review the words you get wrong, and watch your Mandarin improve over time.',
+    description: 'Review quiz scores, revisit missed words, and watch your Mandarin improve over time.',
     icon: BarChart3,
     href: '/progress',
     color: 'bg-secondary-700',
   },
 ]
 
-const whyChoose = [
-  {
-    name: 'User-Friendly Interface',
-    description: 'Our platform is designed to be intuitive and easy-to-use, ensuring a seamless learning experience.',
-    icon: SlidersHorizontal,
-  },
-  {
-    name: 'Adaptive Learning',
-    description: 'MandarinFlash adjusts to your unique learning style, making it the perfect study companion.',
-    icon: TrendingUp,
-  },
-  {
-    name: 'Progress Tracking',
-    description: 'Keep track of your achievements and watch your Chinese skills soar with our progress tracking tools.',
-    icon: BarChart3,
-  },
-  {
-    name: 'Community Support',
-    description: 'Join our active community of learners and share your experiences, challenges, and successes.',
-    icon: Users,
-  },
+const highlights = [
+  'Scored quizzes with detailed results',
+  'Progress tracking saved to your account',
+  'Dictionary with Chinese, pinyin & English search',
+  'Fast flashcards organized by HSK level',
 ]
 
-function WelcomeBanner() {
-  const [dismissed, setDismissed] = useState(() => {
-    return localStorage.getItem('mf_welcome_dismissed') === '1'
-  })
-
-  if (dismissed) return null
-
-  const handleDismiss = () => {
-    localStorage.setItem('mf_welcome_dismissed', '1')
-    setDismissed(true)
-  }
-
-  return (
-    <div className="relative bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-4 sm:p-6 text-white shadow-lg">
-      <button
-        onClick={handleDismiss}
-        className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-white/20 active:bg-white/30 transition-colors"
-        aria-label="Dismiss"
-      >
-        <X className="w-5 h-5" />
-      </button>
-      <div className="flex items-start gap-3 sm:gap-4">
-        <div className="p-2 sm:p-2.5 bg-white/20 rounded-xl flex-shrink-0 hidden sm:block">
-          <Sparkles className="w-6 h-6" />
-        </div>
-        <div className="space-y-2 sm:space-y-3 pr-6 sm:pr-0">
-          <h2 className="text-lg sm:text-xl font-bold">Welcome to the New MandarinFlash!</h2>
-          <p className="text-primary-100 text-xs sm:text-sm leading-relaxed">
-            We've rebuilt MandarinFlash from the ground up with a faster, more modern experience. Here's what's new:
-          </p>
-          <ul className="text-xs sm:text-sm text-primary-50 space-y-1.5">
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
-              Scored quizzes with detailed results
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
-              Progress tracking saved to your account
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
-              Improved dictionary with search by Chinese, pinyin, or English
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 bg-secondary-400 rounded-full flex-shrink-0 mt-1.5" />
-              Faster flashcards and a cleaner design throughout
-            </li>
-          </ul>
-          <div className="pt-1 sm:pt-2 space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-3 sm:items-center">
-            <Link
-              to="/signup"
-              className="inline-flex items-center px-4 py-2 bg-white text-primary-700 font-semibold text-sm rounded-lg hover:bg-primary-50 active:bg-primary-100 transition-colors"
-            >
-              Create an Account
-              <ArrowRight className="ml-1.5 w-4 h-4" />
-            </Link>
-            <span className="block sm:inline text-primary-200 text-xs sm:text-sm">
-              Sign up to start tracking your progress.
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+const hskLevels = [
+  { level: 1, words: '150' },
+  { level: 2, words: '300' },
+  { level: 3, words: '600' },
+  { level: 4, words: '1,200' },
+  { level: 5, words: '2,500' },
+]
 
 export function Home() {
   return (
-    <div className="space-y-8 sm:space-y-12">
-      <WelcomeBanner />
-
-      {/* Hero Section */}
-      <div className="text-center space-y-4 sm:space-y-6">
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-secondary-50 border border-secondary-200 rounded-full text-secondary-700 text-xs sm:text-sm font-medium">
-          <Zap className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Master Chinese HSK vocabulary through interactive flashcards</span>
-        </div>
-        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-gradient">
-          Welcome to Mandarin Flash!
+    <div className="space-y-10 sm:space-y-16">
+      {/* Hero */}
+      <section className="text-center space-y-5 sm:space-y-6 pt-2 sm:pt-4">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+          Learn Mandarin Chinese{' '}
+          <span className="text-gradient">in a Flash</span>
         </h1>
-        <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
-          Master Chinese HSK vocabulary through interactive flashcards, quizzes, and our comprehensive dictionary -- all organized by HSK level.
+        <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+          Master HSK vocabulary with interactive flashcards, scored quizzes, and a comprehensive Chinese-English dictionary — all free and organized by HSK level.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link to="/flashcards" className="btn-primary inline-flex items-center justify-center">
-            Get Started with Flashcards
+
+        <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-600 max-w-xl mx-auto">
+          {highlights.map((text) => (
+            <li key={text} className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-primary-600 flex-shrink-0" />
+              {text}
+            </li>
+          ))}
+        </ul>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+          <Link to="/flashcards" className="btn-primary text-base px-6 py-3 inline-flex items-center justify-center">
+            Start Flashcards
             <ArrowRight className="ml-2 w-4 h-4" />
           </Link>
-          <Link to="/dictionary" className="btn-outline inline-flex items-center justify-center">
-            Explore the Dictionary
+          <Link to="/dictionary" className="btn-outline text-base px-6 py-3 inline-flex items-center justify-center">
+            Explore Dictionary
             <Search className="ml-2 w-4 h-4" />
           </Link>
         </div>
-      </div>
+      </section>
 
-      {/* Features Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {features.map((feature) => (
-          <Link
-            key={feature.name}
-            to={feature.href}
-            className="card hover:shadow-md transition-shadow group"
-          >
-            <div className="flex items-center space-x-3 mb-4">
-              <div className={`p-2 rounded-lg ${feature.color} text-white`}>
-                <feature.icon className="w-5 h-5" />
-              </div>
-              <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                {feature.name}
-              </h3>
-            </div>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              {feature.description}
-            </p>
-          </Link>
-        ))}
-      </div>
-
-      {/* Flashcards & Quizzes Spotlight */}
-      <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8 space-y-3 sm:space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 bg-secondary-600 text-white rounded-xl flex-shrink-0">
-              <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Interactive Flashcard Quizzes</h2>
-          </div>
-          <p className="text-gray-600 leading-relaxed">
-            Our flashcards cover all levels of the HSK vocabulary list. Learn at your own pace and track your progress easily. Customize your learning experience with various options and settings.
-          </p>
-          <p className="text-gray-600 leading-relaxed">
-            Test your knowledge with engaging quizzes. Choose from multiple-choice questions, fill-in-the-blank exercises, and more -- a great way to reinforce your learning and track your improvement over time.
-          </p>
-          <Link to="/flashcards" className="btn-primary inline-flex items-center mt-2">
-            Get Started with Flashcards
-            <ArrowRight className="ml-2 w-4 h-4" />
-          </Link>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8 space-y-3 sm:space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 bg-primary-800 text-white rounded-xl flex-shrink-0">
-              <Search className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Comprehensive Dictionary</h2>
-          </div>
-          <p className="text-gray-600 leading-relaxed">
-            Our Mandarin dictionary is designed specifically for HSK learners. Easily search and explore the vocabulary list, with example sentences, pinyin, and detailed word breakdowns.
-          </p>
-          <p className="text-gray-600 leading-relaxed">
-            Search by Chinese characters, pinyin, or English meaning to quickly find exactly what you're looking for.
-          </p>
-          <Link to="/dictionary" className="btn-outline inline-flex items-center mt-2">
-            Explore the Dictionary
-            <ArrowRight className="ml-2 w-4 h-4" />
-          </Link>
-        </div>
-      </div>
-
-      {/* HSK Levels Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8">
-        <h2 className="text-xl sm:text-2xl font-bold text-center mb-2">HSK Vocabulary Coverage</h2>
-        <p className="text-gray-500 text-center mb-6 sm:mb-8 text-sm">Pick a level to start studying</p>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-6 text-center">
-          {[1, 2, 3, 4, 5].map((level) => (
+      {/* Features */}
+      <section>
+        <h2 className="sr-only">Features</h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {features.map((feature) => (
             <Link
-              key={level}
-              to={`/vocabulary?hsk_level=${level}`}
-              className="space-y-2 p-4 rounded-lg hover:bg-gray-50 transition-colors group"
+              key={feature.name}
+              to={feature.href}
+              className="card hover:shadow-md transition-shadow group"
             >
-              <div className="text-2xl font-bold text-secondary-600 group-hover:text-secondary-700 transition-colors">
-                HSK {level}
+              <div className="flex items-center space-x-3 mb-3">
+                <div className={`p-2 rounded-lg ${feature.color} text-white`}>
+                  <feature.icon className="w-5 h-5" />
+                </div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                  {feature.name}
+                </h3>
               </div>
-              <div className="text-sm text-gray-600">
-                {level === 1 && '~150 words'}
-                {level === 2 && '~300 words'}
-                {level === 3 && '~600 words'}
-                {level === 4 && '~1,200 words'}
-                {level === 5 && '~2,500 words'}
-              </div>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {feature.description}
+              </p>
             </Link>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Chatbot Teaser */}
-      <div className="bg-gradient-to-r from-primary-700 to-primary-900 rounded-xl p-5 sm:p-8 text-white text-center space-y-3 sm:space-y-4">
+      {/* HSK Levels */}
+      <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-center mb-1">HSK Vocabulary Coverage</h2>
+        <p className="text-gray-500 text-center mb-6 sm:mb-8 text-sm">Pick a level to start studying</p>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-6 text-center">
+          {hskLevels.map(({ level, words }) => (
+            <Link
+              key={level}
+              to={`/vocabulary?hsk_level=${level}`}
+              className="space-y-1 p-3 sm:p-4 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors group"
+            >
+              <div className="text-xl sm:text-2xl font-bold text-secondary-600 group-hover:text-secondary-700 transition-colors">
+                HSK {level}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600">~{words} words</div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* AI Chatbot Teaser */}
+      <section className="bg-gradient-to-r from-primary-700 to-primary-900 rounded-xl p-5 sm:p-8 text-white text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 rounded-full text-sm font-medium">
           <Sparkles className="w-3.5 h-3.5" />
           Coming Soon
@@ -254,34 +140,16 @@ export function Home() {
         <p className="text-primary-100 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
           Practice your Chinese in real-time with our AI-powered chatbot. Get instant feedback and personalized guidance.
         </p>
-      </div>
-
-      {/* Why Choose MandarinFlash */}
-      <div className="space-y-6 sm:space-y-8">
-        <div className="text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Why Choose MandarinFlash?</h2>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {whyChoose.map((item) => (
-            <div key={item.name} className="card !p-4 sm:!p-6 text-center space-y-2 sm:space-y-3">
-              <div className="inline-flex p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-xl mx-auto">
-                <item.icon className="w-5 h-5 sm:w-6 sm:h-6" />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{item.name}</h3>
-              <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">{item.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      </section>
 
       {/* Bottom CTA */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8 text-center space-y-3 sm:space-y-4">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Get Started Today!</h2>
-        <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
-          Embark on your journey to mastering Mandarin Chinese. Sign up for a free account and unlock interactive flashcards, quizzes, and learning tools.
+      <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8 text-center space-y-4">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Ready to Get Started?</h2>
+        <p className="text-gray-600 max-w-xl mx-auto leading-relaxed text-sm sm:text-base">
+          Create a free account to track your progress, save quiz scores, and pick up where you left off.
         </p>
-        <p className="text-xl sm:text-2xl chinese-text">加油 (jiāyóu) -- Let's do this!</p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+        <p className="text-xl sm:text-2xl chinese-text">加油 (jiāyóu) — Let's do this!</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
           <Link to="/signup" className="btn-primary inline-flex items-center justify-center">
             Sign Up Free
             <ArrowRight className="ml-2 w-4 h-4" />
@@ -291,7 +159,7 @@ export function Home() {
             <Brain className="ml-2 w-4 h-4" />
           </Link>
         </div>
-      </div>
+      </section>
     </div>
   )
-} 
+}
