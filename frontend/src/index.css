@@ -65,6 +65,18 @@
   .chinese-text {
     font-family: 'Noto Sans SC', system-ui, sans-serif;
   }
+
+  .lesson-content h3 {
+    @apply text-base font-semibold text-gray-900 mt-6 mb-1.5 pb-1 border-b border-gray-100;
+  }
+
+  .lesson-content h3:first-child {
+    @apply mt-0;
+  }
+
+  .lesson-content p {
+    @apply text-sm text-gray-600 leading-relaxed my-2;
+  }
 }
 
 @layer utilities {

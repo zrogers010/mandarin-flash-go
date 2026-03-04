@@ -44,9 +44,10 @@ type Quiz struct {
 
 // QuizRequest represents a request to generate a quiz
 type QuizRequest struct {
-	Type     QuizType `json:"type" binding:"required,oneof=practice scored"`
-	HSKLevel *int     `json:"hsk_level,omitempty"`
-	Count    int      `json:"count,omitempty"`
+	Type       QuizType `json:"type" binding:"required,oneof=practice scored"`
+	HSKLevel   *int     `json:"hsk_level,omitempty"`
+	LessonSlug *string  `json:"lesson_slug,omitempty"`
+	Count      int      `json:"count,omitempty"`
 }
 
 // QuizSubmission represents a quiz submission

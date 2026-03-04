@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Layout } from '@/components/Layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -15,9 +16,16 @@ import { ResetPassword } from '@/pages/ResetPassword'
 import { VerifyEmail } from '@/pages/VerifyEmail'
 import { Settings } from '@/pages/Settings'
 import { Progress } from '@/pages/Progress'
+import { PinyinChart } from '@/pages/PinyinChart'
+import { HSKHub } from '@/pages/HSKHub'
+import { Learn } from '@/pages/Learn'
+import { Practice } from '@/pages/Practice'
+import { Lessons } from '@/pages/Lessons'
+import { LessonDetail } from '@/pages/LessonDetail'
 
 function App() {
   return (
+    <HelmetProvider>
     <AuthProvider>
       <Layout>
         <Routes>
@@ -33,6 +41,14 @@ function App() {
           <Route path="/dictionary" element={<Dictionary />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/progress" element={<Progress />} />
+          <Route path="/pinyin" element={<PinyinChart />} />
+          <Route path="/hsk" element={<HSKHub />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/practice" element={<Practice />} />
+          <Route path="/lessons" element={<Lessons />} />
+          <Route path="/lessons/grammar" element={<Lessons />} />
+          <Route path="/lessons/topics" element={<Lessons />} />
+          <Route path="/lessons/:slug" element={<LessonDetail />} />
           <Route
             path="/settings"
             element={
@@ -44,6 +60,7 @@ function App() {
         </Routes>
       </Layout>
     </AuthProvider>
+    </HelmetProvider>
   )
 }
 

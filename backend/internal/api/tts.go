@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,19 +13,20 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/polly"
 	pollytypes "github.com/aws/aws-sdk-go-v2/service/polly/types"
+	edge_tts "github.com/bytectlgo/edge-tts/pkg/edge_tts"
 	"github.com/gin-gonic/gin"
 )
 
 type TTSHandler struct {
 	pollyClient *polly.Client
-	enabled     bool
+	pollyOn     bool
 }
 
 func NewTTSHandler(cfg *config.Config) *TTSHandler {
 	h := &TTSHandler{}
 
 	if cfg.Email.AWSRegion == "" {
-		log.Println("[TTS] No AWS_REGION set — TTS disabled")
+		log.Println("[TTS] No AWS_REGION set — using Microsoft Edge neural TTS fallback (XiaoxiaoNeural)")
 		return h
 	}
 
@@ -32,12 +34,12 @@ func NewTTSHandler(cfg *config.Config) *TTSHandler {
 		awsconfig.WithRegion(cfg.Email.AWSRegion),
 	)
 	if err != nil {
-		log.Printf("[TTS] WARNING: Failed to load AWS config: %v — TTS disabled", err)
+		log.Printf("[TTS] WARNING: Failed to load AWS config: %v — using Edge TTS fallback", err)
 		return h
 	}
 
 	h.pollyClient = polly.NewFromConfig(awsCfg)
-	h.enabled = true
+	h.pollyOn = true
 	log.Printf("[TTS] Amazon Polly enabled (region: %s)", cfg.Email.AWSRegion)
 	return h
 }
@@ -48,17 +50,24 @@ type ttsRequest struct {
 }
 
 func (h *TTSHandler) Synthesize(c *gin.Context) {
-	if !h.enabled {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "TTS not configured"})
-		return
-	}
-
 	var req ttsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: text (max 500 chars) and lang (zh or en) are required"})
 		return
 	}
 
+	if h.pollyOn {
+		if err := h.synthesizePolly(c, req); err != nil {
+			log.Printf("[TTS] Polly error: %v — falling back to Edge TTS", err)
+			h.synthesizeEdgeTTS(c, req)
+		}
+		return
+	}
+
+	h.synthesizeEdgeTTS(c, req)
+}
+
+func (h *TTSHandler) synthesizePolly(c *gin.Context, req ttsRequest) error {
 	var voiceID pollytypes.VoiceId
 	var langCode string
 	var rate string
@@ -85,9 +94,7 @@ func (h *TTSHandler) Synthesize(c *gin.Context) {
 
 	result, err := h.pollyClient.SynthesizeSpeech(context.Background(), input)
 	if err != nil {
-		log.Printf("[TTS] Polly error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Speech synthesis failed"})
-		return
+		return err
 	}
 	defer result.AudioStream.Close()
 
@@ -95,4 +102,45 @@ func (h *TTSHandler) Synthesize(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=86400")
 	c.Status(http.StatusOK)
 	io.Copy(c.Writer, result.AudioStream)
+	return nil
+}
+
+func (h *TTSHandler) synthesizeEdgeTTS(c *gin.Context, req ttsRequest) {
+	voice := "zh-CN-XiaoxiaoNeural"
+	if req.Lang == "en" {
+		voice = "en-US-GuyNeural"
+	}
+
+	comm := edge_tts.NewCommunicate(req.Text, voice, edge_tts.WithRate("-20%"))
+	stream, err := comm.Stream(c.Request.Context())
+	if err != nil {
+		log.Printf("[TTS] Edge TTS stream error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Speech synthesis failed"})
+		return
+	}
+
+	var buf bytes.Buffer
+	for chunk := range stream {
+		if chunk.Type == "error" {
+			log.Printf("[TTS] Edge TTS chunk error: %s", string(chunk.Data))
+			if buf.Len() == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Speech synthesis failed"})
+				return
+			}
+			break
+		}
+		if chunk.Type == "audio" {
+			buf.Write(chunk.Data)
+		}
+	}
+
+	if buf.Len() == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No audio data received"})
+		return
+	}
+
+	c.Header("Content-Type", "audio/mpeg")
+	c.Header("Cache-Control", "public, max-age=86400")
+	c.Status(http.StatusOK)
+	c.Writer.Write(buf.Bytes())
 }

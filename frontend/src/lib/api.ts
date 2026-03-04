@@ -202,10 +202,11 @@ export interface QuizStats {
 // Quiz API
 export const quizApi = {
 	// Generate a new quiz
-	generate: async (type: 'practice' | 'scored', hskLevel?: number, count?: number): Promise<any> => {
+	generate: async (type: 'practice' | 'scored', hskLevel?: number, count?: number, lessonSlug?: string): Promise<any> => {
 		const response = await api.post('/quiz/generate', {
 			type,
 			hsk_level: hskLevel,
+			lesson_slug: lessonSlug || undefined,
 			count: count || 10,
 		})
 		return response.data
@@ -418,6 +419,45 @@ export const dictionaryApi = {
 		const response = await api.get(`/dictionary/${encodeURIComponent(word)}`)
 		return response.data
 	},
+}
+
+// Lesson types
+export interface Lesson {
+  id: number
+  slug: string
+  title: string
+  description: string
+  category: string
+  difficulty: string
+  content: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface LessonWithVocabulary extends Lesson {
+  vocabulary: Vocabulary[]
+}
+
+// Lessons API
+export const lessonsApi = {
+  getAll: async (category?: string, difficulty?: string): Promise<{ lessons: Lesson[] }> => {
+    const params = new URLSearchParams()
+    if (category) params.append('category', category)
+    if (difficulty) params.append('difficulty', difficulty)
+    const response = await api.get(`/lessons?${params.toString()}`)
+    return response.data
+  },
+
+  getBySlug: async (slug: string): Promise<{ lesson: LessonWithVocabulary }> => {
+    const response = await api.get(`/lessons/${slug}`)
+    return response.data
+  },
+
+  getCategories: async (): Promise<{ categories: string[] }> => {
+    const response = await api.get('/lessons/categories')
+    return response.data
+  },
 }
 
 // Health check

@@ -17,17 +17,19 @@ import (
 
 // QuizHandler handles quiz-related HTTP requests
 type QuizHandler struct {
-	vocabRepo *models.VocabularyRepository
-	quizRepo  *database.QuizRepositoryImpl
-	db        *sql.DB
+	vocabRepo  *models.VocabularyRepository
+	quizRepo   *database.QuizRepositoryImpl
+	lessonRepo *database.LessonRepository
+	db         *sql.DB
 }
 
 // NewQuizHandler creates a new quiz handler
 func NewQuizHandler(db *sql.DB) *QuizHandler {
 	return &QuizHandler{
-		vocabRepo: models.NewVocabularyRepository(db),
-		quizRepo:  database.NewQuizRepository(db),
-		db:        db,
+		vocabRepo:  models.NewVocabularyRepository(db),
+		quizRepo:   database.NewQuizRepository(db),
+		lessonRepo: database.NewLessonRepository(db),
+		db:         db,
 	}
 }
 
@@ -46,9 +48,24 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 		req.Count = 10
 	}
 
-	// Get random vocabulary
-	vocabulary, err := h.vocabRepo.GetRandom(req.Count, req.HSKLevel)
-	if err != nil {
+	// Get random vocabulary — from a lesson or by HSK level
+	var vocabulary []models.Vocabulary
+	var vocabErr error
+
+	if req.LessonSlug != nil && *req.LessonSlug != "" {
+		lesson, err := h.lessonRepo.GetBySlugSimple(*req.LessonSlug)
+		if err != nil || lesson == nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Lesson not found: " + *req.LessonSlug,
+			})
+			return
+		}
+		vocabulary, vocabErr = h.vocabRepo.GetRandomByLessonID(req.Count, lesson.ID)
+	} else {
+		vocabulary, vocabErr = h.vocabRepo.GetRandom(req.Count, req.HSKLevel)
+	}
+
+	if vocabErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to generate quiz",
 		})
@@ -56,12 +73,14 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 	}
 
 	if len(vocabulary) == 0 {
-		level := "the selected"
-		if req.HSKLevel != nil {
-			level = "HSK Level " + strconv.Itoa(*req.HSKLevel)
+		label := "the selected"
+		if req.LessonSlug != nil && *req.LessonSlug != "" {
+			label = "lesson \"" + *req.LessonSlug + "\""
+		} else if req.HSKLevel != nil {
+			label = "HSK Level " + strconv.Itoa(*req.HSKLevel)
 		}
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "No vocabulary available for " + level + ". Please choose a different level.",
+			"error": "No vocabulary available for " + label + ". Please choose a different option.",
 		})
 		return
 	}
