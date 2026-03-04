@@ -99,12 +99,12 @@ export function Home() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
           <Link to="/flashcards" className="btn-primary text-base px-6 py-3 inline-flex items-center justify-center">
-            Start Flashcards
+            HSK Flashcards
             <ArrowRight className="ml-2 w-4 h-4" />
           </Link>
-          <Link to="/pinyin" className="btn-outline text-base px-6 py-3 inline-flex items-center justify-center">
-            Pinyin Chart
-            <Volume2 className="ml-2 w-4 h-4" />
+          <Link to="/learn" className="btn-outline text-base px-6 py-3 inline-flex items-center justify-center">
+            Start Lesson
+            <GraduationCap className="ml-2 w-4 h-4" />
           </Link>
         </div>
       </section>
