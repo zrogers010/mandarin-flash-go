@@ -74,7 +74,11 @@ func (h *TTSHandler) synthesizePolly(c *gin.Context, req ttsRequest) error {
 	if req.Lang == "zh" {
 		voiceID = pollytypes.VoiceIdZhiyu
 		langCode = "cmn-CN"
-		rate = "75%"
+		if len([]rune(req.Text)) <= 4 {
+			rate = "90%"
+		} else {
+			rate = "80%"
+		}
 	} else {
 		voiceID = pollytypes.VoiceIdMatthew
 		langCode = "en-US"
@@ -111,7 +115,7 @@ func (h *TTSHandler) synthesizeEdgeTTS(c *gin.Context, req ttsRequest) {
 		voice = "en-US-GuyNeural"
 	}
 
-	comm := edge_tts.NewCommunicate(req.Text, voice, edge_tts.WithRate("-20%"))
+	comm := edge_tts.NewCommunicate(req.Text, voice)
 	stream, err := comm.Stream(c.Request.Context())
 	if err != nil {
 		log.Printf("[TTS] Edge TTS stream error: %v", err)

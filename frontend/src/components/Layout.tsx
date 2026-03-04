@@ -40,30 +40,24 @@ const navigation: NavItem[] = [
     ],
   },
   {
-    name: 'HSK',
+    name: 'HSK Practice',
     icon: BookOpen,
     href: '/hsk',
-    matchPaths: ['/hsk', '/vocabulary'],
+    matchPaths: ['/hsk', '/vocabulary', '/flashcards'],
     children: [
+      { name: 'HSK Flashcards', href: '/flashcards', icon: Brain, description: 'Drill HSK vocabulary with flashcards and quizzes' },
       { name: 'Browse Vocabulary', href: '/vocabulary', icon: BookOpen, description: 'Search and filter all HSK words' },
-      { name: 'HSK Flashcards', href: '/flashcards?source=hsk', icon: Brain, description: 'Practice with HSK-level flashcards' },
     ],
   },
   {
-    name: 'Practice',
-    icon: Brain,
-    href: '/practice',
-    matchPaths: ['/practice', '/flashcards', '/dictionary', '/chat'],
-    children: [
-      { name: 'Flashcards', href: '/flashcards', icon: Brain, description: 'Drill vocab with flashcards and quizzes' },
-      { name: 'Dictionary', href: '/dictionary', icon: Search, description: 'Search Chinese, pinyin, or English' },
-      { name: 'AI Tutor', href: '/chat', icon: MessageCircle, description: 'Practice with an AI conversation partner' },
-    ],
+    name: 'Dictionary',
+    icon: Search,
+    href: '/dictionary',
   },
   {
-    name: 'Progress',
-    icon: BarChart3,
-    href: '/progress',
+    name: 'AI Tutor',
+    icon: MessageCircle,
+    href: '/chat',
   },
 ]
 
@@ -110,7 +104,7 @@ function NavDropdown({ item, pathname, search }: { item: NavItem; pathname: stri
     <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <Link
         to={item.href!}
-        className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+        className={`flex items-center space-x-1 px-2 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
           active
             ? 'text-primary-600 bg-primary-50'
             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -259,7 +253,7 @@ export function Layout({ children }: LayoutProps) {
             </Link>
             
             <div className="flex items-center justify-end flex-1 gap-4">
-              <nav className="hidden md:flex items-center space-x-1">
+              <nav className="hidden md:flex items-center">
                 {navigation.map((item) =>
                   item.children ? (
                     <NavDropdown key={item.name} item={item} pathname={location.pathname} search={location.search} />
@@ -267,7 +261,7 @@ export function Layout({ children }: LayoutProps) {
                     <Link
                       key={item.name}
                       to={item.href!}
-                      className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className={`flex items-center space-x-1 px-2 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                         location.pathname === item.href
                           ? 'text-primary-600 bg-primary-50'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -286,7 +280,7 @@ export function Layout({ children }: LayoutProps) {
                   <div className="relative" ref={menuRef}>
                     <button
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="flex items-center space-x-1.5 px-2 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       <div className="w-7 h-7 rounded-full bg-secondary-100 flex items-center justify-center">
                         <User className="w-3.5 h-3.5 text-secondary-600" />
@@ -308,12 +302,20 @@ export function Layout({ children }: LayoutProps) {
                           </div>
                         </div>
                         <Link
+                          to="/progress"
+                          className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <BarChart3 className="w-4 h-4 text-gray-400" />
+                          <span>Progress</span>
+                        </Link>
+                        <Link
                           to="/settings"
                           className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <Settings className="w-4 h-4 text-gray-400" />
                           <span>Settings</span>
                         </Link>
+                        <div className="border-t border-gray-100 my-1" />
                         <button
                           onClick={logout}
                           className="flex items-center space-x-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -379,6 +381,13 @@ export function Layout({ children }: LayoutProps) {
                   <div className="px-3 py-2 text-sm text-gray-500 truncate">
                     {user?.username || user?.email}
                   </div>
+                  <Link
+                    to="/progress"
+                    className="flex items-center space-x-3 px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <BarChart3 className="w-5 h-5 text-gray-400" />
+                    <span>Progress</span>
+                  </Link>
                   <Link
                     to="/settings"
                     className="flex items-center space-x-3 px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50"
