@@ -117,7 +117,7 @@ type VocabularyFilters struct {
 	SortOrder string `json:"sort_order,omitempty"` // asc or desc
 }
 
-const vocabColumns = `id, chinese, traditional, pinyin, COALESCE(pinyin_no_tones, '') as pinyin_no_tones,
+const VocabColumns = `id, chinese, traditional, pinyin, COALESCE(pinyin_no_tones, '') as pinyin_no_tones,
 	english, part_of_speech, hsk_level,
 	COALESCE(example_sentences, '[]'::jsonb) as example_sentences,
 	created_at, updated_at`
@@ -138,7 +138,7 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 		SELECT %s
 		FROM vocabulary
 		WHERE 1=1
-	`, vocabColumns)
+	`, VocabColumns)
 	args := []interface{}{}
 	argIndex := 1
 
@@ -250,7 +250,7 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 
 // GetByID retrieves a vocabulary item by ID
 func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
-	query := fmt.Sprintf("SELECT %s FROM vocabulary WHERE id = $1", vocabColumns)
+	query := fmt.Sprintf("SELECT %s FROM vocabulary WHERE id = $1", VocabColumns)
 
 	var v Vocabulary
 	err := r.db.QueryRow(query, id).Scan(
@@ -279,7 +279,7 @@ func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 
 // GetByHSKLevel retrieves vocabulary by HSK level
 func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
-	query := fmt.Sprintf("SELECT %s FROM vocabulary WHERE hsk_level = $1 ORDER BY chinese", vocabColumns)
+	query := fmt.Sprintf("SELECT %s FROM vocabulary WHERE hsk_level = $1 ORDER BY chinese", VocabColumns)
 
 	rows, err := r.db.Query(query, level)
 	if err != nil {
@@ -314,7 +314,7 @@ func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 
 // GetRandom retrieves random vocabulary items
 func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, error) {
-	query := fmt.Sprintf("SELECT %s FROM vocabulary ", vocabColumns)
+	query := fmt.Sprintf("SELECT %s FROM vocabulary ", VocabColumns)
 	args := []interface{}{}
 
 	if level != nil {
@@ -356,6 +356,38 @@ func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, e
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning vocabulary: %w", err)
+		}
+		vocabulary = append(vocabulary, v)
+	}
+
+	return vocabulary, nil
+}
+
+// GetRandomByLessonID retrieves random vocabulary items belonging to a lesson
+func (r *VocabularyRepository) GetRandomByLessonID(limit int, lessonID int) ([]Vocabulary, error) {
+	query := fmt.Sprintf(`
+		SELECT %s FROM vocabulary v
+		INNER JOIN lesson_vocabulary lv ON lv.vocabulary_id = v.id
+		WHERE lv.lesson_id = $1
+		ORDER BY RANDOM() LIMIT $2
+	`, VocabColumns)
+
+	rows, err := r.db.Query(query, lessonID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("error querying random lesson vocabulary: %w", err)
+	}
+	defer rows.Close()
+
+	var vocabulary []Vocabulary
+	for rows.Next() {
+		var v Vocabulary
+		err := rows.Scan(
+			&v.ID, &v.Chinese, &v.Traditional, &v.Pinyin, &v.PinyinNoTones,
+			&v.English, &v.PartOfSpeech, &v.HSKLevel, &v.ExampleSentences,
+			&v.CreatedAt, &v.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning lesson vocabulary: %w", err)
 		}
 		vocabulary = append(vocabulary, v)
 	}

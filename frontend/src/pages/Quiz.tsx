@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { quizApi } from '@/lib/api'
 import { QuizCard } from '@/components/QuizCard'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,8 +11,12 @@ type QuizType = 'practice' | 'scored'
 export function Quiz() {
 	const queryClient = useQueryClient()
 	const { isAuthenticated } = useAuth()
+	const [searchParams] = useSearchParams()
+	const lessonSlug = searchParams.get('lesson') || undefined
+	const initialHskLevel = searchParams.get('hsk_level') ? Number(searchParams.get('hsk_level')) : undefined
+
 	const [quizType, setQuizType] = useState<QuizType>('practice')
-	const [selectedLevel, setSelectedLevel] = useState<number | undefined>(undefined)
+	const [selectedLevel, setSelectedLevel] = useState<number | undefined>(initialHskLevel)
 	const [currentQuiz, setCurrentQuiz] = useState<any>(null)
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 	const [showResults, setShowResults] = useState(false)
@@ -21,7 +25,7 @@ export function Quiz() {
 
 	// Generate quiz mutation
 	const generateQuizMutation = useMutation({
-		mutationFn: (type: QuizType) => quizApi.generate(type, selectedLevel, 10),
+		mutationFn: (type: QuizType) => quizApi.generate(type, lessonSlug ? undefined : selectedLevel, 10, lessonSlug),
 		onSuccess: (data) => {
 			setCurrentQuiz(data)
 			setCurrentCardIndex(0)
@@ -413,45 +417,59 @@ export function Quiz() {
 			{/* Header */}
 			<div className="text-center">
 				<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-4">Flashcards</h1>
-				<p className="text-gray-600 text-sm sm:text-base">Test your Chinese vocabulary knowledge with interactive flashcards.</p>
+				<p className="text-gray-600 text-sm sm:text-base">
+					{lessonSlug
+						? `Practice vocabulary from the "${lessonSlug.replace(/-/g, ' ')}" lesson.`
+						: 'Test your Chinese vocabulary knowledge with interactive flashcards.'}
+				</p>
 			</div>
 
-			{/* HSK Level Selection */}
-			<div className="card">
-				<div className="text-center p-6">
-					<div className="text-sm font-medium text-gray-700 mb-4">Select HSK Level (Optional)</div>
-					<div className="flex flex-wrap justify-center gap-2">
-						<button
-							onClick={() => handleLevelChange(undefined)}
-							className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-								selectedLevel === undefined
-									? 'bg-primary-600 text-white'
-									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-							}`}
-						>
-							All Levels
-						</button>
-						{[1, 2, 3, 4, 5, 6].map((level) => (
+			{/* Lesson badge or HSK Level Selection */}
+			{lessonSlug ? (
+				<div className="card text-center p-6">
+					<div className="text-sm font-medium text-primary-600 mb-1">Lesson Mode</div>
+					<div className="text-lg font-semibold text-gray-900 capitalize">{lessonSlug.replace(/-/g, ' ')}</div>
+					<Link to="/flashcards" className="text-sm text-gray-500 hover:text-gray-700 mt-2 inline-block">
+						Switch to HSK mode
+					</Link>
+				</div>
+			) : (
+				<div className="card">
+					<div className="text-center p-6">
+						<div className="text-sm font-medium text-gray-700 mb-4">Select HSK Level (Optional)</div>
+						<div className="flex flex-wrap justify-center gap-2">
 							<button
-								key={level}
-								onClick={() => handleLevelChange(selectedLevel === level ? undefined : level)}
+								onClick={() => handleLevelChange(undefined)}
 								className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-									selectedLevel === level
+									selectedLevel === undefined
 										? 'bg-primary-600 text-white'
 										: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 								}`}
 							>
-								HSK {level}
+								All Levels
 							</button>
-						))}
+							{[1, 2, 3, 4, 5, 6].map((level) => (
+								<button
+									key={level}
+									onClick={() => handleLevelChange(selectedLevel === level ? undefined : level)}
+									className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+										selectedLevel === level
+											? 'bg-primary-600 text-white'
+											: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+									}`}
+								>
+									HSK {level}
+								</button>
+							))}
+						</div>
+						{selectedLevel && (
+							<p className="text-sm text-gray-600 mt-3">
+								Quiz will include vocabulary from HSK Level {selectedLevel}
+							</p>
+						)}
 					</div>
-					{selectedLevel && (
-						<p className="text-sm text-gray-600 mt-3">
-							Quiz will include vocabulary from HSK Level {selectedLevel}
-						</p>
-					)}
 				</div>
-			</div>
+			)}
 
 			{/* Quiz Types */}
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">

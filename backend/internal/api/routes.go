@@ -35,6 +35,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 	chatHandler := NewChatHandler(db, cfg)
 	authHandler := NewAuthHandler(db, cfg)
 	ttsHandler := NewTTSHandler(cfg)
+	lessonHandler := NewLessonHandler(db)
 
 	// Initialize middleware
 	userRepo := database.NewUserRepository(db)
@@ -99,6 +100,14 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			rateLimiter.Limit(60, 1*time.Minute, "tts"),
 			ttsHandler.Synthesize,
 		)
+
+		// Lesson routes (public)
+		lessons := v1.Group("/lessons")
+		{
+			lessons.GET("", lessonHandler.GetLessons)
+			lessons.GET("/categories", lessonHandler.GetCategories)
+			lessons.GET("/:slug", lessonHandler.GetLessonBySlug)
+		}
 
 		// Dictionary routes (public)
 		dictionary := v1.Group("/dictionary")
