@@ -83,26 +83,21 @@ for migration in backend/db/migrations/*.sql; do
 done
 echo "  Migrations applied."
 
-# Seed vocabulary data if seed files exist and vocabulary table is empty
-VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "0")
-if [ "${VOCAB_COUNT:-0}" = "0" ]; then
-    SEED_DIR="backend/db/seeds"
-    if [ -d "$SEED_DIR" ] && ls "$SEED_DIR"/*.sql &>/dev/null 2>&1; then
-        echo "  Vocabulary table is empty. Loading seed data..."
-        for seed_file in "$SEED_DIR"/*.sql; do
-            echo "    Applying $(basename "$seed_file")..."
-            $DC $COMPOSE_FILE exec -T postgres psql \
-                -U "${DB_USER:-postgres}" \
-                -d "${DB_NAME:-chinese_learning}" < "$seed_file" 2>&1 | tail -3
-        done
-        NEW_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
-        echo "  Seed data loaded ($NEW_COUNT words)."
-    else
-        echo "  WARNING: Vocabulary table is empty but no seed files found in $SEED_DIR/"
-        echo "  Copy seed files to the server: scp backend/db/seeds/*.sql deploy@<server>:~/mandarinflash/backend/db/seeds/"
-    fi
+# Run all seed files (idempotent — they use ON CONFLICT DO NOTHING)
+SEED_DIR="backend/db/seeds"
+if [ -d "$SEED_DIR" ] && ls "$SEED_DIR"/*.sql &>/dev/null 2>&1; then
+    echo "  Applying seed data (idempotent)..."
+    for seed_file in "$SEED_DIR"/*.sql; do
+        echo "    $(basename "$seed_file")..."
+        $DC $COMPOSE_FILE exec -T postgres psql \
+            -U "${DB_USER:-postgres}" \
+            -d "${DB_NAME:-chinese_learning}" < "$seed_file" 2>&1 | tail -3
+    done
+    VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
+    LESSON_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM lessons;" 2>/dev/null || echo "?")
+    echo "  Seed complete ($VOCAB_COUNT words, $LESSON_COUNT lessons)."
 else
-    echo "  Vocabulary already loaded ($VOCAB_COUNT words), skipping seed."
+    echo "  WARNING: No seed files found in $SEED_DIR/"
 fi
 
 # ---------- Restart all services ----------

@@ -40,30 +40,24 @@ const navigation: NavItem[] = [
     ],
   },
   {
-    name: 'HSK',
+    name: 'HSK Practice',
     icon: BookOpen,
     href: '/hsk',
-    matchPaths: ['/hsk', '/vocabulary'],
+    matchPaths: ['/hsk', '/vocabulary', '/flashcards'],
     children: [
+      { name: 'HSK Flashcards', href: '/flashcards', icon: Brain, description: 'Drill HSK vocabulary with flashcards and quizzes' },
       { name: 'Browse Vocabulary', href: '/vocabulary', icon: BookOpen, description: 'Search and filter all HSK words' },
-      { name: 'HSK Flashcards', href: '/flashcards?source=hsk', icon: Brain, description: 'Practice with HSK-level flashcards' },
     ],
   },
   {
-    name: 'Practice',
-    icon: Brain,
-    href: '/practice',
-    matchPaths: ['/practice', '/flashcards', '/dictionary', '/chat'],
-    children: [
-      { name: 'Flashcards', href: '/flashcards', icon: Brain, description: 'Drill vocab with flashcards and quizzes' },
-      { name: 'Dictionary', href: '/dictionary', icon: Search, description: 'Search Chinese, pinyin, or English' },
-      { name: 'AI Tutor', href: '/chat', icon: MessageCircle, description: 'Practice with an AI conversation partner' },
-    ],
+    name: 'Dictionary',
+    icon: Search,
+    href: '/dictionary',
   },
   {
-    name: 'Progress',
-    icon: BarChart3,
-    href: '/progress',
+    name: 'AI Tutor',
+    icon: MessageCircle,
+    href: '/chat',
   },
 ]
 
@@ -308,12 +302,20 @@ export function Layout({ children }: LayoutProps) {
                           </div>
                         </div>
                         <Link
+                          to="/progress"
+                          className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <BarChart3 className="w-4 h-4 text-gray-400" />
+                          <span>Progress</span>
+                        </Link>
+                        <Link
                           to="/settings"
                           className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <Settings className="w-4 h-4 text-gray-400" />
                           <span>Settings</span>
                         </Link>
+                        <div className="border-t border-gray-100 my-1" />
                         <button
                           onClick={logout}
                           className="flex items-center space-x-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
