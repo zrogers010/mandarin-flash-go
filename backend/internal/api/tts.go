@@ -115,7 +115,12 @@ func (h *TTSHandler) synthesizeEdgeTTS(c *gin.Context, req ttsRequest) {
 		voice = "en-US-GuyNeural"
 	}
 
-	comm := edge_tts.NewCommunicate(req.Text, voice)
+	var opts []edge_tts.Option
+	if req.Lang == "zh" && len([]rune(req.Text)) <= 4 {
+		opts = append(opts, edge_tts.WithRate("-20%"))
+	}
+
+	comm := edge_tts.NewCommunicate(req.Text, voice, opts...)
 	stream, err := comm.Stream(c.Request.Context())
 	if err != nil {
 		log.Printf("[TTS] Edge TTS stream error: %v", err)
