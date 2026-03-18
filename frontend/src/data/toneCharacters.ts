@@ -1,11 +1,12 @@
 // Maps base pinyin syllable → [tone1, tone2, tone3, tone4] representative characters.
 // Used to send the correct Chinese character to TTS so each tone sounds distinct.
+// Empty strings indicate rare/non-standard syllable+tone combos with no common character.
 const t: Record<string, [string, string, string, string]> = {
-  a: ['啊','','',''],
-  ai: ['哀','','矮','爱'],
-  an: ['安','','','暗'],
-  ang: ['','','',''],
-  ao: ['凹','','袄','奥'],
+  a: ['啊','啊','啊','啊'],
+  ai: ['哀','挨','矮','爱'],
+  an: ['安','','俺','暗'],
+  ang: ['肮','昂','',''],
+  ao: ['凹','熬','袄','奥'],
   ba: ['八','拔','把','爸'],
   bai: ['百','白','摆','拜'],
   ban: ['班','','板','半'],
@@ -28,7 +29,7 @@ const t: Record<string, [string, string, string, string]> = {
   cang: ['苍','藏','','藏'],
   cao: ['操','','草',''],
   ce: ['','','厕','测'],
-  cen: ['','','',''],
+  cen: ['','岑','',''],
   ceng: ['层','曾','','蹭'],
   cha: ['茶','查','','差'],
   chai: ['拆','柴','',''],
@@ -83,7 +84,7 @@ const t: Record<string, [string, string, string, string]> = {
   ei: ['','','',''],
   en: ['恩','','',''],
   eng: ['','','',''],
-  er: ['耳','二','耳','二'],
+  er: ['耳','儿','耳','二'],
   fa: ['发','罚','法','发'],
   fan: ['翻','烦','反','饭'],
   fang: ['方','房','访','放'],

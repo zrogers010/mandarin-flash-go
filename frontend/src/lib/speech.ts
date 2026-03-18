@@ -54,12 +54,14 @@ function getChineseVoice(): SpeechSynthesisVoice | undefined {
     (v) => v.lang.startsWith('zh') || v.lang.startsWith('cmn')
   )
 
+  // Prefer high-quality macOS / iOS voices
   const preferred = ['Ting-Ting', 'Meijia', 'Sinji', 'Lili', 'Yuna']
   for (const name of preferred) {
     const match = zhVoices.find((v) => v.name.includes(name))
     if (match) return match
   }
 
+  // Prefer non-compact voices (higher quality)
   const nonCompact = zhVoices.find(
     (v) => !v.name.toLowerCase().includes('compact') && !v.default
   )
@@ -70,17 +72,26 @@ function getChineseVoice(): SpeechSynthesisVoice | undefined {
 
 function browserSpeak(text: string, lang: 'zh' | 'en') {
   if (!('speechSynthesis' in window)) return
-  speechSynthesis.cancel()
 
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = lang === 'zh' ? 'zh-CN' : 'en-US'
-  utterance.rate = lang === 'zh' ? 0.8 : 1
-
+  // For Chinese, refuse to speak if no Chinese voice is available —
+  // an English voice reading Chinese characters sounds terrible.
   if (lang === 'zh') {
     const voice = getChineseVoice()
-    if (voice) utterance.voice = voice
+    if (!voice) return
+
+    speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.8
+    utterance.voice = voice
+    speechSynthesis.speak(utterance)
+    return
   }
 
+  speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = 'en-US'
+  utterance.rate = 1
   speechSynthesis.speak(utterance)
 }
 
