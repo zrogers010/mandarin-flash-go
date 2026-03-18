@@ -141,3 +141,21 @@ CROSS JOIN vocabulary v
 WHERE l.slug = 'question-particles'
   AND v.chinese IN ('吗', '呢', '什么', '谁', '哪', '哪里', '怎么', '多少', '几', '岁', '时候', '为什么', '名字', '中文')
 ON CONFLICT DO NOTHING;
+
+-- Time Expressions
+INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
+SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
+FROM lessons l
+CROSS JOIN vocabulary v
+WHERE l.slug = 'time-expressions'
+  AND v.chinese IN ('明天', '昨天', '今天', '早上', '晚上', '时候', '几', '星期', '月', '年', '现在', '去年', '上午', '下午')
+ON CONFLICT DO NOTHING;
+
+-- Negation
+INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
+SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
+FROM lessons l
+CROSS JOIN vocabulary v
+WHERE l.slug = 'negation'
+  AND v.chinese IN ('不', '没', '有', '是', '想', '吃', '喝', '钱', '高兴', '肉', '早饭', '咖啡')
+ON CONFLICT DO NOTHING;
