@@ -880,6 +880,203 @@ VALUES (
   sort_order = EXCLUDED.sort_order;
 
 
+-- ── Grammar: Time Expressions ───────────────────────────────────
+
+INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
+VALUES (
+  'time-expressions',
+  'Time Expressions',
+  'Learn how to talk about time, days, months, and when things happen in Chinese.',
+  'grammar',
+  'beginner',
+  $body$<h3>Time Word Placement</h3>
+<p>In Chinese, time words come BEFORE the verb. The order goes from largest unit to smallest: year → month → day → hour. This is opposite to English.</p>
+
+<div class="sentence-list">
+  <div class="sentence-item">
+    <p class="sentence-zh">我明天去北京。</p>
+    <p class="sentence-py">Wǒ míngtiān qù Běijīng.</p>
+    <p class="sentence-en">I'm going to Beijing tomorrow.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">他昨天没来。</p>
+    <p class="sentence-py">Tā zuótiān méi lái.</p>
+    <p class="sentence-en">He didn't come yesterday.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">我们今天下午三点开会。</p>
+    <p class="sentence-py">Wǒmen jīntiān xiàwǔ sān diǎn kāihuì.</p>
+    <p class="sentence-en">We have a meeting at 3 PM this afternoon.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">你每天几点起床？</p>
+    <p class="sentence-py">Nǐ měitiān jǐ diǎn qǐchuáng?</p>
+    <p class="sentence-en">What time do you get up every day?</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">我早上七点吃早饭。</p>
+    <p class="sentence-py">Wǒ zǎoshang qī diǎn chī zǎofàn.</p>
+    <p class="sentence-en">I eat breakfast at 7 AM.</p>
+  </div>
+</div>
+
+<h3>Days of the Week</h3>
+<p>Use 星期 (xīngqī) + a number for days of the week. Sunday is special: 星期天 or 星期日.</p>
+
+<div class="sentence-list">
+  <div class="sentence-item">
+    <p class="sentence-zh">今天星期几？</p>
+    <p class="sentence-py">Jīntiān xīngqī jǐ?</p>
+    <p class="sentence-en">What day is it today?</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">星期一我很忙。</p>
+    <p class="sentence-py">Xīngqī yī wǒ hěn máng.</p>
+    <p class="sentence-en">I'm very busy on Monday.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">我们星期六去看电影。</p>
+    <p class="sentence-py">Wǒmen xīngqī liù qù kàn diànyǐng.</p>
+    <p class="sentence-en">We're going to see a movie on Saturday.</p>
+  </div>
+</div>
+
+<h3>Months and Dates</h3>
+<p>Months are simply number + 月 (yuè): 一月 (January), 二月 (February), etc. Dates use 号 (hào) in spoken Chinese.</p>
+
+<div class="sentence-list">
+  <div class="sentence-item">
+    <p class="sentence-zh">今天几月几号？</p>
+    <p class="sentence-py">Jīntiān jǐ yuè jǐ hào?</p>
+    <p class="sentence-en">What's today's date?</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">我的生日是十月五号。</p>
+    <p class="sentence-py">Wǒ de shēngrì shì shí yuè wǔ hào.</p>
+    <p class="sentence-en">My birthday is October 5th.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">他下个月回国。</p>
+    <p class="sentence-py">Tā xià ge yuè huíguó.</p>
+    <p class="sentence-en">He's going back to his country next month.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">去年我去了中国。</p>
+    <p class="sentence-py">Qùnián wǒ qù le Zhōngguó.</p>
+    <p class="sentence-en">I went to China last year.</p>
+  </div>
+</div>$body$,
+  4
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
+
+
+-- ── Grammar: Negation ───────────────────────────────────────────
+
+INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
+VALUES (
+  'negation',
+  'Negation: 不 vs 没',
+  'Learn the two main ways to negate in Chinese and when to use each one.',
+  'grammar',
+  'beginner',
+  $body$<h3>不 (bù) — General Negation</h3>
+<p>不 negates habitual actions, states, willingness, and the future. It's also used with adjectives. Note: 不 changes to second tone (bú) before a fourth-tone syllable.</p>
+
+<div class="sentence-list">
+  <div class="sentence-item">
+    <p class="sentence-zh">我不喝咖啡。</p>
+    <p class="sentence-py">Wǒ bù hē kāfēi.</p>
+    <p class="sentence-en">I don't drink coffee.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">他不是老师。</p>
+    <p class="sentence-py">Tā bú shì lǎoshī.</p>
+    <p class="sentence-en">He is not a teacher.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">这个菜不好吃。</p>
+    <p class="sentence-py">Zhège cài bù hǎochī.</p>
+    <p class="sentence-en">This dish doesn't taste good.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">我不想去。</p>
+    <p class="sentence-py">Wǒ bù xiǎng qù.</p>
+    <p class="sentence-en">I don't want to go.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">她不高兴。</p>
+    <p class="sentence-py">Tā bù gāoxìng.</p>
+    <p class="sentence-en">She is not happy.</p>
+  </div>
+</div>
+
+<h3>没 (méi) — Past & Completion Negation</h3>
+<p>没 (often 没有, méiyǒu) negates completed actions and the existence of something. Never use 了 with 没.</p>
+
+<div class="sentence-list">
+  <div class="sentence-item">
+    <p class="sentence-zh">我没去过中国。</p>
+    <p class="sentence-py">Wǒ méi qù guò Zhōngguó.</p>
+    <p class="sentence-en">I haven't been to China.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">他没有钱。</p>
+    <p class="sentence-py">Tā méiyǒu qián.</p>
+    <p class="sentence-en">He doesn't have money.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">昨天我没吃早饭。</p>
+    <p class="sentence-py">Zuótiān wǒ méi chī zǎofàn.</p>
+    <p class="sentence-en">I didn't eat breakfast yesterday.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">她还没来。</p>
+    <p class="sentence-py">Tā hái méi lái.</p>
+    <p class="sentence-en">She hasn't arrived yet.</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">我没听懂。</p>
+    <p class="sentence-py">Wǒ méi tīng dǒng.</p>
+    <p class="sentence-en">I didn't understand (what I heard).</p>
+  </div>
+</div>
+
+<h3>Key Difference</h3>
+<p>Use 不 for things you choose not to do or states that aren't true. Use 没 for things that didn't happen or don't exist.</p>
+
+<div class="sentence-list">
+  <div class="sentence-item">
+    <p class="sentence-zh">我不吃肉。</p>
+    <p class="sentence-py">Wǒ bù chī ròu.</p>
+    <p class="sentence-en">I don't eat meat. (habit / choice)</p>
+  </div>
+  <div class="sentence-item">
+    <p class="sentence-zh">我没吃肉。</p>
+    <p class="sentence-py">Wǒ méi chī ròu.</p>
+    <p class="sentence-en">I didn't eat meat. (past action)</p>
+  </div>
+</div>$body$,
+  5
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
+
+
+-- ── Cleanup: remove stale duplicate lesson slugs ────────────────
+
+DELETE FROM lessons WHERE slug = 'animals' AND slug != 'animals-and-nature';
+
+
 -- ── Link seeded vocabulary to relevant lessons ───────────────────
 
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
