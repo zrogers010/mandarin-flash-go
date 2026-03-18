@@ -1,7 +1,14 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Layout } from '@/components/Layout'
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Home } from '@/pages/Home'
 import { Vocabulary } from '@/pages/Vocabulary'
@@ -27,6 +34,7 @@ function App() {
   return (
     <HelmetProvider>
     <AuthProvider>
+      <ScrollToTop />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />

@@ -4,11 +4,112 @@ import { ArrowLeft, Brain, Volume2, BookOpen, ArrowRight } from 'lucide-react'
 import { lessonsApi, type LessonWithVocabulary } from '@/lib/api'
 import { speakText } from '@/lib/speech'
 import { SEO } from '@/components/SEO'
+import { useMemo, useCallback } from 'react'
 
-function formatLessonContent(html: string): string {
+interface SentenceData {
+  zh: string
+  py: string
+  en: string
+}
+
+interface ContentBlock {
+  type: 'html' | 'sentences'
+  html?: string
+  sentences?: SentenceData[]
+}
+
+function parseContentBlocks(html: string): ContentBlock[] {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html')
+  const root = doc.body.firstElementChild!
+  const blocks: ContentBlock[] = []
+  let htmlBuf = ''
+
+  for (const node of Array.from(root.childNodes)) {
+    const el = node as Element
+    if (el.nodeType === Node.ELEMENT_NODE && el.classList?.contains('sentence-list')) {
+      if (htmlBuf.trim()) {
+        blocks.push({ type: 'html', html: htmlBuf.trim() })
+        htmlBuf = ''
+      }
+      const sentences: SentenceData[] = []
+      for (const item of Array.from(el.querySelectorAll('.sentence-item'))) {
+        const zh = item.querySelector('.sentence-zh')?.textContent ?? ''
+        const py = item.querySelector('.sentence-py')?.textContent ?? ''
+        const en = item.querySelector('.sentence-en')?.textContent ?? ''
+        if (zh) sentences.push({ zh, py, en })
+      }
+      if (sentences.length > 0) blocks.push({ type: 'sentences', sentences })
+    } else {
+      htmlBuf += (el.outerHTML ?? node.textContent ?? '')
+    }
+  }
+
+  if (htmlBuf.trim()) blocks.push({ type: 'html', html: htmlBuf.trim() })
+  return blocks
+}
+
+function formatLessonHtml(html: string): string {
   return html.replace(
     /([\u4e00-\u9fff\u3400-\u4dbf]+)\s*(\([^)]+\))/g,
     '<strong class="text-gray-900 font-medium">$1</strong> <span class="text-primary-700 text-xs">$2</span>'
+  )
+}
+
+function SentenceRow({ sentence }: { sentence: SentenceData }) {
+  const handleSpeak = useCallback((text: string, lang: 'zh' | 'en') => {
+    speakText(text, lang)
+  }, [])
+
+  return (
+    <div className="py-3 border-b border-gray-100 last:border-b-0">
+      <div className="flex items-start gap-1.5">
+        <button
+          onClick={() => handleSpeak(sentence.zh, 'zh')}
+          className="p-1 rounded-full hover:bg-primary-50 transition-colors flex-shrink-0 mt-0.5"
+          title="Listen in Chinese"
+        >
+          <Volume2 className="w-4 h-4 text-primary-600" />
+        </button>
+        <p className="text-xl font-medium text-gray-900 my-0" style={{ fontFamily: "'Noto Sans SC', system-ui, sans-serif" }}>
+          {sentence.zh}
+        </p>
+      </div>
+      {sentence.py && (
+        <p className="text-sm text-primary-600 mt-0.5 mb-0 ml-[30px]">{sentence.py}</p>
+      )}
+      {sentence.en && (
+        <div className="flex items-start gap-1.5 mt-0.5 ml-[30px]">
+          <button
+            onClick={() => handleSpeak(sentence.en, 'en')}
+            className="p-0.5 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0 mt-0.5"
+            title="Listen in English"
+          >
+            <Volume2 className="w-3 h-3 text-gray-400" />
+          </button>
+          <p className="text-sm text-gray-500 my-0">{sentence.en}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LessonContent({ html }: { html: string }) {
+  const blocks = useMemo(() => parseContentBlocks(html), [html])
+  return (
+    <>
+      {blocks.map((block, i) =>
+        block.type === 'html' ? (
+          <div key={i} dangerouslySetInnerHTML={{ __html: formatLessonHtml(block.html!) }} />
+        ) : (
+          <div key={i} className="flex flex-col">
+            {block.sentences!.map((s, j) => (
+              <SentenceRow key={j} sentence={s} />
+            ))}
+          </div>
+        )
+      )}
+    </>
   )
 }
 
@@ -95,7 +196,7 @@ export function LessonDetail() {
       {/* Lesson Content */}
       {lesson.content && (
         <div className="card lesson-content">
-          <div dangerouslySetInnerHTML={{ __html: formatLessonContent(lesson.content) }} />
+          <LessonContent html={lesson.content} />
         </div>
       )}
 
