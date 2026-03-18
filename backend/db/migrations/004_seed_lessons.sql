@@ -89,7 +89,13 @@ VALUES (
   </div>
 </div>$body$,
   1
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
@@ -247,7 +253,13 @@ VALUES (
   </div>
 </div>$body$,
   2
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
@@ -407,7 +419,13 @@ VALUES (
   </div>
 </div>$body$,
   3
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 -- ── Topic Lessons ────────────────────────────────────────────────
@@ -497,7 +515,13 @@ VALUES (
   </div>
 </div>$body$,
   1
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
@@ -580,7 +604,13 @@ VALUES (
   </div>
 </div>$body$,
   1
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
@@ -663,7 +693,13 @@ VALUES (
   </div>
 </div>$body$,
   1
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
@@ -746,7 +782,13 @@ VALUES (
   </div>
 </div>$body$,
   1
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 INSERT INTO lessons (slug, title, description, category, difficulty, content, sort_order)
@@ -829,7 +871,13 @@ VALUES (
   </div>
 </div>$body$,
   1
-) ON CONFLICT (slug) DO NOTHING;
+) ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  difficulty = EXCLUDED.difficulty,
+  content = EXCLUDED.content,
+  sort_order = EXCLUDED.sort_order;
 
 
 -- ── Link seeded vocabulary to relevant lessons ───────────────────
