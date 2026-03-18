@@ -100,6 +100,17 @@ else
     echo "  WARNING: No seed files found in $SEED_DIR/"
 fi
 
+# Re-run lesson_vocabulary migration after seeds (seeds may overwrite it)
+if [ -f "backend/db/migrations/005_seed_lesson_vocabulary.sql" ]; then
+    echo "  Re-linking lesson vocabulary (post-seed)..."
+    $DC $COMPOSE_FILE exec -T postgres psql \
+        -U "${DB_USER:-postgres}" \
+        -d "${DB_NAME:-chinese_learning}" \
+        -f "/docker-entrypoint-initdb.d/005_seed_lesson_vocabulary.sql" 2>&1 | tail -3
+    LV_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM lesson_vocabulary;" 2>/dev/null || echo "?")
+    echo "  Lesson-vocabulary links: $LV_COUNT"
+fi
+
 # ---------- Restart all services ----------
 echo "[4/5] Starting all services..."
 $DC $COMPOSE_FILE up -d
