@@ -154,17 +154,19 @@ export function LessonDetail() {
         </div>
       )}
 
-      {/* Bottom CTA */}
-      <div className="card text-center py-8 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Ready to practice?</h3>
-        <p className="text-gray-600 text-sm max-w-md mx-auto">
-          Test your knowledge of the words from this lesson with interactive flashcards.
-        </p>
-        <Link to={`/flashcards?lesson=${lesson.slug}`} className="btn-primary">
-          <Brain className="w-4 h-4 mr-2" />
-          Practice {lesson.title} Flashcards
-        </Link>
-      </div>
+      {/* Bottom CTA - only show when vocabulary is available */}
+      {lesson.vocabulary && lesson.vocabulary.length > 0 && (
+        <div className="card text-center py-8 space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Ready to practice?</h3>
+          <p className="text-gray-600 text-sm max-w-md mx-auto">
+            Test your knowledge of the words from this lesson with interactive flashcards.
+          </p>
+          <Link to={`/flashcards?lesson=${lesson.slug}`} className="btn-primary">
+            <Brain className="w-4 h-4 mr-2" />
+            Practice {lesson.title} Flashcards
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

@@ -77,6 +77,31 @@
   .lesson-content p {
     @apply text-sm text-gray-600 leading-relaxed my-2;
   }
+
+  .lesson-content .sentence-list {
+    @apply flex flex-col;
+  }
+
+  .lesson-content .sentence-item {
+    @apply py-3 border-b border-gray-100;
+  }
+
+  .lesson-content .sentence-item:last-child {
+    @apply border-b-0;
+  }
+
+  .lesson-content .sentence-zh {
+    @apply text-xl font-medium text-gray-900 my-0;
+    font-family: 'Noto Sans SC', system-ui, sans-serif;
+  }
+
+  .lesson-content .sentence-py {
+    @apply text-sm text-primary-600 mt-0.5 mb-0;
+  }
+
+  .lesson-content .sentence-en {
+    @apply text-sm text-gray-500 mt-0.5 mb-0;
+  }
 }
 
 @layer utilities {
