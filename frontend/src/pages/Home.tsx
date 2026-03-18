@@ -80,7 +80,7 @@ export function Home() {
       {/* Hero */}
       <section className="text-center space-y-5 sm:space-y-6 pt-2 sm:pt-4">
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-          Master Mandarin Chinese{' '}
+          Learn Mandarin Chinese{' '}
           <span className="text-gradient">in a Flash</span>
         </h1>
         <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
