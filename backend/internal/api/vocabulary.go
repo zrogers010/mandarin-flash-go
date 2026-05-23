@@ -38,10 +38,12 @@ func (h *VocabularyHandler) GetVocabularyList(c *gin.Context) {
 	}
 
 	filters := models.VocabularyFilters{
-		Page:     page,
-		Limit:    limit,
-		Search:   &search,
-		HSKLevel: hskLevel,
+		Page:      page,
+		Limit:     limit,
+		Search:    &search,
+		HSKLevel:  hskLevel,
+		SortBy:    c.Query("sort_by"),
+		SortOrder: c.Query("sort_order"),
 	}
 
 	// Get vocabulary from database

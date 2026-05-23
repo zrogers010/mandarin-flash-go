@@ -54,6 +54,7 @@ api.interceptors.response.use(
         const url = originalRequest.url || ''
         const isPublicRoute = url.includes('/vocabulary') || 
                              url.includes('/dictionary') || 
+                             url.includes('/lessons') ||
                              url.includes('/quiz/generate') || 
                              url.includes('/quiz/submit') ||
                              url.includes('/health')
