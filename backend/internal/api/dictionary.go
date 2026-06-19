@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -67,13 +68,23 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 	searchLike := "%" + searchLower + "%"
 	searchPrefix := searchLower + "%"
 
+	// POSIX-regex helpers for relevance ranking on the english field. The english
+	// column packs multiple senses separated by "|", ";", "," or "/".
+	qre := regexp.QuoteMeta(searchLower)
+	// The query is a whole definition sense on its own, e.g. "turtle" matches
+	// "turtle; tortoise" or "a turtle" but NOT "turtle dove" / "turtle enthusiast".
+	// Allows a leading article/"to" and an optional trailing parenthetical.
+	senseExactRe := `(^|[|;,/])[[:space:]]*(to |a |an |the )?` + qre + `[[:space:]]*($|[|;,/(])`
+	// The query appears as a whole word somewhere in the definition.
+	wordRe := `\m` + qre + `\M`
+
 	query := `
 		SELECT id, chinese, traditional, pinyin, COALESCE(pinyin_no_tones, '') as pinyin_no_tones,
 			english, part_of_speech, hsk_level,
 			COALESCE(example_sentences, '[]'::jsonb) as example_sentences,
 			created_at, updated_at,
 			CASE
-				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 OR english ILIKE $1 THEN 'exact'
+				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 OR english ~* $4 THEN 'exact'
 				WHEN chinese ILIKE $2 OR pinyin ILIKE $2 OR pinyin_no_tones ILIKE $2 OR english ILIKE $2 THEN 'prefix'
 				ELSE 'contains'
 			END as match_type
@@ -87,8 +98,8 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 		)
 	`
 
-	args := []interface{}{q, searchPrefix, searchLike}
-	argIndex := 4
+	args := []interface{}{q, searchPrefix, searchLike, senseExactRe, wordRe}
+	argIndex := 6
 
 	if hskLevel != nil {
 		query += fmt.Sprintf(" AND hsk_level = $%d", argIndex)
@@ -104,16 +115,25 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 		return
 	}
 
-	// Order by relevance: exact > prefix > contains, HSK words first, then alphabetically
+	// Relevance order:
+	//   1. exact Chinese/pinyin headword
+	//   2. the query is a complete English definition sense (e.g. "turtle" -> 乌龟)
+	//   3. prefix match
+	//   4. query is a whole word inside a definition (e.g. "sea turtle")
+	//   5. anywhere substring (e.g. "turtle dove", "turtleneck")
+	// then HSK words first, then shorter (more core) definitions, then alphabetical.
 	query += `
 		ORDER BY
 			CASE
-				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 OR english ILIKE $1 THEN 1
-				WHEN chinese ILIKE $2 OR pinyin ILIKE $2 OR pinyin_no_tones ILIKE $2 OR english ILIKE $2 THEN 2
-				ELSE 3
+				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 THEN 1
+				WHEN english ~* $4 THEN 2
+				WHEN chinese ILIKE $2 OR pinyin ILIKE $2 OR pinyin_no_tones ILIKE $2 OR english ILIKE $2 THEN 3
+				WHEN english ~* $5 THEN 4
+				ELSE 5
 			END,
 			CASE WHEN hsk_level >= 1 THEN 0 ELSE 1 END,
 			hsk_level ASC,
+			length(english) ASC,
 			pinyin_no_tones ASC
 	`
 

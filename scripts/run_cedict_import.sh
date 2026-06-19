@@ -46,7 +46,7 @@ docker run --rm \
     -e DB_USER="${DB_USER:-postgres}" \
     -e DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD required}" \
     python:3.11-slim \
-    bash -c "pip install -q psycopg2-binary && python3 /scripts/import_cedict.py"
+    bash -c "pip install -q psycopg2-binary && python3 -u /scripts/import_cedict.py"
 
 echo ""
 echo "=== Done ==="
