@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Volume2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Volume2, RotateCw } from 'lucide-react'
 import { speakText } from '@/lib/speech'
 import { parseDefinitions } from '@/lib/definitions'
 
@@ -29,281 +29,299 @@ interface QuizCardProps {
 	showResults?: boolean
 }
 
-export function QuizCard({ 
-	card, 
-	onNext, 
-	onPrevious, 
-	isFirst, 
-	isLast, 
-	onAnswer, 
-	userAnswer, 
+export function QuizCard({
+	card,
+	onNext,
+	onPrevious,
+	isFirst,
+	isLast,
+	onAnswer,
+	userAnswer,
 	isScored = false,
-	showResults = false
+	showResults = false,
 }: QuizCardProps) {
 	const [isFlipped, setIsFlipped] = useState(false)
 	const [showPinyin, setShowPinyin] = useState(false)
 
+	// Reset face/pinyin state whenever a new card is shown.
+	useEffect(() => {
+		setIsFlipped(false)
+		setShowPinyin(false)
+	}, [card.id])
+
 	const handleFlip = () => {
-		if (!isScored) {
-			setIsFlipped(!isFlipped)
-		}
+		if (!isScored) setIsFlipped((f) => !f)
 	}
 
 	const handleShowPinyin = (e: React.MouseEvent) => {
 		e.stopPropagation()
-		setShowPinyin(!showPinyin)
+		setShowPinyin((s) => !s)
 	}
 
 	const handleAnswerSelect = (answer: string) => {
-		if (onAnswer) {
-			onAnswer(card.id, answer)
-		}
+		onAnswer?.(card.id, answer)
 	}
 
+	const definitions = parseDefinitions(card.english)
+	const primaryExample = card.example_sentences?.[0]
+
+	// ---------- Scored (multiple-choice) mode ----------
+	if (isScored) {
+		return (
+			<div className="w-full max-w-2xl mx-auto">
+				<div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 sm:p-8">
+					<div className="relative text-center">
+						<button
+							onClick={() => speakText(card.chinese, 'zh')}
+							className="absolute top-0 right-0 p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+							aria-label="Listen to pronunciation"
+						>
+							<Volume2 className="w-5 h-5" />
+						</button>
+
+						<div className="text-5xl sm:text-6xl font-bold chinese-text text-gray-900 dark:text-gray-50 pt-6 sm:pt-2">
+							{card.chinese}
+						</div>
+
+						<button
+							onClick={handleShowPinyin}
+							className="mt-4 px-3 py-1 text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+						>
+							{showPinyin ? 'Hide pinyin' : 'Show pinyin'}
+						</button>
+						{showPinyin && (
+							<div className="mt-2 text-lg text-primary-600 dark:text-primary-300">{card.pinyin}</div>
+						)}
+					</div>
+
+					{card.multiple_choice && (
+						<div className="mt-6">
+							<p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+								Select the correct English translation
+							</p>
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+								{card.multiple_choice.slice(0, 4).map((option, index) => {
+									const isCorrect = option === card.correct_answer
+									const isUserAnswer = userAnswer === option
+									const showFeedback = showResults || card.isCorrect !== undefined
+
+									let cls =
+										'flex items-center gap-2 p-3 text-left rounded-xl border-2 transition-colors text-sm '
+									if (showFeedback) {
+										if (isCorrect)
+											cls += 'border-green-500 bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200 dark:border-green-500'
+										else if (isUserAnswer)
+											cls += 'border-red-500 bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200 dark:border-red-500'
+										else
+											cls += 'border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
+									} else if (isUserAnswer) {
+										cls += 'border-primary-500 bg-primary-50 text-primary-800 dark:bg-primary-900/40 dark:text-primary-100 dark:border-primary-500'
+									} else {
+										cls +=
+											'border-gray-200 bg-white text-gray-800 hover:border-primary-300 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:border-primary-500 dark:hover:bg-gray-600'
+									}
+
+									return (
+										<button
+											key={index}
+											onClick={() => !showFeedback && handleAnswerSelect(option)}
+											disabled={showFeedback}
+											className={cls}
+										>
+											<span className="flex-shrink-0 w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-semibold">
+												{String.fromCharCode(65 + index)}
+											</span>
+											<span className="flex-1">{option}</span>
+											{showFeedback && isCorrect && <span className="text-green-600 dark:text-green-400">✓</span>}
+											{showFeedback && isUserAnswer && !isCorrect && (
+												<span className="text-red-600 dark:text-red-400">✗</span>
+											)}
+										</button>
+									)
+								})}
+							</div>
+
+							{card.isCorrect !== undefined && (
+								<div
+									className={`mt-4 p-2.5 rounded-xl text-center text-sm font-medium ${
+										card.isCorrect
+											? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+											: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+									}`}
+								>
+									{card.isCorrect ? '✓ Correct!' : `✗ Correct answer: ${card.correct_answer}`}
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+
+				<NavControls
+					onPrevious={onPrevious}
+					onNext={onNext}
+					isFirst={isFirst}
+					isLast={isLast}
+				/>
+			</div>
+		)
+	}
+
+	// ---------- Practice (flip) mode ----------
 	return (
-		<div className="w-full max-w-4xl mx-auto">
-			{/* Flashcard Container */}
-			<div className={`relative w-full perspective-1000 ${isScored ? 'min-h-[20rem] sm:min-h-[24rem]' : 'h-72 sm:h-96'}`}>
-				{/* Flashcard */}
+		<div className="w-full max-w-xl mx-auto">
+			<div className="relative w-full h-80 sm:h-96 perspective-1000">
 				<div
-					className={`relative w-full h-full transition-transform duration-700 transform-style-preserve-3d cursor-pointer ${
+					className={`relative w-full h-full transition-transform duration-500 ease-out transform-style-preserve-3d cursor-pointer ${
 						isFlipped ? 'rotate-y-180' : ''
 					}`}
 					onClick={handleFlip}
 				>
-					{/* Front of card */}
-					<div className={`${isScored ? '' : 'absolute'} w-full h-full backface-hidden`}>
-						<div className="card h-full flex flex-col justify-center items-center p-4 sm:p-6 text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg relative">
-							{/* Audio Button - Top Right */}
+					{/* Front: the character */}
+					<div className="absolute inset-0 backface-hidden">
+						<div className="h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-md flex flex-col items-center justify-center p-6 text-center relative">
 							<button
 								onClick={(e) => {
 									e.stopPropagation()
 									speakText(card.chinese, 'zh')
 								}}
-								className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-blue-100 hover:bg-blue-200 active:bg-blue-300 transition-colors"
+								className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+								aria-label="Listen to pronunciation"
 							>
-								<Volume2 className="w-5 h-5 text-blue-600" />
+								<Volume2 className="w-5 h-5" />
 							</button>
 
-							{/* Chinese Character */}
-							<div className="text-4xl sm:text-6xl font-bold mb-3 sm:mb-4 text-gray-800 chinese-text">{card.chinese}</div>
-							
-							{/* Pinyin Toggle Button */}
-							<button
-								onClick={handleShowPinyin}
-								className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 active:bg-blue-300 text-blue-700 rounded-lg transition-colors mb-2"
-							>
-								{showPinyin ? 'Hide' : 'Show'} Pinyin
-							</button>
-
-							{/* Pinyin */}
-							{showPinyin && (
-								<div className="text-base sm:text-lg text-gray-600 mb-2 sm:mb-3">{card.pinyin}</div>
-							)}
-
-							{/* Multiple Choice Options for Scored Quiz */}
-							{isScored && card.multiple_choice && (
-								<div className="w-full max-w-2xl mt-2 sm:mt-3">
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-										{card.multiple_choice.slice(0, 4).map((option, index) => {
-											const isCorrect = option === card.correct_answer
-											const isUserAnswer = userAnswer === option
-											const showFeedback = showResults || card.isCorrect !== undefined
-											
-											let buttonClass = "p-2.5 sm:p-3 text-center rounded-lg border-2 transition-colors text-sm "
-											
-											if (showFeedback) {
-												if (isCorrect) {
-													buttonClass += "border-green-600 bg-green-50 text-green-700"
-												} else if (isUserAnswer && !isCorrect) {
-													buttonClass += "border-red-600 bg-red-50 text-red-700"
-												} else {
-													buttonClass += "border-gray-300 bg-gray-50 text-gray-500"
-												}
-											} else {
-												if (isUserAnswer) {
-													buttonClass += "border-primary-600 bg-primary-50 text-primary-700"
-												} else {
-													buttonClass += "border-gray-200 hover:border-gray-300 active:border-gray-400 bg-white hover:bg-gray-50"
-												}
-											}
-											
-											return (
-												<button
-													key={index}
-													onClick={(e) => {
-														e.stopPropagation()
-														if (!showFeedback) {
-															handleAnswerSelect(option)
-														}
-													}}
-													disabled={showFeedback}
-													className={buttonClass}
-												>
-													<span className="font-medium mr-1">{String.fromCharCode(65 + index)}.</span>
-													{option}
-													{showFeedback && isCorrect && (
-														<span className="ml-2 text-green-600">✓</span>
-													)}
-													{showFeedback && isUserAnswer && !isCorrect && (
-														<span className="ml-2 text-red-600">✗</span>
-													)}
-												</button>
-											)
-										})}
-									</div>
-									
-									{/* Show immediate feedback for scored quizzes */}
-									{card.isCorrect !== undefined && (
-										<div className={`mt-2 sm:mt-3 p-2 rounded-lg text-center text-sm font-medium ${
-											card.isCorrect 
-												? 'bg-green-100 text-green-800 border border-green-200' 
-												: 'bg-red-100 text-red-800 border border-red-200'
-										}`}>
-											{card.isCorrect ? '✓ Correct!' : '✗ Incorrect'}
-										</div>
-									)}
-								</div>
-							)}
-
-							{/* Instructions */}
-							<div className="text-xs sm:text-sm text-gray-500 mt-2 sm:mt-3">
-								{isScored ? 'Select the correct English translation' : 'Tap to show answer'}
+							<div className="text-6xl sm:text-7xl font-bold chinese-text text-gray-900 dark:text-gray-50 leading-none">
+								{card.chinese}
 							</div>
-							
-							{/* Show correct answer when reviewing */}
-							{showResults && isScored && card.correct_answer && (
-								<div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-green-50 border border-green-200 rounded-lg">
-									<div className="text-sm font-medium text-green-800">
-										Correct Answer: {card.correct_answer}
-									</div>
-								</div>
-							)}
+
+							<div className="h-8 mt-5">
+								{showPinyin ? (
+									<span className="text-xl text-primary-600 dark:text-primary-300">{card.pinyin}</span>
+								) : (
+									<button
+										onClick={handleShowPinyin}
+										className="text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 px-3 py-1 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+									>
+										Show pinyin
+									</button>
+								)}
+							</div>
+
+							<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+								<RotateCw className="w-3.5 h-3.5" />
+								Tap to reveal
+							</div>
 						</div>
 					</div>
 
-					{/* Back of card - Only for practice mode */}
-					{!isScored && (
-						<div className="absolute w-full h-full backface-hidden rotate-y-180">
-							<div className="card h-full flex flex-col p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg">
-								{/* Character + Pinyin + Audio */}
-								<div className="flex items-center justify-center gap-2 mb-2">
-									<span className="text-lg chinese-text font-bold text-gray-800">{card.chinese}</span>
-									<span className="text-sm text-gray-500">{card.pinyin}</span>
-									<button
-										onClick={(e) => {
-											e.stopPropagation()
-											speakText(card.chinese, 'zh')
-										}}
-										className="p-1 rounded-full bg-green-100 hover:bg-green-200 transition-colors"
-										aria-label="Listen to pronunciation"
-									>
-										<Volume2 className="w-3.5 h-3.5 text-green-600" />
-									</button>
-								</div>
+					{/* Back: pinyin, meaning, example */}
+					<div className="absolute inset-0 backface-hidden rotate-y-180">
+						<div className="h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-md flex flex-col p-5 sm:p-6">
+							{/* Header: character + pinyin + audio */}
+							<div className="flex items-center justify-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-700">
+								<span className="text-2xl chinese-text font-bold text-gray-900 dark:text-gray-50">
+									{card.chinese}
+								</span>
+								<span className="text-lg text-primary-600 dark:text-primary-300">{card.pinyin}</span>
+								<button
+									onClick={(e) => {
+										e.stopPropagation()
+										speakText(card.chinese, 'zh')
+									}}
+									className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+									aria-label="Listen to pronunciation"
+								>
+									<Volume2 className="w-4 h-4" />
+								</button>
+							</div>
 
-								{/* English Definitions */}
-								<div className="mb-2" onClick={(e) => e.stopPropagation()}>
-									{(() => {
-										const defs = parseDefinitions(card.english)
-										if (defs.length <= 1) {
-											return (
-												<div className="flex items-center justify-center gap-1.5">
-													<span className="text-base font-semibold text-gray-800">{card.english}</span>
-													<button
-														onClick={() => speakText(card.english, 'en')}
-														className="flex-shrink-0 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
-													>
-														<Volume2 className="w-3 h-3 text-gray-400" />
-													</button>
-												</div>
-											)
-										}
-										return (
-											<div className="max-w-sm mx-auto">
-												{defs.map((def, i) => (
-													<div key={i} className="flex items-center gap-1 leading-snug py-[1px]">
-														<span className="text-xs font-semibold text-green-600 flex-shrink-0 w-4 text-right">{i + 1}.</span>
-														<span className="text-xs text-gray-800 flex-1">{def}</span>
-														<button
-															onClick={() => speakText(def, 'en')}
-															className="flex-shrink-0 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
-														>
-															<Volume2 className="w-2.5 h-2.5 text-gray-400" />
-														</button>
-													</div>
-												))}
-											</div>
-										)
-									})()}
-								</div>
-
-								{/* Example Sentences */}
-								{card.example_sentences && card.example_sentences.length > 0 && (
-									<div className="space-y-1.5 w-full flex-1" onClick={(e) => e.stopPropagation()}>
-										{card.example_sentences.slice(0, 2).map((sentence, index) => (
-											<div key={index} className="px-2.5 py-1.5 bg-white rounded-lg border border-gray-100">
-												<div className="flex items-center gap-1 mb-px">
-													<span className="text-xs chinese-text font-medium text-gray-900">{sentence.chinese}</span>
-													<button
-														onClick={() => speakText(sentence.chinese, 'zh')}
-														className="flex-shrink-0 p-0.5 rounded-full hover:bg-blue-50 transition-colors"
-													>
-														<Volume2 className="w-2.5 h-2.5 text-blue-500" />
-													</button>
-												</div>
-												{sentence.pinyin && (
-													<div className="text-[10px] text-gray-400 leading-tight">{sentence.pinyin}</div>
-												)}
-												<div className="flex items-center gap-1">
-													<span className="text-[11px] text-gray-600 italic">{sentence.english}</span>
-													<button
-														onClick={() => speakText(sentence.english, 'en')}
-														className="flex-shrink-0 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
-													>
-														<Volume2 className="w-2.5 h-2.5 text-gray-400" />
-													</button>
-												</div>
+							{/* Meaning */}
+							<div className="flex-1 flex flex-col items-center justify-center text-center py-3" onClick={(e) => e.stopPropagation()}>
+								{definitions.length <= 1 ? (
+									<div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-50">
+										{card.english}
+									</div>
+								) : (
+									<div className="space-y-1">
+										{definitions.slice(0, 4).map((def, i) => (
+											<div key={i} className="text-lg sm:text-xl text-gray-800 dark:text-gray-100">
+												<span className="text-primary-500 dark:text-primary-300 font-semibold mr-1.5">{i + 1}.</span>
+												{def}
 											</div>
 										))}
 									</div>
 								)}
+							</div>
 
-								<div className="text-[10px] text-gray-400 text-center pt-1">
-									Click to flip back
+							{/* One example sentence */}
+							{primaryExample && (
+								<div
+									className="rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 px-3.5 py-2.5"
+									onClick={(e) => e.stopPropagation()}
+								>
+									<div className="flex items-center gap-1.5">
+										<span className="text-sm chinese-text font-medium text-gray-900 dark:text-gray-100">
+											{primaryExample.chinese}
+										</span>
+										<button
+											onClick={() => speakText(primaryExample.chinese, 'zh')}
+											className="flex-shrink-0 p-0.5 rounded-full text-primary-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+											aria-label="Listen to example"
+										>
+											<Volume2 className="w-3 h-3" />
+										</button>
+									</div>
+									{primaryExample.pinyin && (
+										<div className="text-xs text-gray-400 dark:text-gray-500 leading-snug mt-0.5">
+											{primaryExample.pinyin}
+										</div>
+									)}
+									<div className="text-xs text-gray-600 dark:text-gray-300 italic mt-0.5">
+										{primaryExample.english}
+									</div>
 								</div>
+							)}
+
+							<div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 pt-2.5">
+								<RotateCw className="w-3.5 h-3.5" />
+								Tap to flip back
 							</div>
 						</div>
-					)}
+					</div>
 				</div>
 			</div>
 
-			{/* Navigation Controls */}
-			<div className="flex justify-between items-center mt-4 sm:mt-8">
-				<button
-					onClick={onPrevious}
-					disabled={isFirst}
-					className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base px-3 sm:px-4 py-2"
-				>
-					Previous
-				</button>
-
-				{isLast ? (
-					<button
-						onClick={onNext}
-						className="btn-primary text-sm sm:text-base px-4 sm:px-4 py-2"
-					>
-						Finish
-					</button>
-				) : (
-					<button
-						onClick={onNext}
-						className="btn-outline text-sm sm:text-base px-3 sm:px-4 py-2"
-					>
-						Next
-					</button>
-				)}
-			</div>
+			<NavControls onPrevious={onPrevious} onNext={onNext} isFirst={isFirst} isLast={isLast} />
 		</div>
 	)
-} 
+}
+
+function NavControls({
+	onPrevious,
+	onNext,
+	isFirst,
+	isLast,
+}: {
+	onPrevious: () => void
+	onNext: () => void
+	isFirst: boolean
+	isLast: boolean
+}) {
+	return (
+		<div className="flex justify-between items-center mt-5 sm:mt-6">
+			<button
+				onClick={onPrevious}
+				disabled={isFirst}
+				className="btn-outline disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base px-4 py-2"
+			>
+				Previous
+			</button>
+			<button
+				onClick={onNext}
+				className={`${isLast ? 'btn-primary' : 'btn-outline'} text-sm sm:text-base px-5 py-2`}
+			>
+				{isLast ? 'Finish' : 'Next'}
+			</button>
+		</div>
+	)
+}

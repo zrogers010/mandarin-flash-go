@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Brain, Volume2, BookOpen, ArrowRight } from 'lucide-react'
+import { ArrowLeft, Brain, Volume2, BookOpen } from 'lucide-react'
 import { lessonsApi, type LessonWithVocabulary } from '@/lib/api'
 import { speakText } from '@/lib/speech'
 import { SEO } from '@/components/SEO'
@@ -62,32 +62,32 @@ function SentenceRow({ sentence }: { sentence: SentenceData }) {
   }, [])
 
   return (
-    <div className="py-3 border-b border-gray-100 last:border-b-0">
-      <div className="flex items-start gap-1.5">
+    <div className="rounded-lg border-l-4 border-primary-400 dark:border-primary-500 bg-gray-50 dark:bg-gray-800/60 px-4 py-3 transition-colors hover:bg-gray-100/70 dark:hover:bg-gray-800">
+      <div className="flex items-start gap-2">
         <button
           onClick={() => handleSpeak(sentence.zh, 'zh')}
-          className="p-1 rounded-full hover:bg-primary-50 transition-colors flex-shrink-0 mt-0.5"
+          className="p-1 rounded-full text-primary-600 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0 mt-0.5"
           title="Listen in Chinese"
         >
-          <Volume2 className="w-4 h-4 text-primary-600" />
+          <Volume2 className="w-4 h-4" />
         </button>
-        <p className="text-xl font-medium text-gray-900 my-0" style={{ fontFamily: "'Noto Sans SC', system-ui, sans-serif" }}>
+        <p className="text-lg sm:text-xl font-medium text-gray-900 dark:text-gray-50 chinese-text my-0">
           {sentence.zh}
         </p>
       </div>
       {sentence.py && (
-        <p className="text-sm text-primary-600 mt-0.5 mb-0 ml-[30px]">{sentence.py}</p>
+        <p className="text-sm text-primary-600 dark:text-primary-300 mt-1 mb-0 ml-[34px]">{sentence.py}</p>
       )}
       {sentence.en && (
-        <div className="flex items-start gap-1.5 mt-0.5 ml-[30px]">
+        <div className="flex items-start gap-1.5 mt-0.5 ml-[34px]">
           <button
             onClick={() => handleSpeak(sentence.en, 'en')}
-            className="p-0.5 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0 mt-0.5"
+            className="p-0.5 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0 mt-0.5"
             title="Listen in English"
           >
-            <Volume2 className="w-3 h-3 text-gray-400" />
+            <Volume2 className="w-3 h-3" />
           </button>
-          <p className="text-sm text-gray-500 my-0">{sentence.en}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 my-0">{sentence.en}</p>
         </div>
       )}
     </div>
@@ -102,7 +102,7 @@ function LessonContent({ html }: { html: string }) {
         block.type === 'html' ? (
           <div key={i} dangerouslySetInnerHTML={{ __html: formatLessonHtml(block.html!) }} />
         ) : (
-          <div key={i} className="flex flex-col">
+          <div key={i} className="space-y-2.5 my-3">
             {block.sentences!.map((s, j) => (
               <SentenceRow key={j} sentence={s} />
             ))}
@@ -193,65 +193,67 @@ export function LessonDetail() {
         )}
       </div>
 
-      {/* Lesson Content */}
-      {lesson.content && (
-        <div className="card lesson-content">
-          <LessonContent html={lesson.content} />
-        </div>
-      )}
-
-      {/* Vocabulary List */}
+      {/* Vocabulary tiles */}
       {lesson.vocabulary && lesson.vocabulary.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-primary-600" />
               Vocabulary ({lesson.vocabulary.length} words)
             </h2>
             <Link
               to={`/flashcards?lesson=${lesson.slug}`}
-              className="btn-primary text-sm py-1.5 px-3"
+              className="btn-primary text-sm py-1.5 px-3 flex-shrink-0"
             >
               <Brain className="w-3.5 h-3.5 mr-1.5" />
               Practice These Words
             </Link>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {lesson.vocabulary.map((word) => (
               <div
                 key={word.id}
-                className="card flex items-center gap-4 py-4"
+                className="group relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 transition-all hover:border-primary-300 dark:hover:border-primary-500 hover:shadow-sm"
               >
-                <button
-                  onClick={() => speakText(word.chinese, 'zh')}
-                  className="p-2 rounded-full hover:bg-primary-50 transition-colors flex-shrink-0"
-                  title="Listen to pronunciation"
-                >
-                  <Volume2 className="w-4 h-4 text-primary-600" />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl font-medium chinese-text">{word.chinese}</span>
-                    <span className="text-sm text-gray-500">{word.pinyin}</span>
-                    {word.hsk_level > 0 && (
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
-                        HSK {word.hsk_level}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 mt-0.5">{word.english}</p>
-                </div>
                 <Link
                   to={`/vocabulary/${word.id}`}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium flex-shrink-0 hidden sm:block"
+                  className="absolute inset-0 rounded-xl"
+                  aria-label={`View details for ${word.chinese}`}
+                />
+                <button
+                  onClick={() => speakText(word.chinese, 'zh')}
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full text-primary-600 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-colors"
+                  title="Listen to pronunciation"
                 >
-                  Details
-                  <ArrowRight className="w-3.5 h-3.5 inline ml-1" />
-                </Link>
+                  <Volume2 className="w-4 h-4" />
+                </button>
+                <div className="pr-7">
+                  <div className="text-xl font-semibold chinese-text text-gray-900 dark:text-gray-50 leading-tight">
+                    {word.chinese}
+                  </div>
+                  <div className="text-xs text-primary-600 dark:text-primary-300 mt-0.5 truncate">
+                    {word.pinyin}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1.5 leading-snug line-clamp-2">
+                  {word.english}
+                </p>
+                {word.hsk_level > 0 && (
+                  <span className="inline-block mt-2 text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 rounded">
+                    HSK {word.hsk_level}
+                  </span>
+                )}
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Lesson Content */}
+      {lesson.content && (
+        <div className="card lesson-content">
+          <LessonContent html={lesson.content} />
         </div>
       )}
 
