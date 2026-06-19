@@ -48,12 +48,15 @@ export function PinyinChart() {
   }, [])
 
   const handleTonePlay = useCallback(async (syllable: string, tone: number) => {
+    // Only speak when we have a real Chinese character for this syllable+tone.
+    // Passing a romanized pinyin string to a Chinese TTS voice makes it spell
+    // out the letters instead of pronouncing the syllable, so we never fall back.
     const character = getToneCharacter(syllable, tone)
-    const textToSpeak = character || applyTone(syllable, tone)
+    if (!character) return
     const key = `${syllable}-${tone}`
     setPlayingTone(key)
     try {
-      await speakText(textToSpeak, 'zh')
+      await speakText(character, 'zh')
     } catch {
       // TTS may fail
     }
@@ -209,16 +212,22 @@ export function PinyinChart() {
             <div className="space-y-0.5">
               {[1, 2, 3, 4].map((tone) => {
                 const withTone = applyTone(popover.syllable, tone)
+                const character = getToneCharacter(popover.syllable, tone)
+                const hasChar = !!character
                 const key = `${popover.syllable}-${tone}`
                 const isPlaying = playingTone === key
                 return (
                   <button
                     key={tone}
                     onClick={() => handleTonePlay(popover.syllable, tone)}
+                    disabled={!hasChar}
+                    title={hasChar ? `Play ${withTone} (${character})` : 'No common character for this tone'}
                     className={`flex items-center w-full px-2 py-1 rounded text-xs transition-all ${
-                      isPlaying
-                        ? 'bg-primary-50 ring-1 ring-primary-200'
-                        : 'hover:bg-gray-50'
+                      !hasChar
+                        ? 'opacity-40 cursor-not-allowed'
+                        : isPlaying
+                          ? 'bg-primary-50 ring-1 ring-primary-200'
+                          : 'hover:bg-gray-50'
                     }`}
                   >
                     <Volume2 className={`w-3 h-3 mr-2 flex-shrink-0 ${
@@ -227,6 +236,9 @@ export function PinyinChart() {
                     <span className={`font-semibold text-sm ${toneColors[tone - 1]}`}>
                       {withTone}
                     </span>
+                    {hasChar && (
+                      <span className="chinese-text text-sm text-gray-700 ml-1.5">{character}</span>
+                    )}
                     <span className="text-[10px] text-gray-400 ml-auto">
                       {toneInfo[tone - 1].desc}
                     </span>
