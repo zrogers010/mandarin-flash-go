@@ -12,7 +12,7 @@ export function VocabularyFilters({ onFiltersChange, className = '' }: Vocabular
   const [selectedLimit, setSelectedLimit] = useState(50)
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const hskLevels = [1, 2, 3, 4, 5, 6]
+  const hskLevels = [1, 2, 3, 4, 5]
 
   const updateFilters = useCallback(() => {
     const filters: { hsk_level?: number; search?: string; limit?: number } = {}

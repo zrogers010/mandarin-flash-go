@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"chinese-learning/internal/config"
 
@@ -20,6 +21,20 @@ import (
 type TTSHandler struct {
 	pollyClient *polly.Client
 	pollyOn     bool
+}
+
+// ssmlEscaper escapes characters that are special in SSML/XML so that
+// user-supplied text cannot inject or break out of the SSML document.
+var ssmlEscaper = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	`"`, "&quot;",
+	"'", "&apos;",
+)
+
+func escapeSSML(s string) string {
+	return ssmlEscaper.Replace(s)
 }
 
 func NewTTSHandler(cfg *config.Config) *TTSHandler {
@@ -85,7 +100,7 @@ func (h *TTSHandler) synthesizePolly(c *gin.Context, req ttsRequest) error {
 		rate = "85%"
 	}
 
-	ssml := fmt.Sprintf(`<speak><prosody rate="%s">%s</prosody></speak>`, rate, req.Text)
+	ssml := fmt.Sprintf(`<speak><prosody rate="%s">%s</prosody></speak>`, rate, escapeSSML(req.Text))
 
 	input := &polly.SynthesizeSpeechInput{
 		Text:         &ssml,

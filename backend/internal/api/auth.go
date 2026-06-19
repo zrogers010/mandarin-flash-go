@@ -337,9 +337,41 @@ func (ah *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
+	// Rotate the refresh token: issue a new one, replace the session, and
+	// invalidate the old token. This limits the window of a leaked refresh
+	// token and lets a stolen-then-reused old token be rejected.
+	newRefreshToken, err := ah.tokenService.GenerateRefreshToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to generate refresh token",
+		})
+		return
+	}
+
+	clientIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	newSession := &models.UserSession{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		TokenHash: auth.HashToken(newRefreshToken),
+		ExpiresAt: session.ExpiresAt, // preserve absolute expiry (no indefinite extension)
+		IPAddress: &clientIP,
+		UserAgent: &userAgent,
+		CreatedAt: time.Now(),
+	}
+	if err := ah.userRepo.CreateSession(newSession); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to rotate session",
+		})
+		return
+	}
+	// Best-effort removal of the old session now that the new one exists
+	_ = ah.userRepo.DeleteSession(tokenHash)
+
 	c.JSON(http.StatusOK, gin.H{
-		"access_token": newAccessToken,
-		"expires_in":   900, // 15 minutes
+		"access_token":  newAccessToken,
+		"refresh_token": newRefreshToken,
+		"expires_in":    900, // 15 minutes
 	})
 }
 

@@ -21,7 +21,7 @@ export function Vocabulary() {
     const hskLevel = searchParams.get('hsk_level')
     if (hskLevel) {
       const level = parseInt(hskLevel)
-      if (!isNaN(level) && level >= 1 && level <= 6) {
+      if (!isNaN(level) && level >= 1 && level <= 5) {
         setSelectedLevel(level)
         setFilters(prev => ({ ...prev, hsk_level: level, page: 1 }))
       }
@@ -65,7 +65,7 @@ export function Vocabulary() {
       <div className="space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Vocabulary Practice</h1>
-          <p className="text-gray-600">Master Mandarin Chinese HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
+          <p className="text-gray-600">Master Mandarin Chinese HSK levels 1-5 with definitions, pinyin, tones, and example sentences.</p>
         </div>
         
         <div className="card">
@@ -84,7 +84,7 @@ export function Vocabulary() {
       {/* Header */}
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-4">Vocabulary Practice</h1>
-        <p className="text-gray-600 text-sm sm:text-base">Master Mandarin Chinese HSK levels 1-6 with definitions, pinyin, tones, and example sentences.</p>
+        <p className="text-gray-600 text-sm sm:text-base">Master Mandarin Chinese HSK levels 1-5 with definitions, pinyin, tones, and example sentences.</p>
       </div>
 
       {/* Search and Filters */}
@@ -106,7 +106,7 @@ export function Vocabulary() {
           <div>
             <div className="text-sm font-medium text-gray-700 mb-2">HSK Level</div>
             <div className="flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5, 6].map((level) => (
+              {[1, 2, 3, 4, 5].map((level) => (
                 <button
                   key={level}
                   onClick={() => handleLevelChange(selectedLevel === level ? undefined : level)}

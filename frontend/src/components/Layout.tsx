@@ -1,12 +1,29 @@
-import { ReactNode, useState, useRef, useEffect } from 'react'
+import { ReactNode, useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent, type FocusEvent as ReactFocusEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   BookOpen, Brain, Search, MessageCircle, User, LogOut, LogIn,
   UserPlus, Settings, BarChart3, ChevronDown, Menu, X,
-  GraduationCap, Volume2, BookTemplate, Utensils, type LucideIcon,
+  GraduationCap, Volume2, BookTemplate, Utensils, Sun, Moon, type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { Footer } from '@/components/Footer'
+
+function ThemeToggle({ className = '' }: { className?: string }) {
+  const { resolvedTheme, toggleTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className={`p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors ${className}`}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+    </button>
+  )
+}
 
 interface LayoutProps {
   children: ReactNode
@@ -79,7 +96,10 @@ function isChildActive(href: string, pathname: string, search: string): boolean 
 function NavDropdown({ item, pathname, search }: { item: NavItem; pathname: string; search: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLAnchorElement>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const menuId = `nav-menu-${item.name.replace(/\s+/g, '-').toLowerCase()}`
 
   useEffect(() => {
     setOpen(false)
@@ -98,12 +118,72 @@ function NavDropdown({ item, pathname, search }: { item: NavItem; pathname: stri
     timeoutRef.current = setTimeout(() => setOpen(false), 150)
   }
 
+  const getItems = () =>
+    Array.from(menuRef.current?.querySelectorAll<HTMLAnchorElement>('a[role="menuitem"]') ?? [])
+
+  const focusItem = (index: number) => {
+    const items = getItems()
+    if (items.length === 0) return
+    const i = (index + items.length) % items.length
+    items[i]?.focus()
+  }
+
+  const handleTriggerKeyDown = (e: ReactKeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpen(true)
+      requestAnimationFrame(() => focusItem(0))
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+    }
+  }
+
+  const handleMenuKeyDown = (e: ReactKeyboardEvent) => {
+    const items = getItems()
+    const currentIndex = items.findIndex((el) => el === document.activeElement)
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      focusItem(currentIndex + 1)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      focusItem(currentIndex - 1)
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      focusItem(0)
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      focusItem(items.length - 1)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+  }
+
+  const handleBlur = (e: ReactFocusEvent) => {
+    if (!ref.current?.contains(e.relatedTarget as Node)) {
+      setOpen(false)
+    }
+  }
+
   const active = isNavActive(item, pathname)
 
   return (
-    <div ref={ref} className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+    <div
+      ref={ref}
+      className="relative"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      onFocus={handleEnter}
+      onBlur={handleBlur}
+    >
       <Link
+        ref={triggerRef}
         to={item.href!}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        onKeyDown={handleTriggerKeyDown}
         className={`flex items-center space-x-1 px-2 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
           active
             ? 'text-primary-600 bg-primary-50'
@@ -116,14 +196,22 @@ function NavDropdown({ item, pathname, search }: { item: NavItem; pathname: stri
       </Link>
 
       {open && item.children && (
-        <div className="absolute left-0 mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+        <div
+          ref={menuRef}
+          id={menuId}
+          role="menu"
+          aria-label={item.name}
+          onKeyDown={handleMenuKeyDown}
+          className="absolute left-0 mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+        >
           {item.children.map((child) => {
             const childActive = isChildActive(child.href, pathname, search)
             return (
               <Link
                 key={child.name}
                 to={child.href}
-                className={`flex items-start gap-3 px-4 py-2.5 transition-colors ${
+                role="menuitem"
+                className={`flex items-start gap-3 px-4 py-2.5 transition-colors focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700 ${
                   childActive
                     ? 'bg-primary-50 text-primary-700'
                     : 'text-gray-700 hover:bg-gray-50'
@@ -225,8 +313,15 @@ export function Layout({ children }: LayoutProps) {
         setUserMenuOpen(false)
       }
     }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setUserMenuOpen(false)
+    }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
   }, [])
 
   useEffect(() => {
@@ -274,12 +369,17 @@ export function Layout({ children }: LayoutProps) {
                 )}
               </nav>
 
+              {/* Theme toggle (desktop) */}
+              <ThemeToggle className="hidden md:inline-flex" />
+
               {/* Auth area (desktop) */}
               <div className="hidden md:flex items-center">
                 {isAuthenticated ? (
                   <div className="relative" ref={menuRef}>
                     <button
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
+                      aria-haspopup="menu"
+                      aria-expanded={userMenuOpen}
                       className="flex items-center space-x-1.5 px-2 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       <div className="w-7 h-7 rounded-full bg-secondary-100 flex items-center justify-center">
@@ -292,7 +392,7 @@ export function Layout({ children }: LayoutProps) {
                     </button>
 
                     {userMenuOpen && (
-                      <div className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                      <div role="menu" aria-label="Account" className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                         <div className="px-4 py-2.5 border-b border-gray-100">
                           <div className="text-sm font-medium text-gray-900 truncate">
                             {user?.username || 'User'}
@@ -346,11 +446,16 @@ export function Layout({ children }: LayoutProps) {
                 )}
               </div>
 
+              {/* Theme toggle (mobile) */}
+              <ThemeToggle className="md:hidden" />
+
               {/* Mobile hamburger */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 -mr-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-                aria-label="Open menu"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-menu"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -363,7 +468,7 @@ export function Layout({ children }: LayoutProps) {
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50" style={{ top: '3.5rem' }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileMenuOpen(false)} />
-          <nav className="relative bg-white w-72 max-w-[85vw] h-full shadow-xl overflow-y-auto animate-slide-in-left">
+          <nav id="mobile-menu" aria-label="Main menu" className="relative bg-white w-72 max-w-[85vw] h-full shadow-xl overflow-y-auto animate-slide-in-left">
             <div className="py-3 px-4 space-y-1">
               {navigation.map((item) => (
                 <MobileAccordion

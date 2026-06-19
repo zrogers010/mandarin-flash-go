@@ -9,6 +9,7 @@ import (
 	"chinese-learning/internal/models"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // QuizRepositoryImpl implements quiz result persistence
@@ -160,6 +161,30 @@ func (r *QuizRepositoryImpl) GetQuizDetail(userID, quizID uuid.UUID) (*models.Qu
 		json.Unmarshal(cardResultsJSON, &rawResults)
 	}
 
+	// Batch-fetch vocabulary for all cards in one query (avoids N+1).
+	type vocabPair struct {
+		chinese string
+		pinyin  string
+	}
+	vocabByID := make(map[uuid.UUID]vocabPair)
+	if len(rawResults) > 0 {
+		ids := make([]uuid.UUID, 0, len(rawResults))
+		for _, cr := range rawResults {
+			ids = append(ids, cr.CardID)
+		}
+		rows, err := r.db.Query(`SELECT id, chinese, pinyin FROM vocabulary WHERE id = ANY($1)`, pq.Array(ids))
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var id uuid.UUID
+				var chinese, pinyin sql.NullString
+				if err := rows.Scan(&id, &chinese, &pinyin); err == nil {
+					vocabByID[id] = vocabPair{chinese.String, pinyin.String}
+				}
+			}
+		}
+	}
+
 	for _, cr := range rawResults {
 		enriched := models.CardResultDetail{
 			CardID:        cr.CardID,
@@ -167,18 +192,10 @@ func (r *QuizRepositoryImpl) GetQuizDetail(userID, quizID uuid.UUID) (*models.Qu
 			CorrectAnswer: cr.CorrectAnswer,
 			IsCorrect:     cr.IsCorrect,
 		}
-
-		// Look up vocabulary word for Chinese + Pinyin
-		var chinese, pinyin sql.NullString
-		vocabQuery := `SELECT chinese, pinyin FROM vocabulary WHERE id = $1`
-		r.db.QueryRow(vocabQuery, cr.CardID).Scan(&chinese, &pinyin)
-		if chinese.Valid {
-			enriched.Chinese = chinese.String
+		if v, ok := vocabByID[cr.CardID]; ok {
+			enriched.Chinese = v.chinese
+			enriched.Pinyin = v.pinyin
 		}
-		if pinyin.Valid {
-			enriched.Pinyin = pinyin.String
-		}
-
 		detail.CardResults = append(detail.CardResults, enriched)
 	}
 

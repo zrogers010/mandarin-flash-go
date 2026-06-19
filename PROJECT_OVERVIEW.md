@@ -95,7 +95,7 @@ mf-go/
 
 ### 1. Vocabulary Practice
 - **Status**: Framework ready, implementation needed
-- **Features**: HSK levels 1-6, definitions, pinyin, tones, example sentences
+- **Features**: HSK 2.0 levels 1-5 (~2,500 words; HSK 6 coming soon), definitions, pinyin, tones, example sentences
 - **Next Steps**: 
   - Implement vocabulary API endpoints
   - Create vocabulary practice UI components

@@ -45,6 +45,7 @@ const hskLevels = [
     description: 'Near-native comprehension of written and spoken Chinese across all domains.',
     difficulty: 'Proficient',
     color: 'bg-red-700',
+    comingSoon: true,
   },
 ]
 
@@ -55,7 +56,7 @@ export function HSKHub() {
     <div className="space-y-8">
       <SEO
         title="HSK Study Guide"
-        description="Study for the HSK exam with MandarinFlash. Browse vocabulary for HSK levels 1-6, practice with flashcards, and track your progress."
+        description="Study for the HSK exam with MandarinFlash. Browse vocabulary for HSK levels 1-5 (HSK 6 coming soon), practice with flashcards, and track your progress."
       />
       {/* Header */}
       <div className="text-center space-y-3">
@@ -99,15 +100,25 @@ export function HSKHub() {
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-900">HSK Levels</h2>
         <div className="grid gap-4">
-          {hskLevels.map(({ level, words, description, difficulty, color }) => (
-            <div key={level} className="card hover:shadow-md transition-shadow">
+          {hskLevels.map(({ level, words, description, difficulty, color, comingSoon }) => (
+            <div
+              key={level}
+              className={`card transition-shadow ${comingSoon ? 'opacity-75' : 'hover:shadow-md'}`}
+            >
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center flex-shrink-0`}>
                     <span className="text-white font-bold text-lg">{level}</span>
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900">HSK Level {level}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-lg font-semibold text-gray-900">HSK Level {level}</h3>
+                      {comingSoon && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                          Coming soon
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-sm text-gray-500">~{words} words</span>
                       <span className="text-gray-300">|</span>
@@ -116,22 +127,30 @@ export function HSKHub() {
                     <p className="text-sm text-gray-600 mt-1">{description}</p>
                   </div>
                 </div>
-                <div className="flex gap-2 sm:flex-shrink-0">
-                  <Link
-                    to={`/vocabulary?hsk_level=${level}`}
-                    className="btn-outline text-sm py-1.5 px-3"
-                  >
-                    <BookOpen className="w-3.5 h-3.5 mr-1.5" />
-                    Vocab
-                  </Link>
-                  <Link
-                    to={`/flashcards?hsk_level=${level}`}
-                    className="btn-primary text-sm py-1.5 px-3"
-                  >
-                    <Brain className="w-3.5 h-3.5 mr-1.5" />
-                    Practice
-                  </Link>
-                </div>
+                {comingSoon ? (
+                  <div className="flex sm:flex-shrink-0">
+                    <span className="text-sm text-gray-400 italic py-1.5 px-3">
+                      Vocabulary in preparation
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 sm:flex-shrink-0">
+                    <Link
+                      to={`/vocabulary?hsk_level=${level}`}
+                      className="btn-outline text-sm py-1.5 px-3"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 mr-1.5" />
+                      Vocab
+                    </Link>
+                    <Link
+                      to={`/flashcards?hsk_level=${level}`}
+                      className="btn-primary text-sm py-1.5 px-3"
+                    >
+                      <Brain className="w-3.5 h-3.5 mr-1.5" />
+                      Practice
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -154,8 +173,9 @@ export function HSKHub() {
             qualify you for Chinese university admission and professional opportunities.
           </p>
           <p>
-            MandarinFlash covers vocabulary for all 6 HSK levels with interactive flashcards,
-            scored quizzes, and spaced repetition to help you study efficiently.
+            MandarinFlash currently covers vocabulary for HSK levels 1-5 with interactive
+            flashcards, scored quizzes, and spaced repetition to help you study efficiently.
+            HSK 6 is in preparation and coming soon.
           </p>
         </div>
         <div className="pt-2">

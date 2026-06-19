@@ -5,7 +5,7 @@ import { SEO } from '@/components/SEO'
 const features = [
   {
     name: 'HSK Vocabulary',
-    description: 'Browse thousands of words across HSK levels 1–6 with pinyin, tones, and example sentences.',
+    description: 'Browse thousands of words across HSK levels 1–5 with pinyin, tones, and example sentences.',
     icon: BookOpen,
     href: '/hsk',
     color: 'bg-primary-600',
@@ -51,7 +51,7 @@ const highlights = [
   'Interactive flashcards and scored quizzes',
   'Audio pronunciation for every word',
   'Grammar and topic-based lessons',
-  'HSK 1–6 vocabulary coverage',
+  'HSK 1–5 vocabulary coverage',
   'AI-powered Chinese tutor',
   'Free to use — no paywall',
 ]

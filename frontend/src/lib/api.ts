@@ -41,8 +41,13 @@ api.interceptors.response.use(
             refresh_token: refreshToken,
           })
           
-          const { access_token } = response.data
+          const { access_token, refresh_token } = response.data
           localStorage.setItem('access_token', access_token)
+          // The server rotates the refresh token on each refresh; persist the
+          // new one so subsequent refreshes don't use the now-invalid token.
+          if (refresh_token) {
+            localStorage.setItem('refresh_token', refresh_token)
+          }
           
           // Retry the original request
           originalRequest.headers.Authorization = `Bearer ${access_token}`

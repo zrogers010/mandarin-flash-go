@@ -5,7 +5,7 @@ import { SEO } from '@/components/SEO'
 const tools = [
   {
     name: 'Flashcards & Quizzes',
-    description: 'Drill vocabulary with interactive flashcards in practice mode or challenge yourself with scored multiple-choice quizzes. Supports HSK levels 1–6 and lesson-specific vocabulary.',
+    description: 'Drill vocabulary with interactive flashcards in practice mode or challenge yourself with scored multiple-choice quizzes. Supports HSK levels 1–5 and lesson-specific vocabulary.',
     icon: Brain,
     href: '/flashcards',
     color: 'bg-secondary-600',
