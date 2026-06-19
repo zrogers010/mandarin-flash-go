@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // stripTones removes tone marks from pinyin
@@ -152,14 +153,16 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 
 	if filters.Search != nil && *filters.Search != "" {
 		searchTerm := "%" + *filters.Search + "%"
-		// Search in Chinese, English, and pinyin
+		// Match tone-stripped pinyin too, so a query like "zhongguo" finds "zhōngguó"
+		searchNoTones := "%" + stripTones(strings.ToLower(*filters.Search)) + "%"
 		query += fmt.Sprintf(` AND (
-			chinese ILIKE $%d OR 
-			english ILIKE $%d OR 
-			pinyin ILIKE $%d
-		)`, argIndex, argIndex, argIndex)
-		args = append(args, searchTerm)
-		argIndex++
+			chinese ILIKE $%d OR
+			english ILIKE $%d OR
+			pinyin ILIKE $%d OR
+			pinyin_no_tones ILIKE $%d
+		)`, argIndex, argIndex, argIndex, argIndex+1)
+		args = append(args, searchTerm, searchNoTones)
+		argIndex += 2
 	}
 
 	// Add sorting before pagination
@@ -275,6 +278,38 @@ func (r *VocabularyRepository) GetByID(id uuid.UUID) (*Vocabulary, error) {
 	}
 
 	return &v, nil
+}
+
+// GetByIDs retrieves multiple vocabulary items in a single query, returned as a
+// map keyed by ID. Used to avoid N+1 lookups (e.g. quiz submission/detail).
+func (r *VocabularyRepository) GetByIDs(ids []uuid.UUID) (map[uuid.UUID]*Vocabulary, error) {
+	result := make(map[uuid.UUID]*Vocabulary, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM vocabulary WHERE id = ANY($1)", VocabColumns)
+	rows, err := r.db.Query(query, pq.Array(ids))
+	if err != nil {
+		return nil, fmt.Errorf("error querying vocabulary by IDs: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var v Vocabulary
+		err := rows.Scan(
+			&v.ID, &v.Chinese, &v.Traditional, &v.Pinyin, &v.PinyinNoTones,
+			&v.English, &v.PartOfSpeech, &v.HSKLevel, &v.ExampleSentences,
+			&v.CreatedAt, &v.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning vocabulary: %w", err)
+		}
+		vocab := v
+		result[v.ID] = &vocab
+	}
+
+	return result, nil
 }
 
 // GetByHSKLevel retrieves vocabulary by HSK level

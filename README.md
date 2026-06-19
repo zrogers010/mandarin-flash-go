@@ -66,12 +66,12 @@ make docker-run
 
 ## 🚀 Features
 
-- **HSK Vocabulary Practice**: Complete HSK 3.0 Level 1 vocabulary with 499 words
+- **HSK Vocabulary Practice**: HSK 2.0 levels 1-5 (~2,500 words) with definitions, pinyin, tones, and native example sentences (HSK 6 coming soon)
 - **Smart Search**: Search by Chinese characters, pinyin (with or without tones), or English
-- **Interactive Quizzes**: Test your knowledge with various question types
-- **AI Chat Practice**: Practice conversations with AI assistance
+- **Interactive Quizzes**: Test your knowledge with flashcards and scored multiple-choice quizzes
 - **Dictionary Lookup**: Comprehensive word definitions and examples
 - **Responsive Design**: Modern, mobile-friendly interface
+- **AI Chat Practice**: Conversation practice with an AI tutor (planned — backend ready, UI in progress)
 
 ## 🏗️ Architecture
 

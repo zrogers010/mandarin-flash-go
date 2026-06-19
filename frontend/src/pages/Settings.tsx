@@ -1,9 +1,17 @@
 import React, { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { AlertCircle, CheckCircle, Mail, RefreshCw, User } from 'lucide-react'
+import { useTheme, type ThemePreference } from '@/contexts/ThemeContext'
+import { AlertCircle, CheckCircle, Mail, Monitor, Moon, RefreshCw, Sun, User } from 'lucide-react'
+
+const THEME_OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+]
 
 export const Settings: React.FC = () => {
   const { user, resendVerification, updateProfile } = useAuth()
+  const { theme, setTheme } = useTheme()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSendingVerification, setIsSendingVerification] = useState(false)
@@ -67,6 +75,37 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Appearance */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <Sun className="h-5 w-5 text-gray-600" />
+          <h2 className="text-lg font-semibold text-gray-900">Appearance</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-3">Choose how MandarinFlash looks to you.</p>
+        <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-2 max-w-md">
+          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
+            const selected = theme === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setTheme(value)}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border px-3 py-3 text-sm font-medium transition-colors ${
+                  selected
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Profile */}
       <div className="bg-white shadow rounded-lg p-6">

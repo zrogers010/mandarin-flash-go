@@ -448,7 +448,7 @@ export function Quiz() {
 							>
 								All Levels
 							</button>
-							{[1, 2, 3, 4, 5, 6].map((level) => (
+							{[1, 2, 3, 4, 5].map((level) => (
 								<button
 									key={level}
 									onClick={() => handleLevelChange(selectedLevel === level ? undefined : level)}

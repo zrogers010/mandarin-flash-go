@@ -85,6 +85,13 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 		return
 	}
 
+	// For scored quizzes, fetch a single pool of distractor candidates up front
+	// instead of querying per card (avoids an N+1 query pattern).
+	var distractorPool []models.Vocabulary
+	if req.Type == models.QuizTypeScored {
+		distractorPool, _ = h.vocabRepo.GetRandom(req.Count*4+12, req.HSKLevel)
+	}
+
 	// Convert vocabulary to quiz cards
 	var cards []models.QuizCard
 	for _, vocab := range vocabulary {
@@ -103,34 +110,33 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 		// For scored quizzes, generate multiple choice options using
 		// primary (first) definitions to keep buttons concise
 		if req.Type == models.QuizTypeScored {
-			wrongAnswers, err := h.vocabRepo.GetRandom(6, req.HSKLevel)
 			correctOption := primaryDefinition(vocab.English)
-			if err == nil && len(wrongAnswers) >= 3 {
-				options := []string{correctOption}
+			options := []string{correctOption}
 
-				for _, wrong := range wrongAnswers {
+			// Iterate the shared pool from a random offset for per-card variety
+			if len(distractorPool) > 0 {
+				start := rand.Intn(len(distractorPool))
+				for i := 0; i < len(distractorPool) && len(options) < 4; i++ {
+					wrong := distractorPool[(start+i)%len(distractorPool)]
 					wrongOption := primaryDefinition(wrong.English)
-					if wrong.ID != vocab.ID && wrongOption != correctOption {
+					if wrong.ID != vocab.ID && !contains(options, wrongOption) {
 						options = append(options, wrongOption)
-						if len(options) >= 4 {
-							break
-						}
 					}
 				}
-
-				for len(options) < 4 {
-					genericOptions := []string{"I don't know", "None of the above", "Maybe", "Not sure"}
-					option := genericOptions[len(options)-1]
-					if !contains(options, option) {
-						options = append(options, option)
-					}
-				}
-
-				shuffleStrings(options)
-
-				card.MultipleChoice = options
-				card.CorrectAnswer = correctOption
 			}
+
+			for len(options) < 4 {
+				genericOptions := []string{"I don't know", "None of the above", "Maybe", "Not sure"}
+				option := genericOptions[len(options)-1]
+				if !contains(options, option) {
+					options = append(options, option)
+				}
+			}
+
+			shuffleStrings(options)
+
+			card.MultipleChoice = options
+			card.CorrectAnswer = correctOption
 		}
 
 		cards = append(cards, card)
@@ -158,34 +164,49 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 		return
 	}
 
-	// Validate each answer and calculate score
+	// Validate each answer and calculate score. Collect the card IDs first and
+	// fetch them in a single batch query to avoid an N+1 lookup per answer.
 	correct := 0
-	total := len(submission.Answers)
 
-	var cardResults []models.CardResult
-
+	parsedAnswers := make(map[uuid.UUID]string, len(submission.Answers))
+	ids := make([]uuid.UUID, 0, len(submission.Answers))
 	for cardID, userAnswer := range submission.Answers {
 		vocabID, err := uuid.Parse(cardID)
 		if err != nil {
 			continue
 		}
-
-		vocab, err := h.vocabRepo.GetByID(vocabID)
-		if err == nil && vocab != nil {
-			correctAnswer := primaryDefinition(vocab.English)
-			isCorrect := correctAnswer == userAnswer
-			if isCorrect {
-				correct++
-			}
-
-			cardResults = append(cardResults, models.CardResult{
-				CardID:        vocabID,
-				UserAnswer:    userAnswer,
-				CorrectAnswer: correctAnswer,
-				IsCorrect:     isCorrect,
-			})
-		}
+		parsedAnswers[vocabID] = userAnswer
+		ids = append(ids, vocabID)
 	}
+
+	vocabByID, err := h.vocabRepo.GetByIDs(ids)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to score quiz"})
+		return
+	}
+
+	var cardResults []models.CardResult
+	for vocabID, userAnswer := range parsedAnswers {
+		vocab, ok := vocabByID[vocabID]
+		if !ok || vocab == nil {
+			continue
+		}
+		correctAnswer := primaryDefinition(vocab.English)
+		isCorrect := correctAnswer == userAnswer
+		if isCorrect {
+			correct++
+		}
+
+		cardResults = append(cardResults, models.CardResult{
+			CardID:        vocabID,
+			UserAnswer:    userAnswer,
+			CorrectAnswer: correctAnswer,
+			IsCorrect:     isCorrect,
+		})
+	}
+
+	// total reflects answers that mapped to real vocabulary cards
+	total := len(cardResults)
 
 	score := 0.0
 	percentage := 0.0

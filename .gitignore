@@ -49,6 +49,13 @@ backend/*.sql
 !backend/db/**/*.sql
 backend/run.sh
 
+# Content QA tooling & corrections (operate on / contain proprietary seed data)
+scripts/validate_content.py
+scripts/apply_fixes.py
+scripts/content_fixes.py
+scripts/fix_content.py
+content_report.txt
+
 # ════════════════════════════════════════
 # Python virtual environments
 # ════════════════════════════════════════
