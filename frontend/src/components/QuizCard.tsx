@@ -65,6 +65,11 @@ export function QuizCard({
 	const definitions = parseDefinitions(card.english)
 	const primaryExample = card.example_sentences?.[0]
 
+	// Show at most 5 senses on a card; scale the text down as the count grows so
+	// multi-sense CC-CEDICT entries still fit neatly on the fixed-height card.
+	const MAX_DEFS = 5
+	const meaningSize = definitions.length <= 3 ? 'text-lg sm:text-xl' : 'text-base'
+
 	// ---------- Scored (multiple-choice) mode ----------
 	if (isScored) {
 		return (
@@ -236,20 +241,25 @@ export function QuizCard({
 							</div>
 
 							{/* Meaning */}
-							<div className="flex-1 flex flex-col items-center justify-center text-center py-3" onClick={(e) => e.stopPropagation()}>
+							<div className="flex-1 min-h-0 flex flex-col items-center justify-center py-2" onClick={(e) => e.stopPropagation()}>
 								{definitions.length <= 1 ? (
-									<div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-50">
+									<div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-50 text-center px-2 break-words">
 										{card.english}
 									</div>
 								) : (
-									<div className="space-y-1">
-										{definitions.slice(0, 4).map((def, i) => (
-											<div key={i} className="text-lg sm:text-xl text-gray-800 dark:text-gray-100">
-												<span className="text-primary-500 dark:text-primary-300 font-semibold mr-1.5">{i + 1}.</span>
-												{def}
-											</div>
+									<ol className={`w-full max-w-sm mx-auto overflow-y-auto max-h-full text-left space-y-1 px-1 ${meaningSize}`}>
+										{definitions.slice(0, MAX_DEFS).map((def, i) => (
+											<li key={i} className="flex gap-1.5 text-gray-800 dark:text-gray-100 leading-snug">
+												<span className="text-primary-500 dark:text-primary-300 font-semibold flex-shrink-0">{i + 1}.</span>
+												<span className="break-words min-w-0">{def}</span>
+											</li>
 										))}
-									</div>
+										{definitions.length > MAX_DEFS && (
+											<li className="text-xs text-gray-400 dark:text-gray-500 pl-5 pt-0.5">
+												+{definitions.length - MAX_DEFS} more
+											</li>
+										)}
+									</ol>
 								)}
 							</div>
 

@@ -181,6 +181,19 @@ EOSQL
 LV_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM lesson_vocabulary;" 2>/dev/null || echo "?")
 echo "  Lesson-vocabulary links: $LV_COUNT"
 
+# ---------- Enrich definitions from CC-CEDICT ----------
+# The HSK seeds DELETE + re-INSERT levels 1-5, which resets each word's english
+# to a single seed gloss. Re-apply the richer CC-CEDICT definitions (multiple
+# senses, e.g. 装修 -> "to decorate | to renovate | to fit up") and load the full
+# ~120k-entry dictionary. This upsert is idempotent and must run AFTER seeds.
+echo "  Enriching definitions from CC-CEDICT (this can take a minute)..."
+if bash scripts/run_cedict_import.sh; then
+    L0_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0;" 2>/dev/null || echo "?")
+    echo "  CC-CEDICT enrichment complete (dictionary entries: $L0_COUNT)."
+else
+    echo "  WARNING: CC-CEDICT import failed; definitions/dictionary may be incomplete."
+fi
+
 # ---------- Restart all services ----------
 echo "[4/5] Starting all services..."
 $DC $COMPOSE_FILE up -d
@@ -189,20 +202,39 @@ echo "  Waiting for services to stabilize..."
 sleep 10
 
 # ---------- Health check ----------
+# /health is only served on the HTTPS vhost; the HTTP vhost 301-redirects to
+# HTTPS. So probe HTTPS pinned to localhost (so the cert + server_name match),
+# and fall back to treating an HTTP->HTTPS redirect as "nginx is up".
 echo "[5/5] Running health check..."
 RETRIES=5
+HEALTHY=0
+LAST_STATUS="000"
 for i in $(seq 1 $RETRIES); do
-    STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://localhost/health" 2>/dev/null || echo "000")
-    if [ "$STATUS" = "200" ]; then
-        echo "  Health check passed."
+    LAST_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+        --resolve "${DOMAIN}:443:127.0.0.1" \
+        "https://${DOMAIN}/health" 2>/dev/null || echo "000")
+    if [ "$LAST_STATUS" = "200" ]; then
+        echo "  Health check passed (HTTPS 200)."
+        HEALTHY=1
         break
     fi
-    if [ "$i" = "$RETRIES" ]; then
-        echo "  WARNING: Health check failed after $RETRIES attempts (HTTP $STATUS)."
-        echo "  Check logs: $DC $COMPOSE_FILE logs"
+
+    # Fallback: if the TLS cert isn't ready yet, a 301/308 from HTTP still means
+    # nginx is serving and redirecting correctly.
+    REDIR=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/health" 2>/dev/null || echo "000")
+    if [ "$REDIR" = "301" ] || [ "$REDIR" = "308" ]; then
+        echo "  Health check passed (HTTP $REDIR redirect to HTTPS; nginx up)."
+        HEALTHY=1
+        break
     fi
+
     sleep 5
 done
+
+if [ "$HEALTHY" != "1" ]; then
+    echo "  WARNING: Health check failed after $RETRIES attempts (HTTPS $LAST_STATUS)."
+    echo "  Check logs: $DC $COMPOSE_FILE logs"
+fi
 
 echo ""
 echo "=== Deploy complete ==="
