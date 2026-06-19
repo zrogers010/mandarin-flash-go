@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Brain, Volume2, BookOpen } from 'lucide-react'
 import { lessonsApi, type LessonWithVocabulary } from '@/lib/api'
 import { speakText } from '@/lib/speech'
+import { shortDefinition } from '@/lib/definitions'
 import { SEO } from '@/components/SEO'
 import { useMemo, useCallback } from 'react'
 
@@ -237,7 +238,7 @@ export function LessonDetail() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-1.5 leading-snug line-clamp-2">
-                  {word.english}
+                  {shortDefinition(word.english, 3)}
                 </p>
                 {word.hsk_level > 0 && (
                   <span className="inline-block mt-2 text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 rounded">

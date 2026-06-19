@@ -181,6 +181,19 @@ EOSQL
 LV_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM lesson_vocabulary;" 2>/dev/null || echo "?")
 echo "  Lesson-vocabulary links: $LV_COUNT"
 
+# ---------- Enrich definitions from CC-CEDICT ----------
+# The HSK seeds DELETE + re-INSERT levels 1-5, which resets each word's english
+# to a single seed gloss. Re-apply the richer CC-CEDICT definitions (multiple
+# senses, e.g. 装修 -> "to decorate | to renovate | to fit up") and load the full
+# ~120k-entry dictionary. This upsert is idempotent and must run AFTER seeds.
+echo "  Enriching definitions from CC-CEDICT (this can take a minute)..."
+if bash scripts/run_cedict_import.sh; then
+    L0_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0;" 2>/dev/null || echo "?")
+    echo "  CC-CEDICT enrichment complete (dictionary entries: $L0_COUNT)."
+else
+    echo "  WARNING: CC-CEDICT import failed; definitions/dictionary may be incomplete."
+fi
+
 # ---------- Restart all services ----------
 echo "[4/5] Starting all services..."
 $DC $COMPOSE_FILE up -d

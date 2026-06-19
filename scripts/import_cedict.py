@@ -186,46 +186,21 @@ def clean_definitions(raw):
 
 def group_definitions(defs):
     """
-    Group a flat list of CC-CEDICT definition entries into semantic clusters.
-    Consecutive short synonyms are merged into one group; entries with
-    parenthetical context stay standalone or start a new group.
-    Returns a list of grouped definition strings.
+    Return each distinct CC-CEDICT sense as its own definition item.
+
+    The UI joins these with "|" and renders them as a numbered list, so every
+    sense (including close synonyms like 学习 = "to learn" / "to study") is shown
+    separately rather than collapsed onto one line. De-duplicates case-insensitively
+    while preserving order.
     """
-    if len(defs) <= 2:
-        return [", ".join(defs)]
-
-    groups = []
-    current = []
-
-    def flush():
-        if current:
-            groups.append(", ".join(current))
-
+    seen = set()
+    result = []
     for d in defs:
-        has_context = d.startswith("(") or "(" in d
-        is_verb = d.startswith("to ")
-        is_long = len(d) > 35
-
-        if not current:
-            current.append(d)
-            continue
-
-        prev = current[-1]
-        prev_is_verb = prev.startswith("to ")
-
-        # Start a new group when:
-        #   - switching between verb/non-verb patterns
-        #   - entry has parenthetical context and current group has items
-        #   - current group already has 4 items
-        #   - entry is long/complex
-        if (is_verb != prev_is_verb) or (has_context and len(current) >= 2) or len(current) >= 4 or is_long:
-            flush()
-            current = [d]
-        else:
-            current.append(d)
-
-    flush()
-    return groups
+        key = d.lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(d)
+    return result
 
 
 def strip_tones(pinyin):
