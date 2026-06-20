@@ -87,7 +87,16 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 OR english ~* $4 THEN 'exact'
 				WHEN chinese ILIKE $2 OR pinyin ILIKE $2 OR pinyin_no_tones ILIKE $2 OR english ILIKE $2 THEN 'prefix'
 				ELSE 'contains'
-			END as match_type
+			END as match_type,
+			-- Relevance rank (computed here so $4 and $5 are bound in both the
+			-- COUNT and the main query; the COUNT runs before ORDER BY is appended).
+			CASE
+				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 THEN 1
+				WHEN english ~* $4 THEN 2
+				WHEN chinese ILIKE $2 OR pinyin ILIKE $2 OR pinyin_no_tones ILIKE $2 OR english ILIKE $2 THEN 3
+				WHEN english ~* $5 THEN 4
+				ELSE 5
+			END as relevance
 		FROM vocabulary
 		WHERE (
 			chinese ILIKE $3 OR
@@ -124,13 +133,7 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 	// then HSK words first, then shorter (more core) definitions, then alphabetical.
 	query += `
 		ORDER BY
-			CASE
-				WHEN chinese = $1 OR pinyin ILIKE $1 OR pinyin_no_tones ILIKE $1 THEN 1
-				WHEN english ~* $4 THEN 2
-				WHEN chinese ILIKE $2 OR pinyin ILIKE $2 OR pinyin_no_tones ILIKE $2 OR english ILIKE $2 THEN 3
-				WHEN english ~* $5 THEN 4
-				ELSE 5
-			END,
+			relevance ASC,
 			CASE WHEN hsk_level >= 1 THEN 0 ELSE 1 END,
 			hsk_level ASC,
 			length(english) ASC,
@@ -150,11 +153,12 @@ func (h *DictionaryHandler) Search(c *gin.Context) {
 	results := make([]DictionarySearchResult, 0)
 	for rows.Next() {
 		var r DictionarySearchResult
+		var relevance int
 		err := rows.Scan(
 			&r.ID, &r.Chinese, &r.Traditional, &r.Pinyin, &r.PinyinNoTones,
 			&r.English, &r.PartOfSpeech, &r.HSKLevel,
 			&r.ExampleSentences, &r.CreatedAt, &r.UpdatedAt,
-			&r.MatchType,
+			&r.MatchType, &relevance,
 		)
 		if err != nil {
 			continue
