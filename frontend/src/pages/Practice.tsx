@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Brain, Search, MessageCircle, ArrowRight, Sparkles, BookOpen } from 'lucide-react'
+import { Brain, Search, MessageCircle, ArrowRight, Sparkles, BookOpen, CalendarClock } from 'lucide-react'
 import { SEO } from '@/components/SEO'
 
 const tools = [
@@ -12,6 +12,14 @@ const tools = [
     cta: 'Start Flashcards',
   },
   {
+    name: 'Smart Review',
+    description: 'Spaced repetition schedules each word for review right before you\'d forget it. Grade yourself after each card and the schedule adapts to you.',
+    icon: CalendarClock,
+    href: '/review',
+    color: 'bg-primary-600',
+    cta: 'Review Due Words',
+  },
+  {
     name: 'Dictionary',
     description: 'Look up any Chinese word by character, pinyin, or English meaning. Every entry includes tone-marked pinyin, audio pronunciation, and example sentences.',
     icon: Search,
@@ -21,12 +29,12 @@ const tools = [
   },
   {
     name: 'AI Chinese Tutor',
-    description: 'Practice real conversation with our AI-powered tutor. Get instant corrections, explanations, and personalized guidance — like having a private teacher available 24/7.',
+    description: 'Practice real conversation with an AI-powered tutor — instant corrections, explanations, and personalized guidance. Launching soon.',
     icon: MessageCircle,
     href: '/chat',
     color: 'bg-purple-600',
-    cta: 'Start Conversation',
-    badge: 'AI-Powered',
+    cta: 'Learn More',
+    badge: 'Coming Soon',
   },
 ]
 

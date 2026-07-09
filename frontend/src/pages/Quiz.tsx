@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3 } from 'lucide-react'
+import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3, RefreshCw, CalendarClock, ArrowRight } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { quizApi } from '@/lib/api'
+import { quizApi, learningApi } from '@/lib/api'
 import { QuizCard } from '@/components/QuizCard'
 import { useAuth } from '@/contexts/AuthContext'
 
 type QuizType = 'practice' | 'scored'
+
+const CARD_COUNTS = [10, 25, 50]
 
 export function Quiz() {
 	const queryClient = useQueryClient()
@@ -17,6 +19,7 @@ export function Quiz() {
 
 	const [quizType, setQuizType] = useState<QuizType>('practice')
 	const [selectedLevel, setSelectedLevel] = useState<number | undefined>(initialHskLevel)
+	const [cardCount, setCardCount] = useState(10)
 	const [currentQuiz, setCurrentQuiz] = useState<any>(null)
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 	const [showResults, setShowResults] = useState(false)
@@ -25,7 +28,7 @@ export function Quiz() {
 
 	// Generate quiz mutation
 	const generateQuizMutation = useMutation({
-		mutationFn: (type: QuizType) => quizApi.generate(type, lessonSlug ? undefined : selectedLevel, 10, lessonSlug),
+		mutationFn: (type: QuizType) => quizApi.generate(type, lessonSlug ? undefined : selectedLevel, cardCount, lessonSlug),
 		onSuccess: (data) => {
 			setCurrentQuiz(data)
 			setCurrentCardIndex(0)
@@ -36,6 +39,25 @@ export function Quiz() {
 			setCurrentQuiz(null)
 		},
 	})
+
+	// Spaced-repetition: record how well the user knew a practice card
+	const gradeMutation = useMutation({
+		mutationFn: (review: { vocabulary_id: string; quality: number }) =>
+			learningApi.submitReviews([review]),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['learning-stats'] })
+		},
+	})
+
+	// Due-for-review count for the banner (authenticated users only)
+	const { data: learningStatsData } = useQuery({
+		queryKey: ['learning-stats'],
+		queryFn: () => learningApi.getStats(),
+		enabled: isAuthenticated,
+		staleTime: 60 * 1000,
+		retry: false,
+	})
+	const dueCount = learningStatsData?.stats?.words_due_for_review ?? 0
 
 	// Submit quiz mutation
 	const submitQuizMutation = useMutation({
@@ -131,6 +153,28 @@ export function Quiz() {
 
 	const handleNewQuiz = () => {
 		setCurrentQuiz(null)
+		setCurrentCardIndex(0)
+		setShowResults(false)
+		setUserAnswers({})
+		setQuizResult(null)
+	}
+
+	// Start a practice session containing only the words missed in the last quiz
+	const handlePracticeMissedWords = () => {
+		const cardResults = quizResult?.card_results || []
+		const wrongIds = new Set(cardResults.filter((cr: any) => !cr.is_correct).map((cr: any) => cr.card_id))
+		const wrongCards = (currentQuiz?.cards || [])
+			.filter((c: any) => wrongIds.has(c.id))
+			.map((c: any) => ({
+				...c,
+				multiple_choice: undefined,
+				correct_answer: undefined,
+				userAnswer: undefined,
+				isCorrect: undefined,
+			}))
+		if (wrongCards.length === 0) return
+		setQuizType('practice')
+		setCurrentQuiz({ id: `missed-${Date.now()}`, type: 'practice', cards: wrongCards })
 		setCurrentCardIndex(0)
 		setShowResults(false)
 		setUserAnswers({})
@@ -280,7 +324,13 @@ export function Quiz() {
 						)}
 
 						<div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-							<button onClick={handleNewQuiz} className="btn-primary">
+							{wrongCards.length > 0 && (
+								<button onClick={handlePracticeMissedWords} className="btn-primary">
+									<RefreshCw className="w-4 h-4 mr-2" />
+									Practice {wrongCards.length} Missed Word{wrongCards.length !== 1 ? 's' : ''}
+								</button>
+							)}
+							<button onClick={handleNewQuiz} className={wrongCards.length > 0 ? 'btn-outline' : 'btn-primary'}>
 								<Play className="w-4 h-4 mr-2" />
 								New Quiz
 							</button>
@@ -403,11 +453,12 @@ export function Quiz() {
 					userAnswer={userAnswers[currentCard.id]}
 					isScored={quizType === 'scored'}
 					showResults={showResults}
+					onGrade={
+						isAuthenticated && quizType === 'practice'
+							? (cardId, quality) => gradeMutation.mutate({ vocabulary_id: cardId, quality })
+							: undefined
+					}
 				/>
-
-
-
-
 			</div>
 		)
 	}
@@ -423,6 +474,30 @@ export function Quiz() {
 						: 'Test your Chinese vocabulary knowledge with interactive flashcards.'}
 				</p>
 			</div>
+
+			{/* Spaced-repetition review banner */}
+			{isAuthenticated && dueCount > 0 && (
+				<Link
+					to="/review"
+					className="flex items-center justify-between gap-3 p-4 sm:p-5 rounded-xl border-2 border-primary-200 dark:border-primary-500/40 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors group"
+				>
+					<div className="flex items-center gap-3 min-w-0">
+						<div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center flex-shrink-0">
+							<CalendarClock className="w-5 h-5" />
+						</div>
+						<div className="min-w-0">
+							<div className="font-semibold text-gray-900">
+								{dueCount} word{dueCount !== 1 ? 's' : ''} due for review
+							</div>
+							<div className="text-sm text-gray-600">Keep your memory fresh with a quick spaced-repetition session</div>
+						</div>
+					</div>
+					<div className="flex items-center text-primary-700 dark:text-primary-300 text-sm font-medium flex-shrink-0">
+						Review Now
+						<ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-0.5" />
+					</div>
+				</Link>
+			)}
 
 			{/* Lesson badge or HSK Level Selection */}
 			{lessonSlug ? (
@@ -467,6 +542,23 @@ export function Quiz() {
 								Quiz will include vocabulary from HSK Level {selectedLevel}
 							</p>
 						)}
+
+						<div className="text-sm font-medium text-gray-700 mt-6 mb-3">Session Length</div>
+						<div className="flex flex-wrap justify-center gap-2">
+							{CARD_COUNTS.map((count) => (
+								<button
+									key={count}
+									onClick={() => setCardCount(count)}
+									className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+										cardCount === count
+											? 'bg-primary-600 text-white'
+											: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+									}`}
+								>
+									{count} cards
+								</button>
+							))}
+						</div>
 					</div>
 				</div>
 			)}

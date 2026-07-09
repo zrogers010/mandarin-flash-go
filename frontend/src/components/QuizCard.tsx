@@ -27,6 +27,26 @@ interface QuizCardProps {
 	userAnswer?: string
 	isScored?: boolean
 	showResults?: boolean
+	/**
+	 * When provided, practice mode shows Again/Hard/Good/Easy grading buttons
+	 * on the card back (spaced repetition). Quality follows SM-2: 1=Again,
+	 * 3=Hard, 4=Good, 5=Easy. Grading advances to the next card.
+	 */
+	onGrade?: (cardId: string, quality: number) => void
+}
+
+const GRADES: { label: string; quality: number; key: string; cls: string }[] = [
+	{ label: 'Again', quality: 1, key: '1', cls: 'border-red-300 text-red-700 hover:bg-red-50 dark:border-red-500/60 dark:text-red-300 dark:hover:bg-red-900/30' },
+	{ label: 'Hard', quality: 3, key: '2', cls: 'border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-500/60 dark:text-orange-300 dark:hover:bg-orange-900/30' },
+	{ label: 'Good', quality: 4, key: '3', cls: 'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-500/60 dark:text-green-300 dark:hover:bg-green-900/30' },
+	{ label: 'Easy', quality: 5, key: '4', cls: 'border-primary-300 text-primary-700 hover:bg-primary-50 dark:border-primary-500/60 dark:text-primary-300 dark:hover:bg-primary-900/30' },
+]
+
+function isTypingTarget(e: KeyboardEvent): boolean {
+	const el = e.target as HTMLElement | null
+	if (!el) return false
+	const tag = el.tagName
+	return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable
 }
 
 export function QuizCard({
@@ -39,6 +59,7 @@ export function QuizCard({
 	userAnswer,
 	isScored = false,
 	showResults = false,
+	onGrade,
 }: QuizCardProps) {
 	const [isFlipped, setIsFlipped] = useState(false)
 	const [showPinyin, setShowPinyin] = useState(false)
@@ -61,6 +82,66 @@ export function QuizCard({
 	const handleAnswerSelect = (answer: string) => {
 		onAnswer?.(card.id, answer)
 	}
+
+	const handleGrade = (quality: number) => {
+		onGrade?.(card.id, quality)
+		onNext()
+	}
+
+	// Keyboard shortcuts. Space flips (practice), 1-4 answers (scored) or
+	// grades (practice+SRS), arrows navigate, P toggles pinyin, S speaks.
+	useEffect(() => {
+		const feedbackShown = showResults || card.isCorrect !== undefined
+
+		function handleKey(e: KeyboardEvent) {
+			if (isTypingTarget(e) || e.metaKey || e.ctrlKey || e.altKey) return
+
+			switch (e.key) {
+				case ' ':
+					e.preventDefault()
+					if (!isScored) setIsFlipped((f) => !f)
+					break
+				case 'ArrowRight':
+				case 'Enter':
+					e.preventDefault()
+					onNext()
+					break
+				case 'ArrowLeft':
+					e.preventDefault()
+					if (!isFirst) onPrevious()
+					break
+				case 'p':
+				case 'P':
+					e.preventDefault()
+					setShowPinyin((s) => !s)
+					break
+				case 's':
+				case 'S':
+					e.preventDefault()
+					speakText(card.chinese, 'zh')
+					break
+				case '1':
+				case '2':
+				case '3':
+				case '4': {
+					e.preventDefault()
+					const idx = Number(e.key) - 1
+					if (isScored) {
+						if (!feedbackShown && card.multiple_choice && card.multiple_choice[idx]) {
+							onAnswer?.(card.id, card.multiple_choice[idx])
+						}
+					} else if (onGrade && isFlipped) {
+						handleGrade(GRADES[idx].quality)
+					}
+					break
+				}
+			}
+		}
+
+		document.addEventListener('keydown', handleKey)
+		return () => document.removeEventListener('keydown', handleKey)
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [card, isScored, isFlipped, isFirst, showResults, onGrade, onAnswer, onNext, onPrevious])
 
 	const definitions = parseDefinitions(card.english)
 	const primaryExample = card.example_sentences?.[0]
@@ -167,6 +248,7 @@ export function QuizCard({
 					isFirst={isFirst}
 					isLast={isLast}
 				/>
+				<KeyboardHint isScored />
 			</div>
 		)
 	}
@@ -301,8 +383,69 @@ export function QuizCard({
 				</div>
 			</div>
 
-			<NavControls onPrevious={onPrevious} onNext={onNext} isFirst={isFirst} isLast={isLast} />
+			{/* SRS grading bar: shown once the card is revealed */}
+			{onGrade && isFlipped ? (
+				<div className="mt-5 sm:mt-6">
+					<p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-2">How well did you know this word?</p>
+					<div className="grid grid-cols-4 gap-2">
+						{GRADES.map((g) => (
+							<button
+								key={g.label}
+								onClick={() => handleGrade(g.quality)}
+								className={`py-2.5 rounded-xl border-2 bg-white dark:bg-gray-800 text-sm font-medium transition-colors ${g.cls}`}
+							>
+								{g.label}
+								<span className="hidden sm:inline text-[10px] text-gray-400 dark:text-gray-500 ml-1">{g.key}</span>
+							</button>
+						))}
+					</div>
+					<div className="flex justify-between items-center mt-3">
+						<button
+							onClick={onPrevious}
+							disabled={isFirst}
+							className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+						>
+							← Previous
+						</button>
+						<button onClick={onNext} className="text-sm text-gray-500 hover:text-gray-700">
+							Skip →
+						</button>
+					</div>
+				</div>
+			) : (
+				<NavControls onPrevious={onPrevious} onNext={onNext} isFirst={isFirst} isLast={isLast} />
+			)}
+			<KeyboardHint isScored={false} grading={!!onGrade} />
 		</div>
+	)
+}
+
+function KeyboardHint({ isScored, grading = false }: { isScored: boolean; grading?: boolean }) {
+	return (
+		<div className="hidden sm:flex items-center justify-center gap-3 mt-4 text-[11px] text-gray-400 dark:text-gray-500">
+			{isScored ? (
+				<>
+					<span><Kbd>1</Kbd>–<Kbd>4</Kbd> answer</span>
+					<span><Kbd>←</Kbd> <Kbd>→</Kbd> navigate</span>
+				</>
+			) : (
+				<>
+					<span><Kbd>Space</Kbd> flip</span>
+					{grading && <span><Kbd>1</Kbd>–<Kbd>4</Kbd> grade</span>}
+					<span><Kbd>←</Kbd> <Kbd>→</Kbd> navigate</span>
+				</>
+			)}
+			<span><Kbd>P</Kbd> pinyin</span>
+			<span><Kbd>S</Kbd> audio</span>
+		</div>
+	)
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+	return (
+		<kbd className="px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 font-sans text-[10px]">
+			{children}
+		</kbd>
 	)
 }
 

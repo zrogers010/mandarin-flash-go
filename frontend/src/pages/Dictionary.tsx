@@ -48,7 +48,7 @@ export function Dictionary() {
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Chinese Dictionary</h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Search over 120,000 Chinese words by characters, pinyin, or English meaning.
+          Search every HSK 1–5 word — over 2,500 entries — by characters, pinyin, or English meaning.
         </p>
       </div>
 

@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
 	BarChart3, Trophy, Target, Flame, ChevronDown, ChevronUp,
-	CheckCircle2, XCircle, ArrowLeft, Brain, TrendingUp
+	CheckCircle2, XCircle, ArrowLeft, Brain, TrendingUp,
+	CalendarClock, Sparkles, ArrowRight
 } from 'lucide-react'
-import { quizApi, QuizHistoryItem, QuizDetail, QuizStats } from '@/lib/api'
+import { quizApi, learningApi, QuizHistoryItem, QuizDetail, QuizStats, LearningStats } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 
 export function Progress() {
@@ -34,6 +35,14 @@ export function Progress() {
 		staleTime: 5 * 60 * 1000,
 	})
 
+	const { data: learningStatsData } = useQuery({
+		queryKey: ['learning-stats'],
+		queryFn: () => learningApi.getStats(),
+		enabled: isAuthenticated,
+		staleTime: 60 * 1000,
+		retry: false,
+	})
+
 	if (!isAuthenticated) {
 		return (
 			<div className="max-w-2xl mx-auto text-center py-16">
@@ -51,6 +60,7 @@ export function Progress() {
 	}
 
 	const stats: QuizStats | undefined = statsData?.stats
+	const learningStats: LearningStats | undefined = learningStatsData?.stats
 	const history: QuizHistoryItem[] = historyData?.history || []
 	const totalPages = historyData ? Math.ceil(historyData.total / historyData.limit) : 0
 
@@ -136,6 +146,9 @@ export function Progress() {
 				</div>
 			)}
 
+			{/* Spaced Repetition */}
+			<LearningSection learningStats={learningStats} />
+
 			{/* Quiz History */}
 			{historyLoading ? (
 				<div className="card animate-pulse">
@@ -191,6 +204,99 @@ export function Progress() {
 // ═══════════════════════════════════════════════════════════════════
 // Sub-components
 // ═══════════════════════════════════════════════════════════════════
+
+function LearningSection({ learningStats }: { learningStats?: LearningStats }) {
+	const hasData = !!learningStats && learningStats.total_words_learned > 0
+	const dueCount = learningStats?.words_due_for_review ?? 0
+
+	return (
+		<div className="space-y-4">
+			<div className="flex items-center justify-between">
+				<h2 className="text-xl font-semibold text-gray-900">Word Knowledge</h2>
+				<Link
+					to="/review"
+					className="flex items-center space-x-1 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+				>
+					<CalendarClock className="w-4 h-4" />
+					<span>{dueCount > 0 ? `Review ${dueCount} due` : 'Open Review'}</span>
+					<ArrowRight className="w-3.5 h-3.5" />
+				</Link>
+			</div>
+
+			{hasData ? (
+				<>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+						<StatCard
+							icon={<Brain className="w-5 h-5 text-primary-600" />}
+							label="Words Learning"
+							value={learningStats!.total_words_learned.toString()}
+							bgColor="bg-primary-50"
+						/>
+						<StatCard
+							icon={<Trophy className="w-5 h-5 text-green-600" />}
+							label="Mastered"
+							value={learningStats!.words_mastered.toString()}
+							bgColor="bg-green-50"
+						/>
+						<StatCard
+							icon={<CalendarClock className="w-5 h-5 text-orange-600" />}
+							label="Due Now"
+							value={dueCount.toString()}
+							bgColor="bg-orange-50"
+						/>
+						<StatCard
+							icon={<Target className="w-5 h-5 text-blue-600" />}
+							label="Review Accuracy"
+							value={`${learningStats!.accuracy_rate.toFixed(0)}%`}
+							bgColor="bg-blue-50"
+						/>
+					</div>
+
+					{/* Per-level progress */}
+					<div className="card">
+						<h3 className="text-sm font-semibold text-gray-700 mb-4">Words studied per HSK level</h3>
+						<div className="space-y-3">
+							{Object.entries(learningStats!.words_by_level)
+								.sort(([a], [b]) => Number(a) - Number(b))
+								.map(([level, ls]) => {
+									const pct = ls.total_words > 0 ? (ls.words_learned / ls.total_words) * 100 : 0
+									return (
+										<div key={level}>
+											<div className="flex justify-between text-xs text-gray-500 mb-1">
+												<span className="font-medium text-gray-700">HSK {level}</span>
+												<span>{ls.words_learned}/{ls.total_words} studied{ls.words_mastered > 0 ? ` · ${ls.words_mastered} mastered` : ''}</span>
+											</div>
+											<div className="w-full bg-gray-200 rounded-full h-2">
+												<div
+													className="bg-primary-600 h-2 rounded-full transition-all duration-500"
+													style={{ width: `${Math.min(100, pct)}%` }}
+												/>
+											</div>
+										</div>
+									)
+								})}
+						</div>
+					</div>
+				</>
+			) : (
+				<div className="card">
+					<div className="text-center py-8">
+						<Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+						<h3 className="text-lg font-semibold text-gray-700 mb-2">No words in review yet</h3>
+						<p className="text-gray-500 mb-6 max-w-md mx-auto">
+							Grade yourself on flashcards or start a review session, and we'll schedule each word
+							for review right before you'd forget it.
+						</p>
+						<Link to="/review" className="btn-primary inline-flex items-center">
+							<CalendarClock className="w-4 h-4 mr-2" />
+							Start Learning Words
+						</Link>
+					</div>
+				</div>
+			)}
+		</div>
+	)
+}
 
 function StatCard({ icon, label, value, bgColor }: {
 	icon: React.ReactNode
