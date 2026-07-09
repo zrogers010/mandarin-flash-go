@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -29,6 +29,8 @@ import { Learn } from '@/pages/Learn'
 import { Practice } from '@/pages/Practice'
 import { Lessons } from '@/pages/Lessons'
 import { LessonDetail } from '@/pages/LessonDetail'
+import { Review } from '@/pages/Review'
+import { NotFound } from '@/pages/NotFound'
 
 function App() {
   return (
@@ -46,6 +48,8 @@ function App() {
           <Route path="/vocabulary" element={<Vocabulary />} />
           <Route path="/vocabulary/:id" element={<VocabularyDetail />} />
           <Route path="/flashcards" element={<Quiz />} />
+          <Route path="/quiz" element={<Navigate to="/flashcards" replace />} />
+          <Route path="/review" element={<Review />} />
           <Route path="/dictionary" element={<Dictionary />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/progress" element={<Progress />} />
@@ -65,6 +69,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
     </AuthProvider>

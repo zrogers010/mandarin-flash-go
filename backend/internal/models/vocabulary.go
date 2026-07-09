@@ -151,10 +151,15 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 		query += " AND hsk_level >= 1"
 	}
 
+	// Relevance ranking expression, populated when a search term is present so
+	// exact matches sort before prefix matches before substring matches.
+	rankExpr := ""
 	if filters.Search != nil && *filters.Search != "" {
-		searchTerm := "%" + *filters.Search + "%"
+		searchLower := strings.ToLower(strings.TrimSpace(*filters.Search))
+		searchStripped := stripTones(searchLower)
+		searchTerm := "%" + searchLower + "%"
 		// Match tone-stripped pinyin too, so a query like "zhongguo" finds "zhōngguó"
-		searchNoTones := "%" + stripTones(strings.ToLower(*filters.Search)) + "%"
+		searchNoTones := "%" + searchStripped + "%"
 		query += fmt.Sprintf(` AND (
 			chinese ILIKE $%d OR
 			english ILIKE $%d OR
@@ -163,6 +168,16 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 		)`, argIndex, argIndex, argIndex, argIndex+1)
 		args = append(args, searchTerm, searchNoTones)
 		argIndex += 2
+
+		// Rank: 0 = exact match, 1 = prefix match, 2 = substring match. A query
+		// like "xia" should surface 下/夏/虾 before bǎoxiǎn or biǎoxiàn.
+		rankExpr = fmt.Sprintf(`CASE
+			WHEN chinese = $%d OR lower(pinyin) = $%d OR lower(english) = $%d OR lower(pinyin_no_tones) = $%d THEN 0
+			WHEN chinese LIKE $%d OR lower(pinyin) LIKE $%d OR lower(english) LIKE $%d OR lower(pinyin_no_tones) LIKE $%d THEN 1
+			ELSE 2
+		END`, argIndex, argIndex, argIndex, argIndex+1, argIndex+2, argIndex+2, argIndex+2, argIndex+3)
+		args = append(args, searchLower, searchStripped, searchLower+"%", searchStripped+"%")
+		argIndex += 4
 	}
 
 	// Add sorting before pagination
@@ -192,8 +207,12 @@ func (r *VocabularyRepository) GetAll(filters VocabularyFilters) (*VocabularyLis
 		filters.SortOrder = "asc"
 	}
 	
-	// Add sorting
-	query += fmt.Sprintf(" ORDER BY %s %s", sortField, filters.SortOrder)
+	// Add sorting (relevance first when searching, then the requested field)
+	if rankExpr != "" {
+		query += fmt.Sprintf(" ORDER BY %s, %s %s", rankExpr, sortField, filters.SortOrder)
+	} else {
+		query += fmt.Sprintf(" ORDER BY %s %s", sortField, filters.SortOrder)
+	}
 	
 	// Get total count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM (%s) as subquery", query)

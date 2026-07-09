@@ -1,6 +1,48 @@
 import { Link } from 'react-router-dom'
-import { BookOpen, Brain, Search, BarChart3, ArrowRight, Sparkles, MessageCircle, CheckCircle2, Volume2, BookTemplate, GraduationCap } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { BookOpen, Brain, Search, BarChart3, ArrowRight, Sparkles, MessageCircle, CheckCircle2, Volume2, BookTemplate, GraduationCap, CalendarClock } from 'lucide-react'
 import { SEO } from '@/components/SEO'
+import { learningApi } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
+
+/** Shows "N words due for review" for signed-in users with a pending queue. */
+function ReviewBanner() {
+  const { isAuthenticated } = useAuth()
+  const { data } = useQuery({
+    queryKey: ['learning-stats'],
+    queryFn: () => learningApi.getStats(),
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+  const due = data?.stats?.words_due_for_review ?? 0
+  if (!isAuthenticated || due === 0) return null
+
+  return (
+    <section>
+      <Link
+        to="/review"
+        className="flex items-center justify-between gap-3 p-4 sm:p-5 rounded-xl border-2 border-primary-200 dark:border-primary-500/40 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors group"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center flex-shrink-0">
+            <CalendarClock className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="font-semibold text-gray-900">
+              {due} word{due !== 1 ? 's' : ''} due for review
+            </div>
+            <div className="text-sm text-gray-600">A few minutes now keeps your vocabulary fresh</div>
+          </div>
+        </div>
+        <div className="flex items-center text-primary-700 dark:text-primary-300 text-sm font-medium flex-shrink-0">
+          Review Now
+          <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </Link>
+    </section>
+  )
+}
 
 const features = [
   {
@@ -49,10 +91,10 @@ const features = [
 
 const highlights = [
   'Interactive flashcards and scored quizzes',
+  'Spaced-repetition review system',
   'Audio pronunciation for every word',
   'Grammar and topic-based lessons',
   'HSK 1–5 vocabulary coverage',
-  'AI-powered Chinese tutor',
   'Free to use — no paywall',
 ]
 
@@ -84,8 +126,9 @@ export function Home() {
           <span className="text-gradient">in a Flash</span>
         </h1>
         <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-          The free, data-driven platform for learning Mandarin. Interactive flashcards, structured
-          lessons, an AI tutor, and comprehensive HSK coverage — everything you need in one place.
+          The free, data-driven platform for learning Mandarin. Interactive flashcards,
+          spaced-repetition reviews, structured lessons, and comprehensive HSK coverage —
+          everything you need in one place.
         </p>
 
         <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-600 max-w-2xl mx-auto">
@@ -108,6 +151,8 @@ export function Home() {
           </Link>
         </div>
       </section>
+
+      <ReviewBanner />
 
       {/* Features */}
       <section>
@@ -209,18 +254,18 @@ export function Home() {
       <section className="bg-gradient-to-r from-primary-700 to-primary-900 rounded-xl p-5 sm:p-8 text-white text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 rounded-full text-sm font-medium">
           <Sparkles className="w-3.5 h-3.5" />
-          AI-Powered
+          Coming Soon
         </div>
         <div className="flex items-center justify-center gap-2 sm:gap-3">
           <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8" />
           <h2 className="text-xl sm:text-2xl font-bold">AI Chinese Tutor</h2>
         </div>
         <p className="text-primary-100 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
-          Practice conversation in real-time with our AI-powered chatbot. Get instant feedback,
-          corrections, and personalized guidance — like having a private tutor available 24/7.
+          Real-time conversation practice with instant feedback and corrections is on the way.
+          In the meantime, drill vocabulary with flashcards and spaced-repetition reviews.
         </p>
-        <Link to="/chat" className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors text-sm">
-          Try AI Tutor
+        <Link to="/flashcards" className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors text-sm">
+          Start with Flashcards
           <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

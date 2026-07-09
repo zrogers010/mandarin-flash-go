@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   BookOpen, Brain, Search, MessageCircle, User, LogOut, LogIn,
   UserPlus, Settings, BarChart3, ChevronDown, Menu, X,
-  GraduationCap, Volume2, BookTemplate, Utensils, Sun, Moon, type LucideIcon,
+  GraduationCap, Volume2, BookTemplate, Utensils, Sun, Moon,
+  CalendarClock, Dumbbell, type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -42,6 +43,7 @@ interface NavItem {
   href?: string
   children?: NavChild[]
   matchPaths?: string[]
+  badge?: string
 }
 
 const navigation: NavItem[] = [
@@ -57,13 +59,15 @@ const navigation: NavItem[] = [
     ],
   },
   {
-    name: 'HSK Practice',
-    icon: BookOpen,
-    href: '/hsk',
-    matchPaths: ['/hsk', '/vocabulary', '/flashcards'],
+    name: 'Practice',
+    icon: Brain,
+    href: '/practice',
+    matchPaths: ['/practice', '/hsk', '/vocabulary', '/flashcards', '/review'],
     children: [
-      { name: 'HSK Flashcards', href: '/flashcards', icon: Brain, description: 'Drill HSK vocabulary with flashcards and quizzes' },
+      { name: 'Flashcards & Quizzes', href: '/flashcards', icon: Brain, description: 'Drill HSK vocabulary with flashcards and quizzes' },
+      { name: 'Review', href: '/review', icon: CalendarClock, description: 'Spaced-repetition review of words you\'ve studied' },
       { name: 'Browse Vocabulary', href: '/vocabulary', icon: BookOpen, description: 'Search and filter all HSK words' },
+      { name: 'HSK Guide', href: '/hsk', icon: Dumbbell, description: 'HSK levels explained, with study shortcuts' },
     ],
   },
   {
@@ -75,6 +79,7 @@ const navigation: NavItem[] = [
     name: 'AI Tutor',
     icon: MessageCircle,
     href: '/chat',
+    badge: 'Soon',
   },
 ]
 
@@ -247,6 +252,11 @@ function MobileAccordion({ item, pathname, search }: { item: NavItem; pathname: 
       >
         <item.icon className="w-5 h-5" />
         <span>{item.name}</span>
+        {item.badge && (
+          <span className="px-1.5 py-0.5 rounded-full bg-secondary-100 text-secondary-800 text-[10px] font-semibold uppercase tracking-wide">
+            {item.badge}
+          </span>
+        )}
       </Link>
     )
   }
@@ -364,6 +374,11 @@ export function Layout({ children }: LayoutProps) {
                     >
                       <item.icon className="w-4 h-4" />
                       <span>{item.name}</span>
+                      {item.badge && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-secondary-100 text-secondary-800 text-[10px] font-semibold uppercase tracking-wide">
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   )
                 )}

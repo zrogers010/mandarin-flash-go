@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
@@ -7,7 +7,6 @@ export const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const { verifyEmail } = useAuth()
-  const hasAttempted = useRef(false)
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
@@ -18,9 +17,6 @@ export const VerifyEmail: React.FC = () => {
       setMessage('No verification token provided. Please check the link in your email.')
       return
     }
-
-    if (hasAttempted.current) return
-    hasAttempted.current = true
 
     const verify = async () => {
       try {
@@ -44,7 +40,7 @@ export const VerifyEmail: React.FC = () => {
       <div className="max-w-md w-full text-center space-y-6">
         {status === 'loading' && (
           <>
-            <Loader2 className="h-16 w-16 text-indigo-600 animate-spin mx-auto" />
+            <Loader2 className="h-16 w-16 text-primary-600 animate-spin mx-auto" />
             <h2 className="text-2xl font-bold text-gray-900">Verifying your email...</h2>
             <p className="text-gray-600">Please wait a moment.</p>
           </>
@@ -61,7 +57,7 @@ export const VerifyEmail: React.FC = () => {
             <div className="pt-4">
               <Link
                 to="/login"
-                className="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                className="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
               >
                 Sign in to your account
               </Link>
@@ -79,13 +75,13 @@ export const VerifyEmail: React.FC = () => {
             <div className="pt-4 space-x-4">
               <Link
                 to="/login"
-                className="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                className="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
               >
                 Go to Login
               </Link>
               <Link
                 to="/settings"
-                className="inline-flex items-center px-6 py-3 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors"
+                className="inline-flex items-center px-6 py-3 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-md transition-colors"
               >
                 Resend Verification
               </Link>

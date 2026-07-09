@@ -131,7 +131,7 @@ export const Settings: React.FC = () => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               placeholder="Choose a username"
             />
           </div>
@@ -139,7 +139,7 @@ export const Settings: React.FC = () => {
           <button
             type="submit"
             disabled={isSavingProfile}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSavingProfile ? 'Saving...' : 'Save Changes'}
           </button>
@@ -169,7 +169,7 @@ export const Settings: React.FC = () => {
             <button
               onClick={handleResendVerification}
               disabled={isSendingVerification}
-              className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSendingVerification ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />

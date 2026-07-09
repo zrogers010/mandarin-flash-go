@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Volume2, ArrowRight } from 'lucide-react'
 import { Vocabulary } from '@/lib/api'
 import { speakText } from '@/lib/speech'
@@ -13,12 +13,10 @@ export function VocabularyCard({
   vocabulary, 
   className = '' 
 }: VocabularyCardProps) {
-  const navigate = useNavigate()
-
   return (
-    <div 
-      className={`card !p-3 sm:!p-6 group hover:shadow-lg sm:hover:scale-[1.02] transition-all duration-300 cursor-pointer active:bg-gray-50 ${className}`}
-      onClick={() => navigate(`/vocabulary/${vocabulary.id}`)}
+    <Link
+      to={`/vocabulary/${vocabulary.id}`}
+      className={`card !p-3 sm:!p-6 group hover:shadow-lg sm:hover:scale-[1.02] transition-all duration-300 cursor-pointer active:bg-gray-50 block ${className}`}
     >
       {/* Chinese Character */}
       <div className="text-center mb-2 sm:mb-3 relative">
@@ -39,6 +37,7 @@ export function VocabularyCard({
           </div>
           <button 
             onClick={(e) => {
+              e.preventDefault()
               e.stopPropagation()
               speakText(vocabulary.chinese, 'zh')
             }}
@@ -61,6 +60,6 @@ export function VocabularyCard({
           {shortDefinition(vocabulary.english, 3)}
         </div>
       </div>
-    </div>
+    </Link>
   )
-} 
+}
