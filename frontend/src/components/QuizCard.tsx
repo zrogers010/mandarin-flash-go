@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Volume2, RotateCw } from 'lucide-react'
 import { speakText } from '@/lib/speech'
 import { parseDefinitions } from '@/lib/definitions'
+import { TonePinyin, ToneLegend } from '@/lib/pinyin'
 
 interface QuizCardProps {
 	card: {
@@ -9,6 +10,7 @@ interface QuizCardProps {
 		chinese: string
 		pinyin: string
 		english: string
+		hsk_level?: number
 		example_sentences: Array<{
 			chinese: string
 			pinyin: string
@@ -35,11 +37,11 @@ interface QuizCardProps {
 	onGrade?: (cardId: string, quality: number) => void
 }
 
-const GRADES: { label: string; quality: number; key: string; cls: string }[] = [
-	{ label: 'Again', quality: 1, key: '1', cls: 'border-red-300 text-red-700 hover:bg-red-50 dark:border-red-500/60 dark:text-red-300 dark:hover:bg-red-900/30' },
-	{ label: 'Hard', quality: 3, key: '2', cls: 'border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-500/60 dark:text-orange-300 dark:hover:bg-orange-900/30' },
-	{ label: 'Good', quality: 4, key: '3', cls: 'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-500/60 dark:text-green-300 dark:hover:bg-green-900/30' },
-	{ label: 'Easy', quality: 5, key: '4', cls: 'border-primary-300 text-primary-700 hover:bg-primary-50 dark:border-primary-500/60 dark:text-primary-300 dark:hover:bg-primary-900/30' },
+const GRADES: { label: string; sub: string; quality: number; key: string; cls: string }[] = [
+	{ label: 'Again', sub: 'forgot', quality: 1, key: '1', cls: 'border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 dark:border-red-500/50 dark:text-red-300 dark:hover:bg-red-900/30' },
+	{ label: 'Hard', sub: 'struggled', quality: 3, key: '2', cls: 'border-orange-300 text-orange-700 hover:bg-orange-50 hover:border-orange-400 dark:border-orange-500/50 dark:text-orange-300 dark:hover:bg-orange-900/30' },
+	{ label: 'Good', sub: 'knew it', quality: 4, key: '3', cls: 'border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 dark:border-green-500/50 dark:text-green-300 dark:hover:bg-green-900/30' },
+	{ label: 'Easy', sub: 'instant', quality: 5, key: '4', cls: 'border-primary-300 text-primary-700 hover:bg-primary-50 hover:border-primary-400 dark:border-primary-500/50 dark:text-primary-300 dark:hover:bg-primary-900/30' },
 ]
 
 function isTypingTarget(e: KeyboardEvent): boolean {
@@ -47,6 +49,32 @@ function isTypingTarget(e: KeyboardEvent): boolean {
 	if (!el) return false
 	const tag = el.tagName
 	return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable
+}
+
+function HskChip({ level }: { level?: number }) {
+	if (!level || level < 1) return null
+	return (
+		<span className="absolute top-4 left-4 px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 text-xs font-semibold tracking-wide">
+			HSK {level}
+		</span>
+	)
+}
+
+function AudioButton({ text, className = '', size = 'md' }: { text: string; className?: string; size?: 'sm' | 'md' }) {
+	return (
+		<button
+			onClick={(e) => {
+				e.stopPropagation()
+				speakText(text, 'zh')
+			}}
+			className={`rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-primary-100 hover:text-primary-700 dark:hover:bg-primary-900/50 dark:hover:text-primary-300 transition-colors ${
+				size === 'md' ? 'p-2.5' : 'p-1.5'
+			} ${className}`}
+			aria-label="Listen to pronunciation"
+		>
+			<Volume2 className={size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} />
+		</button>
+	)
 }
 
 export function QuizCard({
@@ -151,33 +179,38 @@ export function QuizCard({
 	const MAX_DEFS = 5
 	const meaningSize = definitions.length <= 3 ? 'text-lg sm:text-xl' : 'text-base'
 
+	// Soft face styling shared by both card faces.
+	const face =
+		'h-full rounded-3xl border border-gray-200/80 dark:border-gray-700 ' +
+		'bg-gradient-to-br from-white via-white to-primary-50/60 ' +
+		'dark:from-gray-800 dark:via-gray-800 dark:to-primary-900/20 ' +
+		'shadow-[0_12px_40px_-12px_rgba(13,115,119,0.25)] dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.6)]'
+
 	// ---------- Scored (multiple-choice) mode ----------
 	if (isScored) {
 		return (
-			<div className="w-full max-w-2xl mx-auto">
-				<div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 sm:p-8">
+			<div key={card.id} className="w-full max-w-2xl mx-auto animate-slide-up">
+				<div className={`${face.replace('h-full ', '')} p-6 sm:p-8 relative`}>
+					<HskChip level={card.hsk_level} />
 					<div className="relative text-center">
-						<button
-							onClick={() => speakText(card.chinese, 'zh')}
-							className="absolute top-0 right-0 p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-							aria-label="Listen to pronunciation"
-						>
-							<Volume2 className="w-5 h-5" />
-						</button>
+						<AudioButton text={card.chinese} className="absolute top-0 right-0" />
 
-						<div className="text-5xl sm:text-6xl font-bold chinese-text text-gray-900 dark:text-gray-50 pt-6 sm:pt-2">
+						<div className="chinese-text font-bold text-gray-900 dark:text-gray-50 pt-8 sm:pt-4 text-6xl sm:text-7xl tracking-wide">
 							{card.chinese}
 						</div>
 
-						<button
-							onClick={handleShowPinyin}
-							className="mt-4 px-3 py-1 text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
-						>
-							{showPinyin ? 'Hide pinyin' : 'Show pinyin'}
-						</button>
-						{showPinyin && (
-							<div className="mt-2 text-lg text-primary-600 dark:text-primary-300">{card.pinyin}</div>
-						)}
+						<div className="h-9 mt-4">
+							{showPinyin ? (
+								<TonePinyin text={card.pinyin} hanzi={card.chinese} className="text-xl font-medium" />
+							) : (
+								<button
+									onClick={handleShowPinyin}
+									className="px-3 py-1 text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+								>
+									Show pinyin
+								</button>
+							)}
+						</div>
 					</div>
 
 					{card.multiple_choice && (
@@ -192,19 +225,25 @@ export function QuizCard({
 									const showFeedback = showResults || card.isCorrect !== undefined
 
 									let cls =
-										'flex items-center gap-2 p-3 text-left rounded-xl border-2 transition-colors text-sm '
+										'flex items-center gap-2.5 p-3.5 text-left rounded-2xl border-2 transition-all text-sm '
+									let chipCls = 'bg-black/5 dark:bg-white/10 text-gray-600 dark:text-gray-300'
 									if (showFeedback) {
-										if (isCorrect)
+										if (isCorrect) {
 											cls += 'border-green-500 bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200 dark:border-green-500'
-										else if (isUserAnswer)
+											chipCls = 'bg-green-500 text-white'
+										} else if (isUserAnswer) {
 											cls += 'border-red-500 bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200 dark:border-red-500'
-										else
-											cls += 'border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
+											chipCls = 'bg-red-500 text-white'
+										} else {
+											cls += 'border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
+										}
 									} else if (isUserAnswer) {
 										cls += 'border-primary-500 bg-primary-50 text-primary-800 dark:bg-primary-900/40 dark:text-primary-100 dark:border-primary-500'
+										chipCls = 'bg-primary-600 text-white'
 									} else {
 										cls +=
-											'border-gray-200 bg-white text-gray-800 hover:border-primary-300 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:border-primary-500 dark:hover:bg-gray-600'
+											'border-gray-200 bg-white text-gray-800 hover:border-primary-300 hover:bg-primary-50/40 hover:-translate-y-0.5 ' +
+											'dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:border-primary-500 dark:hover:bg-gray-600'
 									}
 
 									return (
@@ -214,13 +253,13 @@ export function QuizCard({
 											disabled={showFeedback}
 											className={cls}
 										>
-											<span className="flex-shrink-0 w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-semibold">
+											<span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${chipCls}`}>
 												{String.fromCharCode(65 + index)}
 											</span>
 											<span className="flex-1">{option}</span>
-											{showFeedback && isCorrect && <span className="text-green-600 dark:text-green-400">✓</span>}
+											{showFeedback && isCorrect && <span className="text-green-600 dark:text-green-400 font-bold">✓</span>}
 											{showFeedback && isUserAnswer && !isCorrect && (
-												<span className="text-red-600 dark:text-red-400">✗</span>
+												<span className="text-red-600 dark:text-red-400 font-bold">✗</span>
 											)}
 										</button>
 									)
@@ -229,13 +268,20 @@ export function QuizCard({
 
 							{card.isCorrect !== undefined && (
 								<div
-									className={`mt-4 p-2.5 rounded-xl text-center text-sm font-medium ${
+									className={`mt-4 p-3 rounded-2xl text-center text-sm font-medium animate-slide-up ${
 										card.isCorrect
 											? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
 											: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
 									}`}
 								>
-									{card.isCorrect ? '✓ Correct!' : `✗ Correct answer: ${card.correct_answer}`}
+									{card.isCorrect ? (
+										'✓ Correct!'
+									) : (
+										<>✗ Correct answer: <span className="font-semibold">{card.correct_answer}</span></>
+									)}
+									<span className="block text-xs opacity-70 mt-0.5">
+										<TonePinyin text={card.pinyin} hanzi={card.chinese} /> — press Enter for next
+									</span>
 								</div>
 							)}
 						</div>
@@ -255,8 +301,8 @@ export function QuizCard({
 
 	// ---------- Practice (flip) mode ----------
 	return (
-		<div className="w-full max-w-xl mx-auto">
-			<div className="relative w-full h-80 sm:h-96 perspective-1000">
+		<div key={card.id} className="w-full max-w-xl mx-auto animate-slide-up">
+			<div className="relative w-full h-[22rem] sm:h-[26rem] perspective-1000">
 				<div
 					className={`relative w-full h-full transition-transform duration-500 ease-out transform-style-preserve-3d cursor-pointer ${
 						isFlipped ? 'rotate-y-180' : ''
@@ -265,61 +311,47 @@ export function QuizCard({
 				>
 					{/* Front: the character */}
 					<div className="absolute inset-0 backface-hidden">
-						<div className="h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-md flex flex-col items-center justify-center p-6 text-center relative">
-							<button
-								onClick={(e) => {
-									e.stopPropagation()
-									speakText(card.chinese, 'zh')
-								}}
-								className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-								aria-label="Listen to pronunciation"
-							>
-								<Volume2 className="w-5 h-5" />
-							</button>
+						<div className={`${face} flex flex-col items-center justify-center p-6 text-center relative`}>
+							<HskChip level={card.hsk_level} />
+							<AudioButton text={card.chinese} className="absolute top-4 right-4" />
 
-							<div className="text-6xl sm:text-7xl font-bold chinese-text text-gray-900 dark:text-gray-50 leading-none">
+							<div
+								className="chinese-text font-bold text-gray-900 dark:text-gray-50 leading-none tracking-wide"
+								style={{ fontSize: card.chinese.length > 3 ? '3.5rem' : card.chinese.length > 2 ? '4.5rem' : '6rem' }}
+							>
 								{card.chinese}
 							</div>
 
-							<div className="h-8 mt-5">
+							<div className="h-9 mt-6">
 								{showPinyin ? (
-									<span className="text-xl text-primary-600 dark:text-primary-300">{card.pinyin}</span>
+									<TonePinyin text={card.pinyin} hanzi={card.chinese} className="text-2xl font-medium" />
 								) : (
 									<button
 										onClick={handleShowPinyin}
-										className="text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 px-3 py-1 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+										className="text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 px-3.5 py-1.5 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
 									>
 										Show pinyin
 									</button>
 								)}
 							</div>
 
-							<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+							<div className="absolute bottom-5 inset-x-0 flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
 								<RotateCw className="w-3.5 h-3.5" />
-								Tap to reveal
+								Tap to reveal meaning
 							</div>
 						</div>
 					</div>
 
 					{/* Back: pinyin, meaning, example */}
 					<div className="absolute inset-0 backface-hidden rotate-y-180">
-						<div className="h-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-md flex flex-col p-5 sm:p-6">
+						<div className={`${face} flex flex-col p-5 sm:p-6`}>
 							{/* Header: character + pinyin + audio */}
 							<div className="flex items-center justify-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-700">
-								<span className="text-2xl chinese-text font-bold text-gray-900 dark:text-gray-50">
+								<span className="text-3xl chinese-text font-bold text-gray-900 dark:text-gray-50">
 									{card.chinese}
 								</span>
-								<span className="text-lg text-primary-600 dark:text-primary-300">{card.pinyin}</span>
-								<button
-									onClick={(e) => {
-										e.stopPropagation()
-										speakText(card.chinese, 'zh')
-									}}
-									className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-									aria-label="Listen to pronunciation"
-								>
-									<Volume2 className="w-4 h-4" />
-								</button>
+								<TonePinyin text={card.pinyin} hanzi={card.chinese} className="text-xl font-medium" />
+								<AudioButton text={card.chinese} size="sm" />
 							</div>
 
 							{/* Meaning */}
@@ -348,11 +380,11 @@ export function QuizCard({
 							{/* One example sentence */}
 							{primaryExample && (
 								<div
-									className="rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 px-3.5 py-2.5"
+									className="rounded-2xl bg-white/70 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 px-4 py-3"
 									onClick={(e) => e.stopPropagation()}
 								>
 									<div className="flex items-center gap-1.5">
-										<span className="text-sm chinese-text font-medium text-gray-900 dark:text-gray-100">
+										<span className="text-[15px] chinese-text font-medium text-gray-900 dark:text-gray-100">
 											{primaryExample.chinese}
 										</span>
 										<button
@@ -364,8 +396,8 @@ export function QuizCard({
 										</button>
 									</div>
 									{primaryExample.pinyin && (
-										<div className="text-xs text-gray-400 dark:text-gray-500 leading-snug mt-0.5">
-											{primaryExample.pinyin}
+										<div className="text-xs leading-snug mt-0.5">
+											<TonePinyin text={primaryExample.pinyin} hanzi={primaryExample.chinese} />
 										</div>
 									)}
 									<div className="text-xs text-gray-600 dark:text-gray-300 italic mt-0.5">
@@ -385,17 +417,17 @@ export function QuizCard({
 
 			{/* SRS grading bar: shown once the card is revealed */}
 			{onGrade && isFlipped ? (
-				<div className="mt-5 sm:mt-6">
+				<div className="mt-5 sm:mt-6 animate-slide-up">
 					<p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-2">How well did you know this word?</p>
 					<div className="grid grid-cols-4 gap-2">
 						{GRADES.map((g) => (
 							<button
 								key={g.label}
 								onClick={() => handleGrade(g.quality)}
-								className={`py-2.5 rounded-xl border-2 bg-white dark:bg-gray-800 text-sm font-medium transition-colors ${g.cls}`}
+								className={`py-2.5 rounded-2xl border-2 bg-white dark:bg-gray-800 font-medium transition-all hover:-translate-y-0.5 ${g.cls}`}
 							>
-								{g.label}
-								<span className="hidden sm:inline text-[10px] text-gray-400 dark:text-gray-500 ml-1">{g.key}</span>
+								<span className="block text-sm">{g.label}</span>
+								<span className="block text-[10px] opacity-60 font-normal">{g.sub}</span>
 							</button>
 						))}
 					</div>
@@ -415,28 +447,35 @@ export function QuizCard({
 			) : (
 				<NavControls onPrevious={onPrevious} onNext={onNext} isFirst={isFirst} isLast={isLast} />
 			)}
-			<KeyboardHint isScored={false} grading={!!onGrade} />
+			<KeyboardHint isScored={false} grading={!!onGrade} showLegend={isFlipped || showPinyin} />
 		</div>
 	)
 }
 
-function KeyboardHint({ isScored, grading = false }: { isScored: boolean; grading?: boolean }) {
+function KeyboardHint({ isScored, grading = false, showLegend = false }: { isScored: boolean; grading?: boolean; showLegend?: boolean }) {
 	return (
-		<div className="hidden sm:flex items-center justify-center gap-3 mt-4 text-[11px] text-gray-400 dark:text-gray-500">
-			{isScored ? (
-				<>
-					<span><Kbd>1</Kbd>–<Kbd>4</Kbd> answer</span>
-					<span><Kbd>←</Kbd> <Kbd>→</Kbd> navigate</span>
-				</>
-			) : (
-				<>
-					<span><Kbd>Space</Kbd> flip</span>
-					{grading && <span><Kbd>1</Kbd>–<Kbd>4</Kbd> grade</span>}
-					<span><Kbd>←</Kbd> <Kbd>→</Kbd> navigate</span>
-				</>
+		<div className="mt-4 space-y-1.5">
+			<div className="hidden sm:flex items-center justify-center gap-3 text-[11px] text-gray-400 dark:text-gray-500">
+				{isScored ? (
+					<>
+						<span><Kbd>1</Kbd>–<Kbd>4</Kbd> answer</span>
+						<span><Kbd>←</Kbd> <Kbd>→</Kbd> navigate</span>
+					</>
+				) : (
+					<>
+						<span><Kbd>Space</Kbd> flip</span>
+						{grading && <span><Kbd>1</Kbd>–<Kbd>4</Kbd> grade</span>}
+						<span><Kbd>←</Kbd> <Kbd>→</Kbd> navigate</span>
+					</>
+				)}
+				<span><Kbd>P</Kbd> pinyin</span>
+				<span><Kbd>S</Kbd> audio</span>
+			</div>
+			{showLegend && (
+				<div className="flex justify-center text-[11px] text-gray-400 dark:text-gray-500">
+					<ToneLegend />
+				</div>
 			)}
-			<span><Kbd>P</Kbd> pinyin</span>
-			<span><Kbd>S</Kbd> audio</span>
 		</div>
 	)
 }
