@@ -161,10 +161,12 @@ func (r *LearningRepository) GetNewWordsForStudy(userID uuid.UUID, hskLevel *int
 		limit = 10
 	}
 
+	// hsk_level >= 1 keeps study sessions to curated HSK words; the full
+	// CC-CEDICT import stores general dictionary entries with hsk_level = 0.
 	query := `
 		SELECT v.id, v.chinese, v.pinyin, v.pinyin_no_tones, v.english, v.part_of_speech, v.hsk_level, v.example_sentences, v.created_at, v.updated_at
 		FROM vocabulary v
-		WHERE NOT EXISTS (
+		WHERE v.hsk_level >= 1 AND NOT EXISTS (
 			SELECT 1 FROM user_vocabulary_progress p
 			WHERE p.vocabulary_id = v.id AND p.user_id = $1
 		)
@@ -338,6 +340,7 @@ func (r *LearningRepository) GetLearningStats(userID uuid.UUID) (*models.Learnin
 			COUNT(DISTINCT p.vocabulary_id) FILTER (WHERE p.next_review_at <= NOW()) as due
 		FROM vocabulary v
 		LEFT JOIN user_vocabulary_progress p ON v.id = p.vocabulary_id AND p.user_id = $1
+		WHERE v.hsk_level >= 1
 		GROUP BY v.hsk_level
 		ORDER BY v.hsk_level
 	`

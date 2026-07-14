@@ -226,9 +226,23 @@ func (h *DictionaryHandler) GetWord(c *gin.Context) {
 		return
 	}
 
-	relatedQuery := fmt.Sprintf(`SELECT %s FROM vocabulary
-		WHERE hsk_level = $1 AND id != $2 ORDER BY RANDOM() LIMIT 5`, vocabSelect)
-	rows, err := h.db.Query(relatedQuery, v.HSKLevel, v.ID)
+	// For non-HSK dictionary entries (hsk_level = 0), "same level" would be a
+	// random draw from ~118k CEDICT words, so relate by shared characters instead.
+	var relatedQuery string
+	var relatedArgs []interface{}
+	if v.HSKLevel >= 1 {
+		relatedQuery = fmt.Sprintf(`SELECT %s FROM vocabulary
+			WHERE hsk_level = $1 AND id != $2 ORDER BY RANDOM() LIMIT 5`, vocabSelect)
+		relatedArgs = []interface{}{v.HSKLevel, v.ID}
+	} else {
+		firstChar := string([]rune(v.Chinese)[0])
+		relatedQuery = fmt.Sprintf(`SELECT %s FROM vocabulary
+			WHERE chinese LIKE $1 AND id != $2
+			ORDER BY CASE WHEN hsk_level >= 1 THEN 0 ELSE 1 END, length(chinese) ASC
+			LIMIT 5`, vocabSelect)
+		relatedArgs = []interface{}{firstChar + "%", v.ID}
+	}
+	rows, err := h.db.Query(relatedQuery, relatedArgs...)
 	related := make([]models.Vocabulary, 0)
 	if err == nil {
 		defer rows.Close()
