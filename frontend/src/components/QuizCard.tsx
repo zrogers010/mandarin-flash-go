@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Volume2, RotateCw } from 'lucide-react'
+import { Volume2, RotateCw, PenLine } from 'lucide-react'
 import { speakText } from '@/lib/speech'
 import { parseDefinitions } from '@/lib/definitions'
 import { TonePinyin, ToneLegend } from '@/lib/pinyin'
+import { StrokeOrder } from '@/components/StrokeOrder'
 
 interface QuizCardProps {
 	card: {
@@ -91,11 +92,13 @@ export function QuizCard({
 }: QuizCardProps) {
 	const [isFlipped, setIsFlipped] = useState(false)
 	const [showPinyin, setShowPinyin] = useState(false)
+	const [showStrokes, setShowStrokes] = useState(false)
 
 	// Reset face/pinyin state whenever a new card is shown.
 	useEffect(() => {
 		setIsFlipped(false)
 		setShowPinyin(false)
+		setShowStrokes(false)
 	}, [card.id])
 
 	const handleFlip = () => {
@@ -147,6 +150,13 @@ export function QuizCard({
 				case 'S':
 					e.preventDefault()
 					speakText(card.chinese, 'zh')
+					break
+				case 'w':
+				case 'W':
+					if (!isScored && isFlipped) {
+						e.preventDefault()
+						setShowStrokes((s) => !s)
+					}
 					break
 				case '1':
 				case '2':
@@ -345,65 +355,92 @@ export function QuizCard({
 					{/* Back: pinyin, meaning, example */}
 					<div className="absolute inset-0 backface-hidden rotate-y-180">
 						<div className={`${face} flex flex-col p-5 sm:p-6`}>
-							{/* Header: character + pinyin + audio */}
+							{/* Header: character + pinyin + audio + stroke toggle */}
 							<div className="flex items-center justify-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-700">
 								<span className="text-3xl chinese-text font-bold text-gray-900 dark:text-gray-50">
 									{card.chinese}
 								</span>
 								<TonePinyin text={card.pinyin} hanzi={card.chinese} className="text-xl font-medium" />
 								<AudioButton text={card.chinese} size="sm" />
+								<button
+									onClick={(e) => {
+										e.stopPropagation()
+										setShowStrokes((s) => !s)
+									}}
+									aria-pressed={showStrokes}
+									aria-label="Show stroke order"
+									className={`rounded-full p-1.5 transition-colors ${
+										showStrokes
+											? 'bg-primary-100 text-primary-700 dark:bg-primary-900/60 dark:text-primary-300'
+											: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-primary-100 hover:text-primary-700 dark:hover:bg-primary-900/50 dark:hover:text-primary-300'
+									}`}
+								>
+									<PenLine className="w-4 h-4" />
+								</button>
 							</div>
 
-							{/* Meaning */}
-							<div className="flex-1 min-h-0 flex flex-col items-center justify-center py-2" onClick={(e) => e.stopPropagation()}>
-								{definitions.length <= 1 ? (
-									<div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-50 text-center px-2 break-words">
-										{card.english}
-									</div>
-								) : (
-									<ol className={`w-full max-w-sm mx-auto overflow-y-auto max-h-full text-left space-y-1 px-1 ${meaningSize}`}>
-										{definitions.slice(0, MAX_DEFS).map((def, i) => (
-											<li key={i} className="flex gap-1.5 text-gray-800 dark:text-gray-100 leading-snug">
-												<span className="text-primary-500 dark:text-primary-300 font-semibold flex-shrink-0">{i + 1}.</span>
-												<span className="break-words min-w-0">{def}</span>
-											</li>
-										))}
-										{definitions.length > MAX_DEFS && (
-											<li className="text-xs text-gray-400 dark:text-gray-500 pl-5 pt-0.5">
-												+{definitions.length - MAX_DEFS} more
-											</li>
-										)}
-									</ol>
-								)}
-							</div>
-
-							{/* One example sentence */}
-							{primaryExample && (
+							{showStrokes ? (
+								/* Stroke-order animation replaces meaning + example */
 								<div
-									className="rounded-2xl bg-white/70 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 px-4 py-3"
+									className="flex-1 min-h-0 flex flex-col items-center justify-center py-2"
 									onClick={(e) => e.stopPropagation()}
 								>
-									<div className="flex items-center gap-1.5">
-										<span className="text-[15px] chinese-text font-medium text-gray-900 dark:text-gray-100">
-											{primaryExample.chinese}
-										</span>
-										<button
-											onClick={() => speakText(primaryExample.chinese, 'zh')}
-											className="flex-shrink-0 p-0.5 rounded-full text-primary-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-											aria-label="Listen to example"
-										>
-											<Volume2 className="w-3 h-3" />
-										</button>
+									<StrokeOrder text={card.chinese} />
+								</div>
+							) : (
+								<>
+									{/* Meaning */}
+									<div className="flex-1 min-h-0 flex flex-col items-center justify-center py-2" onClick={(e) => e.stopPropagation()}>
+										{definitions.length <= 1 ? (
+											<div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-50 text-center px-2 break-words">
+												{card.english}
+											</div>
+										) : (
+											<ol className={`w-full max-w-sm mx-auto overflow-y-auto max-h-full text-left space-y-1 px-1 ${meaningSize}`}>
+												{definitions.slice(0, MAX_DEFS).map((def, i) => (
+													<li key={i} className="flex gap-1.5 text-gray-800 dark:text-gray-100 leading-snug">
+														<span className="text-primary-500 dark:text-primary-300 font-semibold flex-shrink-0">{i + 1}.</span>
+														<span className="break-words min-w-0">{def}</span>
+													</li>
+												))}
+												{definitions.length > MAX_DEFS && (
+													<li className="text-xs text-gray-400 dark:text-gray-500 pl-5 pt-0.5">
+														+{definitions.length - MAX_DEFS} more
+													</li>
+												)}
+											</ol>
+										)}
 									</div>
-									{primaryExample.pinyin && (
-										<div className="text-xs leading-snug mt-0.5">
-											<TonePinyin text={primaryExample.pinyin} hanzi={primaryExample.chinese} />
+
+									{/* One example sentence */}
+									{primaryExample && (
+										<div
+											className="rounded-2xl bg-white/70 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 px-4 py-3"
+											onClick={(e) => e.stopPropagation()}
+										>
+											<div className="flex items-center gap-1.5">
+												<span className="text-[15px] chinese-text font-medium text-gray-900 dark:text-gray-100">
+													{primaryExample.chinese}
+												</span>
+												<button
+													onClick={() => speakText(primaryExample.chinese, 'zh')}
+													className="flex-shrink-0 p-0.5 rounded-full text-primary-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+													aria-label="Listen to example"
+												>
+													<Volume2 className="w-3 h-3" />
+												</button>
+											</div>
+											{primaryExample.pinyin && (
+												<div className="text-xs leading-snug mt-0.5">
+													<TonePinyin text={primaryExample.pinyin} hanzi={primaryExample.chinese} />
+												</div>
+											)}
+											<div className="text-xs text-gray-600 dark:text-gray-300 italic mt-0.5">
+												{primaryExample.english}
+											</div>
 										</div>
 									)}
-									<div className="text-xs text-gray-600 dark:text-gray-300 italic mt-0.5">
-										{primaryExample.english}
-									</div>
-								</div>
+								</>
 							)}
 
 							<div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 pt-2.5">
@@ -466,6 +503,7 @@ function KeyboardHint({ isScored, grading = false, showLegend = false }: { isSco
 						<span><Kbd>Space</Kbd> flip</span>
 						{grading && <span><Kbd>1</Kbd>–<Kbd>4</Kbd> grade</span>}
 						<span><Kbd>←</Kbd> <Kbd>→</Kbd> navigate</span>
+						<span><Kbd>W</Kbd> strokes</span>
 					</>
 				)}
 				<span><Kbd>P</Kbd> pinyin</span>

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3, RefreshCw, CalendarClock, ArrowRight, Layers, Brain } from 'lucide-react'
+import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3, RefreshCw, CalendarClock, ArrowRight, Layers, Brain, Flame } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { quizApi, learningApi } from '@/lib/api'
 import { QuizCard } from '@/components/QuizCard'
+import { celebrate, streakBurst } from '@/lib/celebrate'
 import { useAuth } from '@/contexts/AuthContext'
 
 type QuizType = 'practice' | 'scored'
@@ -76,6 +77,25 @@ export function Quiz() {
 	const [showResults, setShowResults] = useState(false)
 	const [userAnswers, setUserAnswers] = useState<Record<string, string>>({})
 	const [quizResult, setQuizResult] = useState<any>(null)
+	// In-session streak of consecutive correct answers (quiz) or Good/Easy grades (practice)
+	const [streak, setStreak] = useState(0)
+	const [bestStreak, setBestStreak] = useState(0)
+
+	const recordOutcome = (correct: boolean) => {
+		const next = correct ? streak + 1 : 0
+		setStreak(next)
+		if (correct) {
+			if (next > bestStreak) setBestStreak(next)
+			if (next % 5 === 0) streakBurst()
+		}
+	}
+
+	// Confetti when a session wraps up (any finished practice run, or a quiz scored 80%+)
+	useEffect(() => {
+		if (!showResults) return
+		if (quizType === 'practice' || (quizResult && quizResult.percentage >= 80)) celebrate()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [showResults])
 
 	// Generate quiz mutation
 	const generateQuizMutation = useMutation({
@@ -85,6 +105,8 @@ export function Quiz() {
 			setCurrentCardIndex(0)
 			setShowResults(false)
 			setUserAnswers({})
+			setStreak(0)
+			setBestStreak(0)
 		},
 		onError: () => {
 			setCurrentQuiz(null)
@@ -172,7 +194,8 @@ export function Quiz() {
 			const currentCard = currentQuiz.cards[currentCardIndex]
 			if (currentCard && currentCard.correct_answer) {
 				const isCorrect = answer === currentCard.correct_answer
-				
+				recordOutcome(isCorrect)
+
 				// Update the card to show if the answer was correct
 				setCurrentQuiz((prev: any) => ({
 					...prev,
@@ -208,6 +231,8 @@ export function Quiz() {
 		setShowResults(false)
 		setUserAnswers({})
 		setQuizResult(null)
+		setStreak(0)
+		setBestStreak(0)
 	}
 
 	// Start a practice session containing only the words missed in the last quiz
@@ -230,6 +255,8 @@ export function Quiz() {
 		setShowResults(false)
 		setUserAnswers({})
 		setQuizResult(null)
+		setStreak(0)
+		setBestStreak(0)
 	}
 
 	if (generateQuizMutation.isPending) {
@@ -374,6 +401,13 @@ export function Quiz() {
 							</p>
 						)}
 
+						{bestStreak >= 3 && (
+							<div className="inline-flex items-center gap-1.5 px-4 py-1.5 mb-6 rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 text-sm font-semibold">
+								<Flame className="w-4 h-4 fill-orange-400/30" />
+								Best streak: {bestStreak} in a row
+							</div>
+						)}
+
 						<div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
 							{wrongCards.length > 0 && (
 								<button onClick={handlePracticeMissedWords} className="btn-primary">
@@ -490,6 +524,16 @@ export function Quiz() {
 						{selectedLevel ? ` · HSK ${selectedLevel}` : ''}
 					</div>
 					<div className="flex items-center gap-2.5 text-sm tabular-nums">
+						{streak >= 3 && (
+							<span
+								key={streak}
+								className="flex items-center gap-0.5 text-xs font-bold text-orange-500 dark:text-orange-400 animate-slide-up"
+								title={`${streak} in a row`}
+							>
+								<Flame className="w-4 h-4 fill-orange-400/30" />
+								{streak}
+							</span>
+						)}
 						{quizType === 'scored' && (answeredCorrect > 0 || answeredWrong > 0) && (
 							<span className="hidden sm:flex items-center gap-2 text-xs">
 								<span className="text-green-600 dark:text-green-400 font-semibold">✓ {answeredCorrect}</span>
@@ -523,7 +567,10 @@ export function Quiz() {
 					showResults={showResults}
 					onGrade={
 						isAuthenticated && quizType === 'practice'
-							? (cardId, quality) => gradeMutation.mutate({ vocabulary_id: cardId, quality })
+							? (cardId, quality) => {
+									recordOutcome(quality >= 4)
+									gradeMutation.mutate({ vocabulary_id: cardId, quality })
+								}
 							: undefined
 					}
 				/>

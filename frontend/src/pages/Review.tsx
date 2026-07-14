@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, CheckCircle2, Sparkles, BarChart3, LogIn, Play } from 'lucide-react'
 import { learningApi, ReviewItem } from '@/lib/api'
 import { QuizCard } from '@/components/QuizCard'
+import { celebrate } from '@/lib/celebrate'
 import { useAuth } from '@/contexts/AuthContext'
 import { SEO } from '@/components/SEO'
 
@@ -22,6 +23,12 @@ export function Review() {
 	const queryClient = useQueryClient()
 	const [session, setSession] = useState<SessionState | null>(null)
 	const [finished, setFinished] = useState(false)
+
+	// Confetti when a review session wraps up
+	useEffect(() => {
+		if (finished && session) celebrate()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [finished])
 
 	const { data: statsData, isLoading: statsLoading } = useQuery({
 		queryKey: ['learning-stats'],
