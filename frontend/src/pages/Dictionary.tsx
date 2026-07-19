@@ -48,7 +48,7 @@ export function Dictionary() {
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Chinese Dictionary</h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Search every HSK 1–5 word — over 2,500 entries — by characters, pinyin, or English meaning.
+          Search over 120,000 words — the complete CC-CEDICT dictionary plus all HSK 1–5 vocabulary — by characters, pinyin, or English meaning.
         </p>
       </div>
 
