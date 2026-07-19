@@ -1,14 +1,66 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3, RefreshCw, CalendarClock, ArrowRight } from 'lucide-react'
+import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3, RefreshCw, CalendarClock, ArrowRight, Layers, Brain, Flame } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { quizApi, learningApi } from '@/lib/api'
 import { QuizCard } from '@/components/QuizCard'
+import { celebrate, streakBurst } from '@/lib/celebrate'
 import { useAuth } from '@/contexts/AuthContext'
 
 type QuizType = 'practice' | 'scored'
 
 const CARD_COUNTS = [10, 25, 50]
+
+const HSK_WORD_COUNTS: Record<number, number> = { 1: 155, 2: 169, 3: 308, 4: 600, 5: 1300 }
+
+const MODES: {
+	type: QuizType
+	title: string
+	description: string
+	icon: typeof Brain
+	accent: string
+}[] = [
+	{
+		type: 'practice',
+		title: 'Practice',
+		description: 'Flip cards at your own pace. Grade yourself to build your review schedule.',
+		icon: Layers,
+		accent: 'text-primary-600 dark:text-primary-300',
+	},
+	{
+		type: 'scored',
+		title: 'Quiz',
+		description: 'Multiple choice, scored at the end. Results are saved to your progress.',
+		icon: Trophy,
+		accent: 'text-secondary-600 dark:text-secondary-400',
+	},
+]
+
+/** Segmented session progress: one segment per card, colored by result. */
+function SegmentedProgress({
+	total,
+	currentIndex,
+	cards,
+	isScored,
+}: {
+	total: number
+	currentIndex: number
+	cards: any[]
+	isScored: boolean
+}) {
+	return (
+		<div className="flex gap-[3px] w-full" role="progressbar" aria-valuenow={currentIndex + 1} aria-valuemax={total}>
+			{cards.map((c, i) => {
+				let cls = 'bg-gray-200 dark:bg-gray-700' // upcoming
+				if (isScored && c.isCorrect === true) cls = 'bg-green-500'
+				else if (isScored && c.isCorrect === false) cls = 'bg-red-400'
+				else if (i < currentIndex) cls = 'bg-primary-500'
+				else if (i === currentIndex) cls = 'bg-primary-600 dark:bg-primary-400'
+				return <div key={c.id ?? i} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${cls}`} />
+			})}
+		</div>
+	)
+}
 
 export function Quiz() {
 	const queryClient = useQueryClient()
@@ -25,6 +77,25 @@ export function Quiz() {
 	const [showResults, setShowResults] = useState(false)
 	const [userAnswers, setUserAnswers] = useState<Record<string, string>>({})
 	const [quizResult, setQuizResult] = useState<any>(null)
+	// In-session streak of consecutive correct answers (quiz) or Good/Easy grades (practice)
+	const [streak, setStreak] = useState(0)
+	const [bestStreak, setBestStreak] = useState(0)
+
+	const recordOutcome = (correct: boolean) => {
+		const next = correct ? streak + 1 : 0
+		setStreak(next)
+		if (correct) {
+			if (next > bestStreak) setBestStreak(next)
+			if (next % 5 === 0) streakBurst()
+		}
+	}
+
+	// Confetti when a session wraps up (any finished practice run, or a quiz scored 80%+)
+	useEffect(() => {
+		if (!showResults) return
+		if (quizType === 'practice' || (quizResult && quizResult.percentage >= 80)) celebrate()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [showResults])
 
 	// Generate quiz mutation
 	const generateQuizMutation = useMutation({
@@ -34,6 +105,8 @@ export function Quiz() {
 			setCurrentCardIndex(0)
 			setShowResults(false)
 			setUserAnswers({})
+			setStreak(0)
+			setBestStreak(0)
 		},
 		onError: () => {
 			setCurrentQuiz(null)
@@ -121,7 +194,8 @@ export function Quiz() {
 			const currentCard = currentQuiz.cards[currentCardIndex]
 			if (currentCard && currentCard.correct_answer) {
 				const isCorrect = answer === currentCard.correct_answer
-				
+				recordOutcome(isCorrect)
+
 				// Update the card to show if the answer was correct
 				setCurrentQuiz((prev: any) => ({
 					...prev,
@@ -157,6 +231,8 @@ export function Quiz() {
 		setShowResults(false)
 		setUserAnswers({})
 		setQuizResult(null)
+		setStreak(0)
+		setBestStreak(0)
 	}
 
 	// Start a practice session containing only the words missed in the last quiz
@@ -179,6 +255,8 @@ export function Quiz() {
 		setShowResults(false)
 		setUserAnswers({})
 		setQuizResult(null)
+		setStreak(0)
+		setBestStreak(0)
 	}
 
 	if (generateQuizMutation.isPending) {
@@ -323,6 +401,13 @@ export function Quiz() {
 							</p>
 						)}
 
+						{bestStreak >= 3 && (
+							<div className="inline-flex items-center gap-1.5 px-4 py-1.5 mb-6 rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 text-sm font-semibold">
+								<Flame className="w-4 h-4 fill-orange-400/30" />
+								Best streak: {bestStreak} in a row
+							</div>
+						)}
+
 						<div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
 							{wrongCards.length > 0 && (
 								<button onClick={handlePracticeMissedWords} className="btn-primary">
@@ -416,31 +501,58 @@ export function Quiz() {
 		const currentCard = currentQuiz.cards[currentCardIndex]
 		const isFirst = currentCardIndex === 0
 		const isLast = currentCardIndex === currentQuiz.cards.length - 1
+		const answeredCorrect = quizType === 'scored'
+			? currentQuiz.cards.filter((c: any) => c.isCorrect === true).length
+			: 0
+		const answeredWrong = quizType === 'scored'
+			? currentQuiz.cards.filter((c: any) => c.isCorrect === false).length
+			: 0
 
 		return (
-			<div className="space-y-4 sm:space-y-6">
-				<div>
-					<button onClick={handleNewQuiz} className="btn-outline mb-3">
-						<ArrowLeft className="w-4 h-4 mr-2" />
-						Go Back
+			<div className="space-y-4 sm:space-y-5 max-w-2xl mx-auto">
+				{/* Compact session header */}
+				<div className="flex items-center justify-between gap-3">
+					<button
+						onClick={handleNewQuiz}
+						className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+					>
+						<ArrowLeft className="w-4 h-4" />
+						End session
 					</button>
-					<div className="text-center">
-						<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Flashcards</h1>
-						<div className="flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-2">
-							<span>{quizType === 'scored' ? 'Take Quiz' : 'Practice Vocabulary'}</span>
-							<span className="text-gray-300">|</span>
-							<span>Card {currentCardIndex + 1} of {currentQuiz.cards.length}</span>
-						</div>
+					<div className="text-sm font-medium text-gray-700">
+						{quizType === 'scored' ? 'Quiz' : 'Practice'}
+						{selectedLevel ? ` · HSK ${selectedLevel}` : ''}
+					</div>
+					<div className="flex items-center gap-2.5 text-sm tabular-nums">
+						{streak >= 3 && (
+							<span
+								key={streak}
+								className="flex items-center gap-0.5 text-xs font-bold text-orange-500 dark:text-orange-400 animate-slide-up"
+								title={`${streak} in a row`}
+							>
+								<Flame className="w-4 h-4 fill-orange-400/30" />
+								{streak}
+							</span>
+						)}
+						{quizType === 'scored' && (answeredCorrect > 0 || answeredWrong > 0) && (
+							<span className="hidden sm:flex items-center gap-2 text-xs">
+								<span className="text-green-600 dark:text-green-400 font-semibold">✓ {answeredCorrect}</span>
+								<span className="text-red-500 dark:text-red-400 font-semibold">✗ {answeredWrong}</span>
+							</span>
+						)}
+						<span className="text-gray-500">
+							{currentCardIndex + 1}<span className="text-gray-400"> / {currentQuiz.cards.length}</span>
+						</span>
 					</div>
 				</div>
 
-				{/* Progress Bar */}
-				<div className="w-full bg-gray-200 rounded-full h-2">
-					<div
-						className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-						style={{ width: `${((currentCardIndex + 1) / currentQuiz.cards.length) * 100}%` }}
-					></div>
-				</div>
+				{/* Segmented per-card progress */}
+				<SegmentedProgress
+					total={currentQuiz.cards.length}
+					currentIndex={currentCardIndex}
+					cards={currentQuiz.cards}
+					isScored={quizType === 'scored'}
+				/>
 
 				{/* Flashcard */}
 				<QuizCard
@@ -455,7 +567,10 @@ export function Quiz() {
 					showResults={showResults}
 					onGrade={
 						isAuthenticated && quizType === 'practice'
-							? (cardId, quality) => gradeMutation.mutate({ vocabulary_id: cardId, quality })
+							? (cardId, quality) => {
+									recordOutcome(quality >= 4)
+									gradeMutation.mutate({ vocabulary_id: cardId, quality })
+								}
 							: undefined
 					}
 				/>
@@ -499,109 +614,118 @@ export function Quiz() {
 				</Link>
 			)}
 
-			{/* Lesson badge or HSK Level Selection */}
-			{lessonSlug ? (
-				<div className="card text-center p-6">
-					<div className="text-sm font-medium text-primary-600 mb-1">Lesson Mode</div>
-					<div className="text-lg font-semibold text-gray-900 capitalize">{lessonSlug.replace(/-/g, ' ')}</div>
-					<Link to="/flashcards" className="text-sm text-gray-500 hover:text-gray-700 mt-2 inline-block">
-						Switch to HSK mode
-					</Link>
-				</div>
-			) : (
-				<div className="card">
-					<div className="text-center p-6">
-						<div className="text-sm font-medium text-gray-700 mb-4">Select HSK Level (Optional)</div>
-						<div className="flex flex-wrap justify-center gap-2">
+			{/* Session builder */}
+			<div className="card max-w-3xl mx-auto !p-5 sm:!p-8">
+				{/* Step 1: Mode */}
+				<div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Mode</div>
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-7">
+					{MODES.map((mode) => {
+						const selected = quizType === mode.type
+						return (
 							<button
-								onClick={() => handleLevelChange(undefined)}
-								className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-									selectedLevel === undefined
-										? 'bg-primary-600 text-white'
-										: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+								key={mode.type}
+								onClick={() => setQuizType(mode.type)}
+								aria-pressed={selected}
+								className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 text-left transition-all ${
+									selected
+										? 'border-primary-500 bg-primary-50/70 dark:bg-primary-900/25 shadow-sm'
+										: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/40'
 								}`}
 							>
-								All Levels
+								<div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+									selected ? 'bg-primary-600 text-white' : `bg-gray-100 dark:bg-gray-700 ${mode.accent}`
+								}`}>
+									<mode.icon className="w-5 h-5" />
+								</div>
+								<div className="min-w-0">
+									<div className="flex items-center gap-2">
+										<span className="font-semibold text-gray-900">{mode.title}</span>
+										{selected && <CheckCircle2 className="w-4 h-4 text-primary-600 dark:text-primary-300" />}
+									</div>
+									<p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">{mode.description}</p>
+								</div>
+							</button>
+						)
+					})}
+				</div>
+
+				{/* Step 2: Level (or lesson badge) */}
+				{lessonSlug ? (
+					<div className="mb-7">
+						<div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Lesson</div>
+						<div className="flex items-center justify-between p-4 rounded-2xl border-2 border-primary-500 bg-primary-50/70 dark:bg-primary-900/25">
+							<div className="font-semibold text-gray-900 capitalize">{lessonSlug.replace(/-/g, ' ')}</div>
+							<Link to="/flashcards" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+								Switch to HSK
+							</Link>
+						</div>
+					</div>
+				) : (
+					<div className="mb-7">
+						<div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">HSK Level</div>
+						<div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+							<button
+								onClick={() => handleLevelChange(undefined)}
+								aria-pressed={selectedLevel === undefined}
+								className={`py-2.5 rounded-xl border-2 text-center transition-all ${
+									selectedLevel === undefined
+										? 'border-primary-500 bg-primary-50/70 dark:bg-primary-900/25'
+										: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+								}`}
+							>
+								<span className="block text-sm font-semibold text-gray-900">All</span>
+								<span className="block text-[10px] text-gray-400 dark:text-gray-500">2,532 words</span>
 							</button>
 							{[1, 2, 3, 4, 5].map((level) => (
 								<button
 									key={level}
 									onClick={() => handleLevelChange(selectedLevel === level ? undefined : level)}
-									className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+									aria-pressed={selectedLevel === level}
+									className={`py-2.5 rounded-xl border-2 text-center transition-all ${
 										selectedLevel === level
-											? 'bg-primary-600 text-white'
-											: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+											? 'border-primary-500 bg-primary-50/70 dark:bg-primary-900/25'
+											: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
 									}`}
 								>
-									HSK {level}
-								</button>
-							))}
-						</div>
-						{selectedLevel && (
-							<p className="text-sm text-gray-600 mt-3">
-								Quiz will include vocabulary from HSK Level {selectedLevel}
-							</p>
-						)}
-
-						<div className="text-sm font-medium text-gray-700 mt-6 mb-3">Session Length</div>
-						<div className="flex flex-wrap justify-center gap-2">
-							{CARD_COUNTS.map((count) => (
-								<button
-									key={count}
-									onClick={() => setCardCount(count)}
-									className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-										cardCount === count
-											? 'bg-primary-600 text-white'
-											: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-									}`}
-								>
-									{count} cards
+									<span className="block text-sm font-semibold text-gray-900">HSK {level}</span>
+									<span className="block text-[10px] text-gray-400 dark:text-gray-500">{HSK_WORD_COUNTS[level]} words</span>
 								</button>
 							))}
 						</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			{/* Quiz Types */}
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-				{/* Practice Mode */}
-				<div className="card">
-					<div className="text-center p-6">
-						<div className="text-4xl mb-4">📚</div>
-						<h2 className="text-xl font-semibold mb-2">Practice Vocabulary</h2>
-						<p className="text-gray-600 mb-4">
-							Learn at your own pace with no pressure. Perfect for studying and reviewing vocabulary.
-						</p>
-						<button
-							onClick={() => handleGenerateQuiz('practice')}
-							disabled={generateQuizMutation.isPending}
-							className="btn-primary w-full"
-						>
-							<Play className="w-4 h-4 mr-2" />
-							{selectedLevel ? `Practice HSK Level ${selectedLevel}` : 'Start Practice'}
-						</button>
+				{/* Step 3: Length */}
+				<div className="mb-8">
+					<div className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Session Length</div>
+					<div className="grid grid-cols-3 gap-2 max-w-xs">
+						{CARD_COUNTS.map((count) => (
+							<button
+								key={count}
+								onClick={() => setCardCount(count)}
+								aria-pressed={cardCount === count}
+								className={`py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+									cardCount === count
+										? 'border-primary-500 bg-primary-50/70 dark:bg-primary-900/25 text-gray-900'
+										: 'border-gray-200 dark:border-gray-700 text-gray-600 hover:border-gray-300 dark:hover:border-gray-600'
+								}`}
+							>
+								{count}
+							</button>
+						))}
 					</div>
 				</div>
 
-				{/* Scored Mode */}
-				<div className="card">
-					<div className="text-center p-6">
-						<div className="text-4xl mb-4">🏆</div>
-						<h2 className="text-xl font-semibold mb-2">Take Quiz</h2>
-						<p className="text-gray-600 mb-4">
-							Test your knowledge and track your progress. Challenge yourself with multiple choice questions.
-						</p>
-						<button
-							onClick={() => handleGenerateQuiz('scored')}
-							disabled={generateQuizMutation.isPending}
-							className="btn-primary w-full"
-						>
-							<Trophy className="w-4 h-4 mr-2" />
-							{selectedLevel ? `Quiz HSK Level ${selectedLevel}` : 'Start Quiz'}
-						</button>
-					</div>
-				</div>
+				{/* Start */}
+				<button
+					onClick={() => handleGenerateQuiz(quizType)}
+					disabled={generateQuizMutation.isPending}
+					className="btn-primary w-full !py-3.5 text-base !rounded-xl"
+				>
+					{quizType === 'scored' ? <Trophy className="w-5 h-5 mr-2" /> : <Play className="w-5 h-5 mr-2" />}
+					Start {quizType === 'scored' ? 'Quiz' : 'Practice'}
+					{!lessonSlug && (selectedLevel ? ` · HSK ${selectedLevel}` : ' · All Levels')} · {cardCount} cards
+				</button>
 			</div>
 
 			{/* Quiz History / Progress Link */}
