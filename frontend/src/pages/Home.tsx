@@ -254,18 +254,18 @@ export function Home() {
       <section className="bg-gradient-to-r from-primary-700 to-primary-900 rounded-xl p-5 sm:p-8 text-white text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 rounded-full text-sm font-medium">
           <Sparkles className="w-3.5 h-3.5" />
-          Coming Soon
+          New
         </div>
         <div className="flex items-center justify-center gap-2 sm:gap-3">
           <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8" />
           <h2 className="text-xl sm:text-2xl font-bold">AI Chinese Tutor</h2>
         </div>
         <p className="text-primary-100 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
-          Real-time conversation practice with instant feedback and corrections is on the way.
-          In the meantime, drill vocabulary with flashcards and spaced-repetition reviews.
+          Ask grammar questions, practice conversations, and get instant explanations with
+          pinyin and translations — free with your account.
         </p>
-        <Link to="/flashcards" className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors text-sm">
-          Start with Flashcards
+        <Link to="/chat" className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors text-sm">
+          Chat with the Tutor
           <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

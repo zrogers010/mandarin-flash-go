@@ -26,9 +26,15 @@ func (r *ChatRepository) SaveMessage(msg *models.ChatMessage) error {
 		INSERT INTO chat_messages (id, user_id, conversation_id, role, content, metadata, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
+	// pq encodes []byte (json.RawMessage) as bytea, which jsonb rejects.
+	// Pass metadata as a string, or NULL when absent.
+	var meta interface{}
+	if len(msg.Metadata) > 0 {
+		meta = string(msg.Metadata)
+	}
 	_, err := r.db.Exec(query,
 		msg.ID, msg.UserID, msg.ConversationID,
-		msg.Role, msg.Content, msg.Metadata, msg.CreatedAt,
+		msg.Role, msg.Content, meta, msg.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save chat message: %w", err)
@@ -154,6 +160,22 @@ func (r *ChatRepository) GetConversations(userID uuid.UUID, limit, offset int) (
 	}
 
 	return conversations, total, nil
+}
+
+// CountUserMessagesToday counts the user's own messages sent since UTC midnight.
+// Used to enforce the free daily tutor-message quota.
+func (r *ChatRepository) CountUserMessagesToday(userID uuid.UUID) (int, error) {
+	var count int
+	query := `
+		SELECT COUNT(*) FROM chat_messages
+		WHERE user_id = $1
+		  AND role = 'user'
+		  AND created_at >= date_trunc('day', now() AT TIME ZONE 'utc') AT TIME ZONE 'utc'
+	`
+	if err := r.db.QueryRow(query, userID).Scan(&count); err != nil {
+		return 0, fmt.Errorf("failed to count today's messages: %w", err)
+	}
+	return count, nil
 }
 
 // SaveMessageMetadata is a helper to create metadata JSON

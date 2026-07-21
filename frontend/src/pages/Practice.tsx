@@ -29,12 +29,12 @@ const tools = [
   },
   {
     name: 'AI Chinese Tutor',
-    description: 'Practice real conversation with an AI-powered tutor — instant corrections, explanations, and personalized guidance. Launching soon.',
+    description: 'Practice real conversation with an AI tutor — instant corrections, grammar explanations, and personalized guidance. Free with an account.',
     icon: MessageCircle,
     href: '/chat',
     color: 'bg-purple-600',
-    cta: 'Learn More',
-    badge: 'Coming Soon',
+    cta: 'Start Chatting',
+    badge: 'New',
   },
 ]
 

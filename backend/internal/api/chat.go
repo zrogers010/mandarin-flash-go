@@ -19,18 +19,37 @@ import (
 
 // ChatHandler handles AI chat endpoints
 type ChatHandler struct {
-	chatRepo *database.ChatRepository
-	ai       *aiClient.Client
-	db       *sql.DB
+	chatRepo   *database.ChatRepository
+	ai         *aiClient.Client
+	db         *sql.DB
+	dailyLimit int
 }
+
+// Longest message a user may send (characters). Bounds prompt-token cost.
+const maxChatMessageLen = 2000
 
 // NewChatHandler creates a new chat handler
 func NewChatHandler(db *sql.DB, cfg *config.Config) *ChatHandler {
 	return &ChatHandler{
-		chatRepo: database.NewChatRepository(db),
-		ai:       aiClient.NewClient(&cfg.AI),
-		db:       db,
+		chatRepo:   database.NewChatRepository(db),
+		ai:         aiClient.NewClient(&cfg.AI),
+		db:         db,
+		dailyLimit: cfg.AI.ChatDailyLimit,
 	}
+}
+
+// checkQuota returns (used, allowed). Fails open on DB errors so a
+// counting hiccup never takes the feature down.
+func (h *ChatHandler) checkQuota(userID uuid.UUID) (int, bool) {
+	if h.dailyLimit <= 0 {
+		return 0, true
+	}
+	used, err := h.chatRepo.CountUserMessagesToday(userID)
+	if err != nil {
+		log.Printf("Failed to count chat quota for %s: %v", userID, err)
+		return 0, true
+	}
+	return used, used < h.dailyLimit
 }
 
 // SendMessage handles POST /api/v1/chat/message
@@ -49,7 +68,25 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	// Check if AI is configured
 	if !h.ai.IsConfigured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "AI chat is not available. Please configure AI_API_KEY.",
+			"error": "The AI tutor is temporarily unavailable. Please try again later.",
+		})
+		return
+	}
+
+	if len([]rune(req.Message)) > maxChatMessageLen {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Message is too long. Please keep it under 2,000 characters.",
+		})
+		return
+	}
+
+	// Enforce the free daily quota before doing any work
+	used, allowed := h.checkQuota(userID)
+	if !allowed {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":       "You've used all your tutor messages for today. Your quota resets at midnight UTC.",
+			"quota_used":  used,
+			"quota_limit": h.dailyLimit,
 		})
 		return
 	}
@@ -139,10 +176,37 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		// Still return the response to the user even if save fails
 	}
 
-	c.JSON(http.StatusOK, models.ChatResponse{
+	resp := models.ChatResponse{
 		Message:        assistantContent,
 		ConversationID: conversationID,
 		MessageID:      assistantMsg.ID,
+	}
+	if h.dailyLimit > 0 {
+		resp.QuotaUsed = used + 1
+		resp.QuotaLimit = h.dailyLimit
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// GetUsage handles GET /api/v1/chat/usage — the user's remaining daily quota.
+func (h *ChatHandler) GetUsage(c *gin.Context) {
+	userID := c.MustGet("user_id").(uuid.UUID)
+
+	used := 0
+	if h.dailyLimit > 0 {
+		var err error
+		used, err = h.chatRepo.CountUserMessagesToday(userID)
+		if err != nil {
+			log.Printf("Failed to count chat usage for %s: %v", userID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch usage"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"quota_used":  used,
+		"quota_limit": h.dailyLimit, // 0 = unlimited
+		"available":   h.ai.IsConfigured(),
 	})
 }
 

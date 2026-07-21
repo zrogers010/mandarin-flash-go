@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -26,10 +27,11 @@ type Config struct {
 
 // AIConfig holds AI service configuration (OpenAI-compatible API)
 type AIConfig struct {
-	APIKey    string
-	BaseURL   string // OpenAI: https://api.openai.com/v1  (or any compatible endpoint)
-	Model     string // e.g. "gpt-4o-mini", "gpt-4o", "claude-3-haiku-20240307"
-	MaxTokens int
+	APIKey         string
+	BaseURL        string // any OpenAI-compatible endpoint (default: Gemini's compatibility endpoint)
+	Model          string // e.g. "gemini-2.5-flash", "gpt-4o-mini"
+	MaxTokens      int
+	ChatDailyLimit int // max tutor messages per user per UTC day (0 = unlimited)
 }
 
 // DatabaseConfig holds database configuration
@@ -144,10 +146,11 @@ func Load() *Config {
 			SupportEmail: getEnv("SUPPORT_EMAIL", "support@mandarinflash.com"),
 		},
 		AI: AIConfig{
-			APIKey:    getEnv("AI_API_KEY", ""),
-			BaseURL:   getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
-			Model:     getEnv("AI_MODEL", "gpt-4o-mini"),
-			MaxTokens: 1024,
+			APIKey:         getEnv("AI_API_KEY", ""),
+			BaseURL:        getEnv("AI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"),
+			Model:          getEnv("AI_MODEL", "gemini-2.5-flash"),
+			MaxTokens:      1024,
+			ChatDailyLimit: getEnvInt("AI_CHAT_DAILY_LIMIT", 30),
 		},
 	}
 }
@@ -156,6 +159,17 @@ func Load() *Config {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+// getEnvInt gets an integer environment variable or returns a default value
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if n, err := strconv.Atoi(value); err == nil {
+			return n
+		}
+		log.Printf("WARNING: invalid integer for %s=%q, using default %d", key, value, defaultValue)
 	}
 	return defaultValue
 }
