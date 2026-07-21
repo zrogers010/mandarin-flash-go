@@ -38,6 +38,8 @@ type ChatResponse struct {
 	Message        string    `json:"message"`
 	ConversationID uuid.UUID `json:"conversation_id"`
 	MessageID      uuid.UUID `json:"message_id"`
+	QuotaUsed      int       `json:"quota_used,omitempty"`
+	QuotaLimit     int       `json:"quota_limit,omitempty"`
 }
 
 // Conversation represents a conversation summary

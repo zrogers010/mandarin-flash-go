@@ -163,11 +163,16 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 					learn.GET("/stats", learningHandler.GetLearningStats)
 				}
 
-				// Chat routes
+				// Chat routes. Per-user daily quota is enforced in the handler;
+				// the per-IP burst limit here is a second line of defense.
 				chat := verified.Group("/chat")
 				{
-					chat.POST("/message", chatHandler.SendMessage)
+					chat.POST("/message",
+						rateLimiter.Limit(10, 1*time.Minute, "chat-message"),
+						chatHandler.SendMessage,
+					)
 					chat.GET("/history", chatHandler.GetHistory)
+					chat.GET("/usage", chatHandler.GetUsage)
 				}
 			}
 		}

@@ -79,7 +79,7 @@ const navigation: NavItem[] = [
     name: 'AI Tutor',
     icon: MessageCircle,
     href: '/chat',
-    badge: 'Soon',
+    badge: 'New',
   },
 ]
 

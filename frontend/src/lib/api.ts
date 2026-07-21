@@ -286,11 +286,23 @@ export const chatApi = {
 		message: string
 		conversation_id: string
 		message_id: string
+		quota_used?: number
+		quota_limit?: number
 	}> => {
 		const response = await api.post('/chat/message', {
 			message,
 			conversation_id: conversationId || undefined,
 		})
+		return response.data
+	},
+
+	// Get remaining daily quota + whether the tutor is configured
+	getUsage: async (): Promise<{
+		quota_used: number
+		quota_limit: number // 0 = unlimited
+		available: boolean
+	}> => {
+		const response = await api.get('/chat/usage')
 		return response.data
 	},
 
