@@ -14,7 +14,7 @@ const DEFAULT_DESCRIPTION = 'Free Mandarin Chinese learning platform with intera
 export function SEO({ title, description, canonical, type = 'website', noindex = false }: SEOProps) {
   const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Learn Mandarin Chinese`
   const desc = description || DEFAULT_DESCRIPTION
-  const ogImageUrl = `${window.location.origin}/og-image.svg`
+  const ogImageUrl = 'https://mandarinflash.com/og-image.svg'
 
   return (
     <Helmet>
