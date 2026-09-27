@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { SEO } from '@/components/SEO'
 
 export const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams()
@@ -36,9 +37,11 @@ export const VerifyEmail: React.FC = () => {
   }, [token, verifyEmail])
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full text-center space-y-6">
-        {status === 'loading' && (
+    <>
+      <SEO title="Verify Email" noindex />
+      <div className="min-h-[60vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full text-center space-y-6">
+          {status === 'loading' && (
           <>
             <Loader2 className="h-16 w-16 text-primary-600 animate-spin mx-auto" />
             <h2 className="text-2xl font-bold text-gray-900">Verifying your email...</h2>
@@ -87,8 +90,9 @@ export const VerifyEmail: React.FC = () => {
               </Link>
             </div>
           </>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

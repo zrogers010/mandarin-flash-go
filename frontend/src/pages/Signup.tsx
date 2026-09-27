@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react'
+import { SEO } from '@/components/SEO'
 
 export const Signup: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -64,12 +65,14 @@ export const Signup: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
+    <>
+      <SEO title="Sign Up" noindex />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Create your account
+            </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
             <Link
@@ -231,7 +234,8 @@ export const Signup: React.FC = () => {
             </button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

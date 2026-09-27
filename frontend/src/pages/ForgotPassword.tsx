@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Mail, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react'
+import { SEO } from '@/components/SEO'
 
 export const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -28,10 +29,12 @@ export const ForgotPassword: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <Link
+    <>
+      <SEO title="Forgot Password" noindex />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <Link
             to="/login"
             className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
           >
@@ -112,8 +115,9 @@ export const ForgotPassword: React.FC = () => {
             </p>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
