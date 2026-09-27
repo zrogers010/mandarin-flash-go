@@ -1,0 +1,24 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f766e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#115e59;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+  
+  <rect x="60" y="60" width="140" height="140" rx="20" fill="#0f766e"/>
+  <text x="130" y="160" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#fbbf24" text-anchor="middle">ê</text>
+  
+  <text x="230" y="150" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white">MandarinFlash</text>
+  
+  <text x="60" y="280" font-family="Arial, sans-serif" font-size="40" fill="#bbf7d0">Learn Mandarin Chinese in a Flash</text>
+  
+  <text x="60" y="360" font-family="Arial, sans-serif" font-size="26" fill="#d1fae5"> Interactive flashcards</text>
+  <text x="60" y="410" font-family="Arial, sans-serif" font-size="26" fill="#d1fae5"> HSK 1-5 vocabulary</text>
+  <text x="60" y="460" font-family="Arial, sans-serif" font-size="26" fill="#d1fae5"> Spaced-repetition reviews</text>
+  <text x="60" y="510" font-family="Arial, sans-serif" font-size="26" fill="#d1fae5"> Audio pronunciation</text>
+  
+  <text x="1140" y="600" font-family="Arial, sans-serif" font-size="22" fill="#99f6e4" text-anchor="end">mandarinflash.com</text>
+</svg>
