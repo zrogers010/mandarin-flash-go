@@ -5,12 +5,13 @@ interface SEOProps {
   description?: string
   canonical?: string
   type?: 'website' | 'article'
+  noindex?: boolean
 }
 
 const SITE_NAME = 'MandarinFlash'
 const DEFAULT_DESCRIPTION = 'Free Mandarin Chinese learning platform with interactive flashcards, HSK vocabulary, pinyin chart, grammar lessons, AI tutor, and more.'
 
-export function SEO({ title, description, canonical, type = 'website' }: SEOProps) {
+export function SEO({ title, description, canonical, type = 'website', noindex = false }: SEOProps) {
   const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Learn Mandarin Chinese`
   const desc = description || DEFAULT_DESCRIPTION
 
@@ -18,6 +19,7 @@ export function SEO({ title, description, canonical, type = 'website' }: SEOProp
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={desc} />
+      {noindex && <meta name="robots" content="noindex, nofollow" />}
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={desc} />
       <meta property="og:type" content={type} />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react'
+import { SEO } from '@/components/SEO'
 
 export const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('')
@@ -65,9 +66,11 @@ export const ResetPassword: React.FC = () => {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+      <>
+        <SEO title="Reset Password" noindex />
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8">
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
             <div className="flex">
               <AlertCircle className="h-5 w-5 text-red-400" />
               <div className="ml-3">
@@ -82,17 +85,20 @@ export const ResetPassword: React.FC = () => {
             >
               Request a new password reset link
             </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <Link
+    <>
+      <SEO title="Reset Password" noindex />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <Link
             to="/login"
             className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
           >
@@ -226,8 +232,9 @@ export const ResetPassword: React.FC = () => {
             </p>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

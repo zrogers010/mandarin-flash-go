@@ -54,7 +54,9 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/pinyin" element={<PinyinChart />} />
+          <Route path="/pinyin-chart" element={<Navigate to="/pinyin" replace />} />
           <Route path="/hsk" element={<HSKHub />} />
+          <Route path="/hsk-hub" element={<Navigate to="/hsk" replace />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/practice" element={<Practice />} />
           <Route path="/lessons" element={<Lessons />} />
