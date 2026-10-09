@@ -87,11 +87,28 @@ def parse_cedict_line(line):
     if not definitions:
         return None
 
+    # Calculate a quality score for prioritizing entries
+    quality_score = 0
+    
+    # Prefer non-variant entries
+    if not any(d.lower().startswith(('variant of', 'old variant', 'also written', 'see also')) for d in definitions):
+        quality_score += 10
+    
+    # Prefer entries without "used in X" (usually compounds)
+    if not any('used in' in d.lower() for d in definitions):
+        quality_score += 5
+    
+    # Prefer entries without pronunciation notes
+    if not any(x in defs_raw.lower() for x in ['also pr.', 'taiwan pr.', 'literary']):
+        quality_score += 3
+    
     return {
         "traditional": traditional,
         "simplified": simplified,
         "pinyin": pinyin,
+        "pinyin_raw": pinyin_raw,  # Keep raw for matching
         "english": " | ".join(group_definitions(definitions)),
+        "quality_score": quality_score,
     }
 
 
@@ -293,7 +310,20 @@ def main():
     existing = load_existing_entries(conn)
     print(f"  Found {existing.get('_count', 0)} existing vocabulary entries")
 
-    print("[4/4] Importing with UPSERT (idempotent, preserves IDs)...")
+    print("[4/4] Importing with UPSERT (idempotent, preserves IDs, prioritizes best entries)...")
+    
+    # Group entries by (simplified, pinyin_no_tones) and pick the best one
+    best_entries = {}
+    for entry in entries:
+        pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
+        key = (entry["simplified"], pinyin_no_tones)
+        
+        # If we've seen this key, keep the one with the highest quality score
+        if key not in best_entries or entry["quality_score"] > best_entries[key]["quality_score"]:
+            best_entries[key] = entry
+    
+    print(f"  Selected {len(best_entries)} best entries from {len(entries)} total (removed polyphonic duplicates)")
+    
     batch_size = 1000
     processed = 0
     
@@ -312,12 +342,10 @@ def main():
         """
         
         batch = []
-        for entry in entries:
-            pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
-            
+        for (simplified, pinyin_no_tones), entry in best_entries.items():
             batch.append((
                 str(uuid.uuid4()),  # New UUID for inserts; ignored on conflict
-                entry["simplified"],
+                simplified,
                 entry["traditional"],
                 entry["pinyin"],
                 pinyin_no_tones,
@@ -328,7 +356,7 @@ def main():
             if len(batch) >= batch_size:
                 psycopg2.extras.execute_batch(cur, upsert_sql, batch, page_size=batch_size)
                 processed += len(batch)
-                print(f"  Progress: {processed}/{len(entries)} entries ({100*processed//len(entries)}%)")
+                print(f"  Progress: {processed}/{len(best_entries)} entries ({100*processed//len(best_entries)}%)")
                 batch = []
         
         # Final batch
