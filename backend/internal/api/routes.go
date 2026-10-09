@@ -87,6 +87,11 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 				authMiddleware.RequireAuth(),
 				authHandler.CompleteOnboarding,
 			)
+			// Guest progress merge (requires auth)
+			authRoutes.POST("/merge-guest-progress",
+				authMiddleware.RequireAuth(),
+				s.MergeGuestProgress,
+			)
 		}
 
 		// Public content routes (no authentication required)
