@@ -61,7 +61,8 @@ export default function Onboarding() {
     setIsLoading(true)
 
     try {
-      await api.post('/auth/onboarding', data)
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      await api.post('/auth/onboarding', { ...data, timezone })
       
       // Track onboarding completion
       if (typeof window !== 'undefined' && (window as any).gtag) {

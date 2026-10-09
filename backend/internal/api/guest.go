@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -49,6 +50,22 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 
 	log.Printf("[MergeGuestProgress] User %v merging %d seen words, %d quiz results",
 		userID, len(guestData.SeenWords), len(guestData.QuizResults))
+
+	// Get user's timezone for activity_date calculation
+	var userTimezone string
+	err := h.db.QueryRow(`SELECT COALESCE(timezone, 'UTC') FROM users WHERE id = $1`, userID).Scan(&userTimezone)
+	if err != nil {
+		log.Printf("[MergeGuestProgress] Failed to get user timezone: %v", err)
+		userTimezone = "UTC"
+	}
+
+	// Compute activity_date in user's local timezone
+	loc, err := time.LoadLocation(userTimezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	localNow := time.Now().In(loc)
+	activityDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
 
 	// Track merge statistics
 	wordsAdded := 0
@@ -139,19 +156,19 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 	// Count quiz results as cards reviewed for daily activity tracking
 	quizzesMerged = len(guestData.QuizResults)
 
-	// Update daily activity with both new words and quiz cards
-	// The daily_activity trigger will automatically update last_study_date
+	// Update daily activity with both new words and quiz cards using user's local date
+	// The daily_activity trigger will automatically update last_study_date to match activity_date
 	_, err = tx.Exec(`
 		INSERT INTO daily_activity (
 			id, user_id, activity_date, minutes_studied, cards_reviewed, new_words_learned, goal_met, created_at, updated_at
 		)
-		VALUES ($1, $2, CURRENT_DATE, 0, $3, $4, false, NOW(), NOW())
+		VALUES ($1, $2, $3, 0, $4, $5, false, NOW(), NOW())
 		ON CONFLICT (user_id, activity_date) 
 		DO UPDATE SET 
-			cards_reviewed = daily_activity.cards_reviewed + $3,
-			new_words_learned = daily_activity.new_words_learned + $4,
+			cards_reviewed = daily_activity.cards_reviewed + $4,
+			new_words_learned = daily_activity.new_words_learned + $5,
 			updated_at = NOW()
-	`, uuid.New(), userID, quizzesMerged, wordsAdded)
+	`, uuid.New(), userID, activityDate, quizzesMerged, wordsAdded)
 
 	if err != nil {
 		log.Printf("[MergeGuestProgress] Error updating daily_activity: %v", err)

@@ -44,12 +44,14 @@ type SignupRequest struct {
 	Email    string  `json:"email" binding:"required,email"`
 	Password string  `json:"password" binding:"required,min=8"`
 	Username *string `json:"username"`
+	Timezone string  `json:"timezone"` // IANA timezone, e.g. "America/Los_Angeles"
 }
 
 // LoginRequest represents a login request
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+	Timezone string `json:"timezone"` // IANA timezone, quietly update if changed
 }
 
 // PasswordResetRequest represents a password reset request
@@ -95,6 +97,14 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 	// Normalize email to lowercase and trim whitespace
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
+	// Validate timezone (falls back to UTC if invalid)
+	timezone := "UTC"
+	if req.Timezone != "" {
+		if _, err := time.LoadLocation(req.Timezone); err == nil {
+			timezone = req.Timezone
+		}
+	}
+
 	// Check if user already exists
 	existingUser, err := ah.userService.GetUserByEmail(req.Email)
 	if err == nil && existingUser != nil {
@@ -128,6 +138,12 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 			"error": "Failed to create user",
 		})
 		return
+	}
+
+	// Update timezone (field exists from migration 009)
+	if err := ah.userRepo.UpdateTimezone(user.ID, timezone); err != nil {
+		log.Printf("[Signup] Failed to set timezone for user %s: %v", user.ID, err)
+		// Don't fail signup if timezone update fails
 	}
 
 	// Generate email verification token
@@ -230,6 +246,15 @@ func (ah *AuthHandler) Login(c *gin.Context) {
 	// Update last login
 	if err := ah.userService.UpdateLastLogin(user.ID); err != nil {
 		// Log error but don't fail the login
+	}
+
+	// Quietly update timezone if provided and valid
+	if req.Timezone != "" {
+		if _, err := time.LoadLocation(req.Timezone); err == nil {
+			if err := ah.userRepo.UpdateTimezone(user.ID, req.Timezone); err != nil {
+				log.Printf("[Login] Failed to update timezone for user %s: %v", user.ID, err)
+			}
+		}
 	}
 
 	// Create session — store deterministic hash of refresh token for lookup
@@ -784,6 +809,15 @@ func (ah *AuthHandler) CompleteOnboarding(c *gin.Context) {
 	}
 	if !validGoal {
 		req.DailyMinutesGoal = 15 // Default to 15 minutes
+	}
+
+	// Validate and update timezone if provided
+	if req.Timezone != "" {
+		if _, err := time.LoadLocation(req.Timezone); err == nil {
+			if err := ah.userRepo.UpdateTimezone(userID, req.Timezone); err != nil {
+				log.Printf("[CompleteOnboarding] Failed to update timezone for user %s: %v", userID, err)
+			}
+		}
 	}
 
 	// Update user with onboarding data

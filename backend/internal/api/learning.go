@@ -2,8 +2,10 @@ package api
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"chinese-learning/internal/database"
 	"chinese-learning/internal/models"
@@ -106,6 +108,36 @@ func (h *LearningHandler) SubmitReview(c *gin.Context) {
 			return
 		}
 		results = append(results, *prog)
+	}
+
+	// Record daily activity using user's local date
+	var userTimezone string
+	if err := h.db.QueryRow(`SELECT COALESCE(timezone, 'UTC') FROM users WHERE id = $1`, userID).Scan(&userTimezone); err != nil {
+		userTimezone = "UTC"
+	}
+	
+	loc, err := time.LoadLocation(userTimezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	localNow := time.Now().In(loc)
+	activityDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+
+	// Update daily_activity with cards reviewed (trigger will update last_study_date)
+	_, err = h.db.Exec(`
+		INSERT INTO daily_activity (
+			id, user_id, activity_date, minutes_studied, cards_reviewed, new_words_learned, goal_met, created_at, updated_at
+		)
+		VALUES ($1, $2, $3, 0, $4, 0, false, NOW(), NOW())
+		ON CONFLICT (user_id, activity_date)
+		DO UPDATE SET
+			cards_reviewed = daily_activity.cards_reviewed + $4,
+			updated_at = NOW()
+	`, uuid.New(), userID, activityDate, len(results))
+	
+	if err != nil {
+		log.Printf("[SubmitReview] Failed to record daily activity: %v", err)
+		// Don't fail the request
 	}
 
 	c.JSON(http.StatusOK, gin.H{
