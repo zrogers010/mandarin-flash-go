@@ -251,6 +251,8 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 		}
 
 		// Record daily activity: increment quizzes_completed and update streak/study date
+		// Note: The update_daily_activity_trigger (migration 009) automatically updates
+		// last_study_date when daily_activity is inserted/updated, so no manual update is needed
 		_, err = h.db.Exec(`
 			INSERT INTO daily_activity (
 				id, user_id, activity_date, minutes_studied, cards_reviewed, new_words_learned, quizzes_completed, goal_met, created_at, updated_at
@@ -265,18 +267,6 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 		if err != nil {
 			// Log but don't fail the response
 			// log.Printf("Failed to record daily activity: %v", err)
-		}
-
-		// Update last_study_date to enable streak tracking
-		_, err = h.db.Exec(`
-			UPDATE users
-			SET last_study_date = CURRENT_DATE
-			WHERE id = $1 AND (last_study_date IS NULL OR last_study_date < CURRENT_DATE)
-		`, uid)
-
-		if err != nil {
-			// Log but don't fail the response
-			// log.Printf("Failed to update last_study_date: %v", err)
 		}
 	}
 
