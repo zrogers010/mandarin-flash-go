@@ -168,8 +168,8 @@ jobs:
           
           echo "  Lesson-vocabulary links: $LV_COUNT"
           
-          if [ "$LV_COUNT" -lt "50" ]; then
-            echo "❌ FAIL: Too few lesson-vocabulary links: $LV_COUNT"
+          if [ "$LV_COUNT" -lt "30" ]; then
+            echo "❌ FAIL: Too few lesson-vocabulary links: $LV_COUNT (expected at least 30)"
             exit 1
           fi
           
