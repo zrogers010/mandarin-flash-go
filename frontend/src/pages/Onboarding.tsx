@@ -73,6 +73,9 @@ export default function Onboarding() {
         })
       }
 
+      // Merge guest progress if it exists
+      await mergeGuestProgressIfExists()
+
       // Redirect to dashboard
       navigate('/practice')
     } catch (error) {
@@ -80,6 +83,26 @@ export default function Onboarding() {
       setIsLoading(false)
       // Still navigate to practice even if onboarding save fails
       navigate('/practice')
+    }
+  }
+
+  const mergeGuestProgressIfExists = async () => {
+    try {
+      const { guestStorage } = await import('../lib/guestStorage')
+      if (guestStorage.hasProgress()) {
+        const guestData = guestStorage.getProgress()
+        if (guestData) {
+          await api.post('/auth/merge-guest-progress', { guest_data: guestData })
+          guestStorage.clearProgress()
+          
+          const summary = guestStorage.getSummary()
+          if (summary && (summary.quizzes > 0 || summary.words > 0)) {
+            console.log(`✅ Progress saved: ${summary.quizzes} quizzes, ${summary.words} words`)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to merge guest progress:', error)
     }
   }
 

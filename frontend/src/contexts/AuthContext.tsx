@@ -62,8 +62,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       setToken(access_token)
       setUser(userData)
+      
+      // Merge guest progress if it exists
+      await mergeGuestProgressIfExists()
     } catch (error) {
       throw error
+    }
+  }
+
+  const mergeGuestProgressIfExists = async () => {
+    try {
+      const { guestStorage } = await import('../lib/guestStorage')
+      if (guestStorage.hasProgress()) {
+        const guestData = guestStorage.getProgress()
+        if (guestData) {
+          const { api } = await import('../lib/api')
+          await api.post('/auth/merge-guest-progress', { guest_data: guestData })
+          guestStorage.clearProgress()
+          
+          const summary = guestStorage.getSummary()
+          if (summary && (summary.quizzes > 0 || summary.words > 0)) {
+            console.log(`✅ Progress saved: ${summary.quizzes} quizzes, ${summary.words} words`)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to merge guest progress:', error)
+      // Don't block login flow if merge fails
     }
   }
 

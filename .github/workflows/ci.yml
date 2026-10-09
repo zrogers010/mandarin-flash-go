@@ -281,6 +281,41 @@ jobs:
           else
             echo "✅ PASS: All natural keys are unique"
           fi
+
+      - name: Verify content corrections persist
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Verifying Content Corrections ==="
+          
+          # Check 年 means 'year' (not 'grain')
+          NIAN=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='年' AND traditional='年' AND pinyin='nián' LIMIT 1")
+          echo "年 (nián): $NIAN"
+          if [[ "$NIAN" != *"year"* ]]; then
+            echo "❌ FAIL: 年 should mean 'year', got: $NIAN"
+            exit 1
+          fi
+          
+          # Check 喝 means 'to drink' (not 'to shout')
+          HE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='喝' AND traditional='喝' AND pinyin='hē' LIMIT 1")
+          echo "喝 (hē): $HE"
+          if [[ "$HE" != *"drink"* ]]; then
+            echo "❌ FAIL: 喝 should mean 'to drink', got: $HE"
+            exit 1
+          fi
+          
+          # Check 猫 includes 'cat' (not archaic variant)
+          MAO=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='猫' AND traditional='貓' AND pinyin='māo' LIMIT 1")
+          echo "猫 (māo): $MAO"
+          if [[ "$MAO" != *"cat"* ]]; then
+            echo "❌ FAIL: 猫 should include 'cat', got: $MAO"
+            exit 1
+          fi
+          
+          echo "✅ PASS: All content corrections verified"
 =======
           # Install psycopg2 for content check script
           pip install psycopg2-binary
