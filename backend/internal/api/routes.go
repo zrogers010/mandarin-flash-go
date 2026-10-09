@@ -91,7 +91,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			// Guest progress merge (requires auth)
 			authRoutes.POST("/merge-guest-progress",
 				authMiddleware.RequireAuth(),
-				s.MergeGuestProgress,
+				guestHandler.MergeGuestProgress,
 			)
 		}
 
