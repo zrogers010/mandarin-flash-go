@@ -50,22 +50,23 @@ func setupTestDB(t *testing.T) *sql.DB {
 	}
 
 	// Clean up test data before each test
-	// Only delete rows that are clearly test data
-	tables := []string{
-		"daily_activity",
-		"user_vocabulary_progress",
-		"quiz_results",
-		"users",
+	// Delete test users and cascade will handle related data
+	_, err = db.Exec(`
+		DELETE FROM users 
+		WHERE email LIKE 'test%' OR username LIKE 'test%'
+	`)
+	if err != nil {
+		t.Logf("Warning: Could not clean users: %v", err)
 	}
-	
-	for _, table := range tables {
-		// Try to delete only test rows by email/username pattern
-		_, err := db.Exec(fmt.Sprintf("DELETE FROM %s WHERE email LIKE 'test%%' OR username LIKE 'test%%'", table))
-		if err != nil {
-			// If the table doesn't have email/username columns, skip cleanup for safety
-			// We don't want to TRUNCATE CASCADE in case we're somehow in the wrong database
-			t.Logf("Warning: Could not clean %s by test pattern: %v", table, err)
-		}
+
+	// Also clean up test vocabulary that may conflict
+	_, err = db.Exec(`
+		DELETE FROM vocabulary 
+		WHERE (english LIKE 'test%' OR chinese LIKE '%测试%') 
+		AND hsk_level = 1
+	`)
+	if err != nil {
+		t.Logf("Warning: Could not clean test vocabulary: %v", err)
 	}
 
 	return db
