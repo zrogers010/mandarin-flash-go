@@ -76,7 +76,7 @@ type PasswordResetData struct {
 	SupportEmail string
 }
 
-func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody string) error {
+func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody, textBody string) error {
 	if !es.enabled {
 		log.Println("════════════════════════════════════════════════════════")
 		log.Printf("  [DEV MODE] Email to: %s <%s>", toName, toEmail)
