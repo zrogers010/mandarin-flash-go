@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 #
 # Deploy MandarinFlash to production.
-# Run from the project root directory as the deploy user.
+#
+# PRODUCTION SETUP:
+#   - Run as the `deploy` user from /home/deploy/mandarinflash
+#   - SSL certs are under this directory (managed by certbot)
+#   - Must run from the same checkout the live containers were started from
 #
 set -euo pipefail
 
@@ -9,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
-# Check if we need sudo for docker (ec2-user on prod is not in docker group)
+# Check if we need sudo for docker
 if docker ps &>/dev/null 2>&1; then
     DOCKER="docker"
 elif sudo -n docker ps &>/dev/null 2>&1; then
@@ -19,16 +23,34 @@ else
     exit 1
 fi
 
-# Use docker compose plugin or standalone
+# Detect docker compose command (plugin vs standalone, with or without sudo)
+DC=""
 if $DOCKER compose version &>/dev/null 2>&1; then
+    # Docker compose plugin
     DC="$DOCKER compose"
-elif $DOCKER docker-compose version &>/dev/null 2>&1; then
-    DC="$DOCKER docker-compose"
+elif command -v docker-compose &>/dev/null && docker-compose version &>/dev/null 2>&1; then
+    # Standalone docker-compose (no sudo)
+    DC="docker-compose"
+elif command -v docker-compose &>/dev/null && sudo -n docker-compose version &>/dev/null 2>&1; then
+    # Standalone docker-compose with sudo
+    DC="sudo -n docker-compose"
 else
-    echo "ERROR: Cannot find docker compose or docker-compose."
+    echo "ERROR: Cannot find docker compose plugin or standalone docker-compose."
     exit 1
 fi
 COMPOSE_FILE="-f docker-compose.prod.yml"
+
+# Safety check: ensure we're running from the same directory as the live containers
+# This prevents deploying from a different checkout and breaking SSL cert paths
+RUNNING_WORKDIR=$($DC $COMPOSE_FILE ps -q mf_backend 2>/dev/null | head -1 | xargs -r $DOCKER inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null || echo "")
+if [ -n "$RUNNING_WORKDIR" ] && [ "$RUNNING_WORKDIR" != "$PROJECT_DIR" ]; then
+    echo "ERROR: Running containers were started from a different directory!"
+    echo "  This checkout: $PROJECT_DIR"
+    echo "  Live containers: $RUNNING_WORKDIR"
+    echo ""
+    echo "You must run deploy.sh from $RUNNING_WORKDIR to avoid breaking SSL certs and mounts."
+    exit 1
+fi
 
 echo "=== MandarinFlash Deploy ==="
 echo "  Project: $PROJECT_DIR"

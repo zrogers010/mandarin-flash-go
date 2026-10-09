@@ -328,6 +328,8 @@ def main():
     processed = 0
     
     # Use batch UPSERT for performance with 121k rows
+    # IMPORTANT: Never overwrite HSK 1-6 rows - they contain manual corrections
+    # from migration 010 that must be preserved
     with conn.cursor() as cur:
         upsert_sql = """
             INSERT INTO vocabulary (
@@ -339,6 +341,7 @@ def main():
                 english = EXCLUDED.english,
                 pinyin_no_tones = EXCLUDED.pinyin_no_tones,
                 updated_at = NOW()
+            WHERE vocabulary.hsk_level NOT BETWEEN 1 AND 6
         """
         
         batch = []

@@ -660,6 +660,74 @@ jobs:
           fi
           
           echo "✅ PASS: All content corrections and safety checks verified"
+      
+      - name: Verify CEDICT import preserves HSK corrections
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Verifying CEDICT Import Preserves Migration 010 Corrections ==="
+          
+          # Capture corrected values before CEDICT import
+          HAO_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='好' AND pinyin='hǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          SHAO_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='少' AND pinyin='shǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          NIAN_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='年' AND pinyin='nián' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          HE_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='喝' AND pinyin='hē' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          
+          echo "Before CEDICT import:"
+          echo "  好: $HAO_BEFORE"
+          echo "  少: $SHAO_BEFORE"
+          echo "  年: $NIAN_BEFORE"
+          echo "  喝: $HE_BEFORE"
+          
+          # Run CEDICT import
+          python3 scripts/import_cedict.py
+          
+          # Verify corrections are preserved
+          HAO_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='好' AND pinyin='hǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          SHAO_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='少' AND pinyin='shǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          NIAN_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='年' AND pinyin='nián' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          HE_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='喝' AND pinyin='hē' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          
+          echo "After CEDICT import:"
+          echo "  好: $HAO_AFTER"
+          echo "  少: $SHAO_AFTER"
+          echo "  年: $NIAN_AFTER"
+          echo "  喝: $HE_AFTER"
+          
+          if [ "$HAO_BEFORE" != "$HAO_AFTER" ]; then
+            echo "❌ FAIL: 好 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          if [ "$SHAO_BEFORE" != "$SHAO_AFTER" ]; then
+            echo "❌ FAIL: 少 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          if [ "$NIAN_BEFORE" != "$NIAN_AFTER" ]; then
+            echo "❌ FAIL: 年 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          if [ "$HE_BEFORE" != "$HE_AFTER" ]; then
+            echo "❌ FAIL: 喝 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          echo "✅ PASS: CEDICT import preserved all HSK 1-6 corrections"
 
   frontend:
     name: Frontend (React/TypeScript)

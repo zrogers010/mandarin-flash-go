@@ -101,21 +101,37 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 	}
 
 	// Merge quiz results
-	// We don't have a quiz_history table yet, so for now just count them
-	// In the future, we could insert these into a quiz_history table
+	// Count quiz results as cards reviewed for daily activity tracking
 	quizzesMerged = len(guestData.QuizResults)
 
-	// Log the merge for analytics
-	_, _ = h.db.Exec(`
+	// Update daily activity with both new words and quiz cards
+	_, err := h.db.Exec(`
 		INSERT INTO daily_activity (
-			id, user_id, date, minutes_studied, cards_reviewed, new_words_learned, created_at, updated_at
+			id, user_id, activity_date, minutes_studied, cards_reviewed, new_words_learned, goal_met, created_at, updated_at
 		)
-		VALUES ($1, $2, CURRENT_DATE, 0, 0, $3, NOW(), NOW())
-		ON CONFLICT (user_id, date) 
+		VALUES ($1, $2, CURRENT_DATE, 0, $3, $4, false, NOW(), NOW())
+		ON CONFLICT (user_id, activity_date) 
 		DO UPDATE SET 
-			new_words_learned = daily_activity.new_words_learned + $3,
+			cards_reviewed = daily_activity.cards_reviewed + $3,
+			new_words_learned = daily_activity.new_words_learned + $4,
 			updated_at = NOW()
-	`, uuid.New(), userID, wordsAdded)
+	`, uuid.New(), userID, quizzesMerged, wordsAdded)
+
+	if err != nil {
+		log.Printf("[MergeGuestProgress] Error updating daily_activity: %v", err)
+	}
+
+	// Update user's last_study_date if this is their first activity
+	// This ensures their streak tracking starts from the merge
+	_, err = h.db.Exec(`
+		UPDATE users 
+		SET last_study_date = CURRENT_DATE
+		WHERE id = $1 AND last_study_date IS NULL
+	`, userID)
+
+	if err != nil {
+		log.Printf("[MergeGuestProgress] Error updating last_study_date: %v", err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":        "Guest progress merged successfully",
