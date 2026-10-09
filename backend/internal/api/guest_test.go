@@ -27,9 +27,9 @@ func TestMergeGuestProgress_Integration(t *testing.T) {
 	// Create a test user
 	userID := uuid.New()
 	_, err := db.Exec(`
-		INSERT INTO users (id, email, password_hash, username, display_name, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-	`, userID, "test@example.com", "hash", "testuser", "Test User")
+		INSERT INTO users (id, email, password_hash, username, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
+	`, userID, "test@example.com", "hash", "testuser")
 	assert.NoError(t, err)
 
 	// Create test vocabulary
