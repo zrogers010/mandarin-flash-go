@@ -113,7 +113,7 @@ jobs:
           ORIGINAL_ID=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT id FROM vocabulary WHERE chinese='测试' AND pinyin_no_tones='ceshi'")
           echo "Original ID: $ORIGINAL_ID"
           
-          # Simulate re-seeding by upserting the same word
+          # Simulate re-seeding by upserting the same word (using new natural key)
           PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test <<'SQL'
           INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
           VALUES (
@@ -127,15 +127,16 @@ jobs:
             NOW(),
             NOW()
           )
-          ON CONFLICT (chinese, pinyin_no_tones)
+          ON CONFLICT (chinese, traditional, pinyin)
           DO UPDATE SET
             english = EXCLUDED.english,
+            pinyin_no_tones = EXCLUDED.pinyin_no_tones,
             updated_at = NOW();
           SQL
           
-          # Check the ID is preserved
-          NEW_ID=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT id FROM vocabulary WHERE chinese='测试' AND pinyin_no_tones='ceshi'")
-          NEW_ENGLISH=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT english FROM vocabulary WHERE chinese='测试' AND pinyin_no_tones='ceshi'")
+          # Check the ID is preserved (using the new natural key)
+          NEW_ID=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT id FROM vocabulary WHERE chinese='测试' AND traditional='測試' AND pinyin='cèshì'")
+          NEW_ENGLISH=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT english FROM vocabulary WHERE chinese='测试' AND traditional='測試' AND pinyin='cèshì'")
           
           echo "New ID: $NEW_ID"
           echo "New English: $NEW_ENGLISH"
