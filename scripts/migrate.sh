@@ -30,11 +30,11 @@ run_psql() {
 }
 
 # Check if schema_migrations table exists
-SCHEMA_MIGRATIONS_EXISTS=$(run_psql -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'schema_migrations');" 2>/dev/null || echo "f")
+SCHEMA_MIGRATIONS_EXISTS=$(run_psql -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'schema_migrations');" || echo "f")
 
 # Apply 000_schema_migrations.sql to create the tracking table
 echo "  Ensuring schema_migrations table exists..."
-if ! run_psql -v ON_ERROR_STOP=1 -f "$MIGRATIONS_DIR/000_schema_migrations.sql" >/dev/null 2>&1; then
+if ! run_psql -v ON_ERROR_STOP=1 < "$MIGRATIONS_DIR/000_schema_migrations.sql"; then
     echo "  ERROR: Failed to create schema_migrations table!"
     exit 1
 fi
@@ -42,7 +42,7 @@ fi
 # Handle production baseline: if users table exists but schema_migrations was just created,
 # record migrations 001-006 as already applied using their actual filenames
 if [ "$SCHEMA_MIGRATIONS_EXISTS" = "f" ]; then
-    USERS_EXISTS=$(run_psql -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'users');" 2>/dev/null || echo "f")
+    USERS_EXISTS=$(run_psql -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'users');" || echo "f")
     
     if [ "$USERS_EXISTS" = "t" ]; then
         echo "  Detected existing database with users table but no schema_migrations."
@@ -53,7 +53,7 @@ if [ "$SCHEMA_MIGRATIONS_EXISTS" = "f" ]; then
             if [ -f "$migration" ]; then
                 MIGRATION_NAME="$(basename "$migration")"
                 echo "    Recording baseline: $MIGRATION_NAME"
-                run_psql -tAc "INSERT INTO schema_migrations (filename, applied_at) VALUES ('$MIGRATION_NAME', NOW()) ON CONFLICT (filename) DO NOTHING;" >/dev/null
+                run_psql -tAc "INSERT INTO schema_migrations (filename, applied_at) VALUES ('$MIGRATION_NAME', NOW()) ON CONFLICT (filename) DO NOTHING;"
             fi
         done
         
@@ -72,7 +72,7 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
         fi
         
         # Check if migration already applied
-        ALREADY_APPLIED=$(run_psql -tAc "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME';" 2>/dev/null || echo "0")
+        ALREADY_APPLIED=$(run_psql -tAc "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME';" || echo "0")
         
         if [ "$ALREADY_APPLIED" = "1" ]; then
             echo "  Skipping $MIGRATION_NAME (already applied)"

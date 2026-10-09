@@ -11,23 +11,28 @@ jobs:
     name: Migration Tests
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: chinese_learning_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Start postgres container (production-like setup)
+        run: |
+          # Start postgres in a named container, same as production
+          docker run -d --name mf_postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=chinese_learning_test \
+            -v "$(pwd)/backend/db/migrations:/docker-entrypoint-initdb.d:ro" \
+            -p 5432:5432 \
+            postgres:15
+          
+          # Wait for postgres to be ready
+          for i in $(seq 1 30); do
+            if docker exec mf_postgres pg_isready -U postgres &>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            sleep 2
+          done
       
       - name: Test prod baseline scenario
         env:
