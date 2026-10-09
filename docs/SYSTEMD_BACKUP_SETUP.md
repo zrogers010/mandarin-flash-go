@@ -78,20 +78,34 @@ sudo journalctl -u mf-nightly-backup.service -n 50
 
 ```bash
 # List recent backups
-ls -lh /home/deploy/backups/mandarinflash-*.sql.gz
+ls -lh /home/ec2-user/backups/mandarinflash-*.sql.gz
 
 # Check backup log
-tail -50 /home/deploy/backups/backup.log
+tail -50 /home/ec2-user/backups/backup.log
 ```
 
 ### Verify a backup
 
 ```bash
 # Test gzip integrity
-gzip -t /home/deploy/backups/mandarinflash-2026-10-09_0317.sql.gz
+gzip -t /home/ec2-user/backups/mandarinflash-2026-10-09_0317.sql.gz
 
 # Count tables in backup
-gunzip -c /home/deploy/backups/mandarinflash-2026-10-09_0317.sql.gz | grep -c "^CREATE TABLE"
+gunzip -c /home/ec2-user/backups/mandarinflash-2026-10-09_0317.sql.gz | grep -c "^CREATE TABLE"
+```
+
+### Configure backup location
+
+The default backup location is `/home/ec2-user/backups`. To use a different location, set the `BACKUP_DIR` environment variable in the systemd service:
+
+```bash
+sudo systemctl edit mf-nightly-backup.service
+```
+
+Add:
+```ini
+[Service]
+Environment="BACKUP_DIR=/custom/backup/path"
 ```
 
 ## Backup Features
@@ -133,10 +147,10 @@ sudo -u deploy /home/deploy/bin/mf-nightly-backup.sh
 
 ```bash
 # Check backup directory size
-du -sh /home/deploy/backups/
+du -sh /home/ec2-user/backups/
 
 # Remove old backups manually if needed
-find /home/deploy/backups -name "mandarinflash-*.sql.gz" -mtime +14 -delete
+find /home/ec2-user/backups -name "mandarinflash-*.sql.gz" -mtime +14 -delete
 ```
 
 ## Restoring from Backup
@@ -152,38 +166,44 @@ sudo -n docker compose -f docker-compose.prod.yml down
 sudo -n docker compose -f docker-compose.prod.yml up -d postgres
 
 # Restore the backup
-gunzip -c /home/deploy/backups/mandarinflash-2026-10-09_0317.sql.gz | \
-  sudo -n docker compose -f docker-compose.prod.yml exec -T postgres \
-  psql -U postgres -d chinese_learning
+gunzip -c /home/ec2-user/backups/mandarinflash-2026-10-09_0317.sql.gz | \
+  docker exec -i mf_postgres psql -U postgres -d chinese_learning
 
 # Start the full application
 sudo -n docker compose -f docker-compose.prod.yml up -d
 ```
 
-## Migration from backup-cron.sh
+## Migration from Existing Backup Setup
 
-If you're migrating from the old `backup-cron.sh` cron-based approach:
+If you have an existing backup setup (e.g., `backup-cron.sh` via cron):
 
-1. Remove the old crontab entry:
+1. Remove any existing crontab entries:
    ```bash
    crontab -e
-   # Delete the line that runs backup-cron.sh
+   # Delete any lines that run backup scripts
    ```
 
-2. Follow the installation steps above
+2. Disable any existing systemd timers with the same name:
+   ```bash
+   sudo systemctl stop mf-nightly-backup.timer
+   sudo systemctl disable mf-nightly-backup.timer
+   ```
 
-3. The old `backup-cron.sh` can be kept for reference but is no longer needed
+3. Follow the installation steps above
+
+4. The systemd setup provides the same functionality with better:
+   - Logging (via journalctl)
+   - Error handling (systemd will record failures)
+   - Timezone handling (explicit America/Los_Angeles in OnCalendar)
+   - Reliability (Persistent=true runs missed backups on boot)
 
 ## Timezone Configuration
 
-The timer is configured to run at 3:17 AM in the server's local timezone. To verify your timezone:
+The timer specifies `America/Los_Angeles` directly in the `OnCalendar` directive, so it will run at 3:17 AM Pacific Time regardless of the server's timezone setting.
 
+To verify the scheduled time:
 ```bash
-timedatectl
+sudo systemctl list-timers --all | grep mf-nightly-backup
 ```
 
-To set the timezone to Pacific Time:
-
-```bash
-sudo timedatectl set-timezone America/Los_Angeles
-```
+The server may run in UTC, but the timer will correctly convert to Pacific Time.

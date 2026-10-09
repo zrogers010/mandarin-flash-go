@@ -304,7 +304,7 @@ def main():
     conn = connect_db()
     ensure_schema(conn)
 
-    print("[3/4] Parsing entries...")
+    print("[3/4] Parsing and selecting best entries...")
     entries = []
     with gzip.open(gz_path, "rt", encoding="utf-8") as f:
         for line in f:
@@ -313,15 +313,6 @@ def main():
                 entries.append(parsed)
     print(f"  Parsed {len(entries)} entries")
 
-    print("[3/4] Connecting to database...")
-    conn = connect_db()
-    ensure_schema(conn)
-
-    existing = load_existing_entries(conn)
-    print(f"  Found {existing.get('_count', 0)} existing vocabulary entries")
-
-    print("[4/4] Importing with UPSERT (idempotent, preserves IDs, prioritizes best entries)...")
-    
     # Group entries by (simplified, pinyin_no_tones) and pick the best one
     best_entries = {}
     for entry in entries:
@@ -334,12 +325,13 @@ def main():
     
     print(f"  Selected {len(best_entries)} best entries from {len(entries)} total (removed polyphonic duplicates)")
     
+    # Load existing entries to prevent duplicates
+    print("[4/5] Loading existing vocabulary...")
+    existing_entries = load_existing_entries(conn)
+    
+    print("[5/5] Inserting new entries...")
     batch_size = 1000
     processed = 0
-    
-    # Load existing entries to prevent duplicates
-    print("[3/4] Loading existing vocabulary...")
-    existing_entries = load_existing_entries(conn)
     
     # Use batch INSERT with ON CONFLICT DO NOTHING
     # IMPORTANT: Never update existing rows - preserves all manual corrections
