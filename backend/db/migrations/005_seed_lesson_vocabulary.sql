@@ -7,7 +7,7 @@
 -- Greetings
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES ('你好', '你好', 'nǐhǎo', 'hello', 1, '[{"chinese":"你好！很高兴认识你。","pinyin":"Nǐhǎo! Hěn gāoxìng rènshi nǐ.","english":"Hello! Nice to meet you."}]'::jsonb)
-ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- Food & Dining
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
