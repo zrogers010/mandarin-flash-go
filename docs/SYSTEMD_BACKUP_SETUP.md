@@ -17,7 +17,7 @@ The production backup system uses:
 ### 1. Copy the backup script
 
 ```bash
-# As the deploy user
+# As the ec2-user
 mkdir -p ~/bin
 cp /home/deploy/mandarinflash/scripts/mf-nightly-backup.sh ~/bin/
 chmod +x ~/bin/mf-nightly-backup.sh
