@@ -45,6 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_vocabulary_english_trgm ON vocabulary USING gin (
 CREATE INDEX IF NOT EXISTS idx_vocabulary_pinyin_trgm ON vocabulary USING gin (pinyin gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_traditional ON vocabulary(traditional);
 
+DROP TRIGGER IF EXISTS update_vocabulary_updated_at ON vocabulary;
 CREATE TRIGGER update_vocabulary_updated_at BEFORE UPDATE ON vocabulary
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -163,6 +165,7 @@ CREATE INDEX IF NOT EXISTS idx_uvp_user_id ON user_vocabulary_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_uvp_next_review ON user_vocabulary_progress(user_id, next_review_at);
 CREATE INDEX IF NOT EXISTS idx_uvp_vocabulary_id ON user_vocabulary_progress(vocabulary_id);
 
+DROP TRIGGER IF EXISTS update_uvp_updated_at ON user_vocabulary_progress;
 CREATE TRIGGER update_uvp_updated_at BEFORE UPDATE ON user_vocabulary_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

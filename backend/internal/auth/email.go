@@ -76,7 +76,7 @@ type PasswordResetData struct {
 	SupportEmail string
 }
 
-func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody string) error {
+func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody, textBody string) error {
 	if !es.enabled {
 		log.Println("════════════════════════════════════════════════════════")
 		log.Printf("  [DEV MODE] Email to: %s <%s>", toName, toEmail)
@@ -141,14 +141,14 @@ func (es *EmailService) SendEmailVerification(email, name, token string) error {
 		return fmt.Errorf("failed to render email template: %w", err)
 	}
 
-	return es.sendEmail(email, name, emailTemplate.Subject, emailBody)
+	// For now, use the HTML body as text (can be improved with plain text templates)
+	return es.sendEmail(email, name, emailTemplate.Subject, emailBody, emailBody)
 }
 
-// SendPasswordReset sends a password reset email
+// SendPasswordReset sends a password reset email using new templates
 func (es *EmailService) SendPasswordReset(email, name, token string) error {
-	resetURL := fmt.Sprintf("%s/reset-password?token=%s", es.frontendURL, token)
-
 	if !es.enabled {
+		resetURL := fmt.Sprintf("%s/reset-password?token=%s", es.frontendURL, token)
 		log.Println("════════════════════════════════════════════════════════")
 		log.Printf("  [DEV] Password reset for: %s", email)
 		log.Printf("  Reset URL: %s", resetURL)
@@ -156,24 +156,27 @@ func (es *EmailService) SendPasswordReset(email, name, token string) error {
 		return nil
 	}
 
-	data := PasswordResetData{
-		UserName:     name,
-		ResetURL:     resetURL,
-		ExpiresAt:    time.Now().Add(1 * time.Hour),
-		SupportEmail: es.supportEmail,
+	// Use new professional templates
+	htmlBody := GetPasswordResetEmailHTML(name, token)
+	textBody := GetPasswordResetEmailPlainText(name, token)
+
+	return es.sendEmail(email, name, "Reset Your Password - MandarinFlash", htmlBody, textBody)
+}
+
+// SendWelcomeEmail sends a welcome email after verification
+func (es *EmailService) SendWelcomeEmail(email, name string) error {
+	if !es.enabled {
+		log.Println("════════════════════════════════════════════════════════")
+		log.Printf("  [DEV] Welcome email for: %s", email)
+		log.Println("════════════════════════════════════════════════════════")
+		return nil
 	}
 
-	emailTemplate, err := es.getPasswordResetTemplate()
-	if err != nil {
-		return fmt.Errorf("failed to get email template: %w", err)
-	}
+	// Use new professional templates
+	htmlBody := GetWelcomeEmailHTML(name)
+	textBody := GetWelcomeEmailPlainText(name)
 
-	emailBody, err := es.renderTemplate(emailTemplate, data)
-	if err != nil {
-		return fmt.Errorf("failed to render email template: %w", err)
-	}
-
-	return es.sendEmail(email, name, emailTemplate.Subject, emailBody)
+	return es.sendEmail(email, name, "Welcome to MandarinFlash!", htmlBody, textBody)
 }
 
 func (es *EmailService) getEmailVerificationTemplate() (*EmailTemplate, error) {

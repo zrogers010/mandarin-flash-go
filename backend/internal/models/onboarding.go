@@ -40,20 +40,3 @@ type DailyStats struct {
 	LastStudyDate     *time.Time `json:"last_study_date,omitempty"`
 	ReviewsDue        int       `json:"reviews_due"`
 }
-
-// GuestProgress represents locally stored progress before signup
-type GuestProgress struct {
-	CompletedQuizzes []string          `json:"completed_quizzes"` // Quiz IDs
-	SeenWords        []string          `json:"seen_words"`        // Vocabulary IDs
-	QuizResults      []GuestQuizResult `json:"quiz_results"`
-}
-
-// GuestQuizResult stores a guest quiz result for later merge
-type GuestQuizResult struct {
-	QuizType  string            `json:"quiz_type"`
-	HSKLevel  int               `json:"hsk_level"`
-	Total     int               `json:"total"`
-	Correct   int               `json:"correct"`
-	Answers   map[string]string `json:"answers"`
-	Timestamp time.Time         `json:"timestamp"`
-}

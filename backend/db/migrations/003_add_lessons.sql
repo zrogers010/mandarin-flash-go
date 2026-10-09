@@ -20,6 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_lessons_category ON lessons(category);
 CREATE INDEX IF NOT EXISTS idx_lessons_difficulty ON lessons(difficulty);
 CREATE INDEX IF NOT EXISTS idx_lessons_sort_order ON lessons(sort_order);
 
+DROP TRIGGER IF EXISTS update_lessons_updated_at ON lessons;
 CREATE TRIGGER update_lessons_updated_at BEFORE UPDATE ON lessons
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

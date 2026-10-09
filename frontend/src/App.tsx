@@ -33,6 +33,7 @@ import { Lessons } from '@/pages/Lessons'
 import { LessonDetail } from '@/pages/LessonDetail'
 import { Review } from '@/pages/Review'
 import { NotFound } from '@/pages/NotFound'
+import Dashboard from '@/pages/Dashboard'
 
 function App() {
   return (
@@ -63,6 +64,11 @@ function App() {
           <Route path="/hsk-hub" element={<Navigate to="/hsk" replace />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/practice" element={<Practice />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/lessons/grammar" element={<Lessons />} />
           <Route path="/lessons/topics" element={<Lessons />} />

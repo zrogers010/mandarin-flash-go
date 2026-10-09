@@ -36,6 +36,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 	authHandler := NewAuthHandler(db, cfg)
 	ttsHandler := NewTTSHandler(cfg)
 	lessonHandler := NewLessonHandler(db)
+	guestHandler := NewGuestHandler(db)
 
 	// Initialize middleware
 	userRepo := database.NewUserRepository(db)
@@ -86,6 +87,11 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			authRoutes.POST("/onboarding",
 				authMiddleware.RequireAuth(),
 				authHandler.CompleteOnboarding,
+			)
+			// Guest progress merge (requires auth)
+			authRoutes.POST("/merge-guest-progress",
+				authMiddleware.RequireAuth(),
+				guestHandler.MergeGuestProgress,
 			)
 		}
 

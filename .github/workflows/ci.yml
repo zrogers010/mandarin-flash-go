@@ -7,6 +7,189 @@ on:
     branches: [ main ]
 
 jobs:
+  migrations:
+    name: Migration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Start postgres container (production-like setup)
+        run: |
+          # Start postgres in a named container
+          # Do NOT mount migrations to /docker-entrypoint-initdb.d - we need manual control for testing
+          docker run -d --name mf_postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=chinese_learning_test \
+            -p 5432:5432 \
+            postgres:15
+          
+          # Wait for postgres to be ready
+          for i in $(seq 1 30); do
+            if docker exec mf_postgres pg_isready -U postgres &>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            sleep 2
+          done
+          
+          # Copy migrations into container for access
+          docker exec mf_postgres mkdir -p /migrations
+          docker cp backend/db/migrations/. mf_postgres:/migrations/
+      
+      - name: Test prod baseline scenario (docker exec mode)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing Production Baseline Scenario (Docker Exec Mode) ==="
+          echo "Simulating a prod DB that was built from 001-006 without schema_migrations"
+          echo "Running psql inside container, same as production deploy.sh"
+          
+          # Apply migrations 001-006 directly inside the container (as production was originally built)
+          for migration in backend/db/migrations/00[1-6]_*.sql; do
+            if [ -f "$migration" ]; then
+              echo "  Building prod baseline: $(basename "$migration")"
+              docker exec -i mf_postgres psql -v ON_ERROR_STOP=1 -U postgres -d chinese_learning_test < "$migration"
+            fi
+          done
+          
+          # Verify schema_migrations table does not exist yet
+          HAS_TRACKER=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
+            "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'schema_migrations');" || echo "f")
+          
+          if [ "$HAS_TRACKER" = "t" ]; then
+            echo "❌ FAIL: schema_migrations should not exist yet in baseline scenario!"
+            exit 1
+          fi
+          
+          echo "  Baseline DB ready (001-006 applied, no schema_migrations yet)"
+          echo ""
+          
+          # Now run the migration script - it should detect the baseline and record 001-006
+          # Use docker exec mode, same as production
+          echo "  Running migration script (docker exec mode, same as prod)..."
+          bash scripts/migrate.sh postgres chinese_learning_test \
+            docker exec -i mf_postgres psql
+          
+          # Verify baseline was recorded
+          BASELINE_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations WHERE filename ~ '^00[1-6]_';" || echo "0")
+          
+          echo "  Baseline migrations recorded: $BASELINE_COUNT"
+          
+          if [ "$BASELINE_COUNT" != "6" ]; then
+            echo "❌ FAIL: Expected 6 baseline migrations (001-006), got: $BASELINE_COUNT"
+            exit 1
+          fi
+          
+          # Verify remaining migrations were applied
+          TOTAL_MIGRATIONS=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Total migrations recorded: $TOTAL_MIGRATIONS"
+          
+          if [ "$TOTAL_MIGRATIONS" -lt "10" ]; then
+            echo "❌ FAIL: Expected at least 10 migrations, got: $TOTAL_MIGRATIONS"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Production baseline scenario successful (docker exec mode)"
+      
+      - name: Test migration idempotency (second run on same DB, docker exec mode)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing Migration Idempotency (Docker Exec Mode) ==="
+          echo "Running migration script again on the same database..."
+          
+          # Count migrations before second run
+          BEFORE_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Migrations before second run: $BEFORE_COUNT"
+          
+          # Run migration script again (docker exec mode)
+          bash scripts/migrate.sh postgres chinese_learning_test \
+            docker exec -i mf_postgres psql
+          
+          # Count migrations after second run
+          AFTER_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Migrations after second run: $AFTER_COUNT"
+          
+          if [ "$BEFORE_COUNT" != "$AFTER_COUNT" ]; then
+            echo "❌ FAIL: Migration count changed on second run! Before: $BEFORE_COUNT, After: $AFTER_COUNT"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Migration idempotency verified (no-op on second run, docker exec mode)"
+      
+      - name: Test fresh empty DB scenario (docker exec mode)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing Fresh Empty Database Scenario (Docker Exec Mode) ==="
+          
+          # Drop and recreate database to start fresh
+          docker exec -i mf_postgres psql -U postgres -c "DROP DATABASE IF EXISTS chinese_learning_fresh;"
+          docker exec -i mf_postgres psql -U postgres -c "CREATE DATABASE chinese_learning_fresh;"
+          
+          echo "  Created fresh empty database"
+          
+          # Run migration script on empty DB (docker exec mode)
+          bash scripts/migrate.sh postgres chinese_learning_fresh \
+            docker exec -i mf_postgres psql
+          
+          # Verify all migrations were applied
+          MIGRATION_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Migrations applied: $MIGRATION_COUNT"
+          
+          if [ "$MIGRATION_COUNT" -lt "10" ]; then
+            echo "❌ FAIL: Expected at least 10 migrations, got: $MIGRATION_COUNT"
+            exit 1
+          fi
+          
+          # Verify no baseline was recorded (fresh DB should not trigger baseline logic)
+          HAS_USERS=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'users');" || echo "f")
+          
+          if [ "$HAS_USERS" != "t" ]; then
+            echo "❌ FAIL: users table should exist after migrations!"
+            exit 1
+          fi
+          
+          # Check that 005 seeded lesson vocabulary
+          VOCAB_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE hsk_level BETWEEN 1 AND 6;" || echo "0")
+          
+          echo "  Lesson vocabulary rows: $VOCAB_COUNT"
+          
+          if [ "$VOCAB_COUNT" -lt "30" ] || [ "$VOCAB_COUNT" -gt "50" ]; then
+            echo "❌ FAIL: Lesson vocabulary count unexpected: $VOCAB_COUNT (expected ~32)"
+            exit 1
+          fi
+          
+          # Verify lesson_vocabulary links were created
+          LV_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT COUNT(*) FROM lesson_vocabulary;" || echo "0")
+          
+          echo "  Lesson-vocabulary links: $LV_COUNT"
+          
+          if [ "$LV_COUNT" -lt "30" ]; then
+            echo "❌ FAIL: Too few lesson-vocabulary links: $LV_COUNT (expected at least 30)"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Fresh empty database scenario successful (docker exec mode)"
+      
+      - name: Cleanup
+        if: always()
+        run: docker rm -f mf_postgres || true
+
   backend:
     name: Backend (Go)
     runs-on: ubuntu-latest
@@ -52,20 +235,12 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run migrations
+      - name: Run migrations (host mode for backend tests)
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: chinese_learning_test
-          DB_USER: postgres
-          DB_PASSWORD: postgres
+          PGPASSWORD: postgres
         run: |
-          for migration in db/migrations/*.sql; do
-            if [ -f "$migration" ]; then
-              echo "Applying $(basename $migration)..."
-              PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -f "$migration"
-            fi
-          done
+          cd ..
+          bash scripts/migrate.sh postgres chinese_learning_test psql -h localhost
 
       - name: Run Go tests
         env:
@@ -188,16 +363,118 @@ jobs:
           wget https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz -O scripts/cedict_ts.u8.gz
           gunzip scripts/cedict_ts.u8.gz
 
-      - name: Apply migrations
+      - name: Apply migrations 000-009 (before test data)
         env:
           PGPASSWORD: postgres
         run: |
-          for migration in backend/db/migrations/*.sql; do
+          echo "=== Applying Migrations 000-009 ==="
+          for migration in backend/db/migrations/00[0-9]*.sql; do
             if [ -f "$migration" ]; then
-              echo "Applying $(basename $migration)..."
-              psql -h localhost -U postgres -d chinese_learning_test -f "$migration"
+              MIGRATION_NAME="$(basename "$migration")"
+              
+              # Skip migration 010 - it needs test data first
+              if [[ "$MIGRATION_NAME" == "010_"* ]]; then
+                continue
+              fi
+              
+              # Check if already applied
+              APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+                "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'" 2>/dev/null || echo "0")
+              
+              if [ "$APPLIED" = "1" ]; then
+                echo "  Skipping $MIGRATION_NAME (already applied)"
+                continue
+              fi
+              
+              echo "  Applying $MIGRATION_NAME..."
+              psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<EOSQL
+              BEGIN;
+              \i $migration
+              INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
+              COMMIT;
+          EOSQL
             fi
           done
+
+      - name: Seed sample HSK words and test fixture BEFORE migration 010
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Insert sample HSK words that migration 010 will correct
+          # These must be inserted AFTER migrations 001-009 but BEFORE 010
+          psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<'SQL'
+          -- HSK words for correction testing (with variants that exist in production)
+          INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+          VALUES
+            (gen_random_uuid(), '年', '秊', 'nián', 'nian', 'grain | harvest (old)', 1, NOW(), NOW()),
+            (gen_random_uuid(), '喝', '喝', 'hē', 'he', 'to drink', 1, NOW(), NOW()),
+            (gen_random_uuid(), '累', '纍', 'lèi', 'lei', 'rope', 2, NOW(), NOW()),
+            (gen_random_uuid(), '伞', '繖', 'sǎn', 'san', 'damask silk', 2, NOW(), NOW()),
+            (gen_random_uuid(), '腿', '骽', 'tuǐ', 'tui', 'hip bone', 2, NOW(), NOW()),
+            (gen_random_uuid(), '宾馆', NULL, 'bīngguǎn', 'bingguan', 'hotel', 2, NOW(), NOW()),
+            (gen_random_uuid(), '发', '髮', 'fà', 'fa', 'hair', 3, NOW(), NOW()),
+            (gen_random_uuid(), '对', NULL, 'duì', 'dui', 'to', 2, NOW(), NOW()),
+            (gen_random_uuid(), '对', '對', 'duì', 'dui', 'correct', 2, NOW(), NOW())
+          ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+          
+          -- Test fixture: CEDICT level-0 row with 'football' to verify it's not touched
+          INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+          VALUES (gen_random_uuid(), '足球', '足球', 'zúqiú', 'zuqiu', 'football | soccer', 0, NOW(), NOW())
+          ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+          SQL
+          
+          echo "Sample words and test fixture inserted, ready for migration 010"
+
+      - name: Apply migration 010 and remaining migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Applying Remaining Migrations (010+) ==="
+          for migration in backend/db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              MIGRATION_NAME="$(basename "$migration")"
+              
+              # Check if already applied
+              APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+                "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'")
+              
+              if [ "$APPLIED" = "1" ]; then
+                continue
+              fi
+              
+              echo "  Applying $MIGRATION_NAME..."
+              psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<EOSQL
+              BEGIN;
+              \i $migration
+              INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
+              COMMIT;
+          EOSQL
+            fi
+          done
+
+      - name: Apply migrations (SECOND RUN - idempotency test)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Second Migration Run (Idempotency Test) ==="
+          for migration in backend/db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              MIGRATION_NAME="$(basename "$migration")"
+              
+              # Check if already applied
+              APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+                "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'")
+              
+              if [ "$APPLIED" = "1" ]; then
+                echo "  Skipping $MIGRATION_NAME (already applied)"
+                continue
+              fi
+              
+              echo "  ERROR: $MIGRATION_NAME was not recorded in first run!"
+              exit 1
+            fi
+          done
+          echo "✅ All migrations already applied - idempotent migration system working"
 
       - name: First CEDICT import
         env:
@@ -253,7 +530,7 @@ jobs:
           PGPASSWORD: postgres
         run: |
           echo "=== Checking for Duplicate Natural Keys ==="
-          DUPES=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+          DUPES=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
             "SELECT COUNT(*) FROM (
               SELECT chinese, traditional, pinyin, COUNT(*) as cnt
               FROM vocabulary
@@ -265,7 +542,7 @@ jobs:
           
           if [ "$DUPES" -gt 0 ]; then
             echo "❌ FAIL: Found $DUPES duplicate natural keys!"
-            psql -h localhost -U postgres -d chinese_learning_test -c \
+            psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -c \
               "SELECT chinese, traditional, pinyin, COUNT(*) as cnt
                FROM vocabulary
                GROUP BY chinese, traditional, pinyin
@@ -275,6 +552,114 @@ jobs:
           else
             echo "✅ PASS: All natural keys are unique"
           fi
+
+      - name: Verify content corrections were applied
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Verifying Content Corrections ==="
+          
+          # Check critical corrections that must exist after migration 010
+          # 年 = year (not grain/harvest)
+          YEAR_EN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='年' AND pinyin='nián' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
+          echo "年 (year): $YEAR_EN"
+          if [[ "$YEAR_EN" != *"year"* ]]; then
+            echo "❌ FAIL: 年 should mean 'year', got: $YEAR_EN"
+            exit 1
+          fi
+          
+          # 喝 = to drink (not to shout)
+          HE_EN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='喝' AND pinyin='hē' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
+          echo "喝 (to drink): $HE_EN"
+          if [[ "$HE_EN" != *"drink"* ]]; then
+            echo "❌ FAIL: 喝 should mean 'to drink', got: $HE_EN"
+            exit 1
+          fi
+          
+          # 累 = tired (not rope), verify pinyin lèi and traditional 累
+          LEI_ROW=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english, pinyin, traditional FROM vocabulary WHERE chinese='累' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" | tr '\t' '|')
+          echo "累 row: $LEI_ROW"
+          if [[ "$LEI_ROW" != *"tired"* ]] || [[ "$LEI_ROW" != *"lèi"* ]] || [[ "$LEI_ROW" != *"累"* ]]; then
+            echo "❌ FAIL: 累 should be tired|lèi|累, got: $LEI_ROW"
+            exit 1
+          fi
+          
+          # 伞 = umbrella (not damask silk)
+          SAN_EN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='伞' AND pinyin='sǎn' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
+          echo "伞 (umbrella): $SAN_EN"
+          if [[ "$SAN_EN" != *"umbrella"* ]]; then
+            echo "❌ FAIL: 伞 should mean 'umbrella', got: $SAN_EN"
+            exit 1
+          fi
+          
+          # 腿 = leg (not hip bone)
+          TUI_EN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='腿' AND pinyin='tuǐ' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
+          echo "腿 (leg): $TUI_EN"
+          if [[ "$TUI_EN" != *"leg"* ]]; then
+            echo "❌ FAIL: 腿 should mean 'leg', got: $TUI_EN"
+            exit 1
+          fi
+          
+          # 宾馆 = hotel with correct pinyin bīnguǎn
+          BINGUAN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT pinyin FROM vocabulary WHERE chinese='宾馆' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
+          echo "宾馆 pinyin: $BINGUAN"
+          if [[ "$BINGUAN" != "bīnguǎn" ]]; then
+            echo "❌ FAIL: 宾馆 should have pinyin 'bīnguǎn', got: $BINGUAN"
+            exit 1
+          fi
+          
+          # 发 = to send (not hair)
+          FA_EN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='发' AND pinyin='fā' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
+          echo "发 (to send): $FA_EN"
+          if [[ "$FA_EN" != *"send"* ]]; then
+            echo "❌ FAIL: 发 should mean 'to send', got: $FA_EN"
+            exit 1
+          fi
+          
+          # Verify exactly one HSK 2 对 remains
+          DUI_COUNT=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE chinese='对' AND hsk_level=2")
+          echo "对 HSK 2 count: $DUI_COUNT"
+          if [ "$DUI_COUNT" != "1" ]; then
+            echo "❌ FAIL: Should have exactly 1 HSK 2 对, got: $DUI_COUNT"
+            exit 1
+          fi
+          
+          # Verify 猫 has exactly one HSK row
+          MAO_HSK_COUNT=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE chinese='猫' AND hsk_level BETWEEN 1 AND 6")
+          echo "猫 HSK rows: $MAO_HSK_COUNT"
+          if [ "$MAO_HSK_COUNT" != "1" ]; then
+            echo "❌ FAIL: 猫 should have exactly 1 HSK row, got: $MAO_HSK_COUNT"
+            exit 1
+          fi
+          
+          # Verify no 'footballl' in level-0 rows (double-fix protection)
+          FOOTBALLL_COUNT=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE english ~ 'footballl' AND hsk_level=0")
+          echo "Level-0 'footballl' count: $FOOTBALLL_COUNT"
+          if [ "$FOOTBALLL_COUNT" != "0" ]; then
+            echo "❌ FAIL: Found $FOOTBALLL_COUNT level-0 rows with 'footballl'"
+            exit 1
+          fi
+          
+          # Verify test fixture CEDICT row is unchanged
+          FIXTURE=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='足球' AND hsk_level=0 LIMIT 1")
+          echo "Test fixture (足球): $FIXTURE"
+          if [[ "$FIXTURE" != "football | soccer" ]]; then
+            echo "❌ FAIL: CEDICT fixture should be 'football | soccer', got: $FIXTURE"
+            exit 1
+          fi
+          
+          echo "✅ PASS: All content corrections and safety checks verified"
 
   frontend:
     name: Frontend (React/TypeScript)

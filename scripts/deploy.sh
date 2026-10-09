@@ -9,11 +9,24 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
-# Use docker compose plugin or standalone
-if docker compose version &>/dev/null 2>&1; then
-    DC="docker compose"
+# Check if we need sudo for docker (ec2-user on prod is not in docker group)
+if docker ps &>/dev/null 2>&1; then
+    DOCKER="docker"
+elif sudo -n docker ps &>/dev/null 2>&1; then
+    DOCKER="sudo -n docker"
 else
-    DC="docker-compose"
+    echo "ERROR: Cannot access docker. Neither 'docker' nor 'sudo -n docker' works."
+    exit 1
+fi
+
+# Use docker compose plugin or standalone
+if $DOCKER compose version &>/dev/null 2>&1; then
+    DC="$DOCKER compose"
+elif $DOCKER docker-compose version &>/dev/null 2>&1; then
+    DC="$DOCKER docker-compose"
+else
+    echo "ERROR: Cannot find docker compose or docker-compose."
+    exit 1
 fi
 COMPOSE_FILE="-f docker-compose.prod.yml"
 
@@ -88,119 +101,16 @@ else
     echo "  WARNING: Backup failed, but continuing deploy."
 fi
 
-for migration in backend/db/migrations/*.sql; do
-    if [ -f "$migration" ]; then
-        MIGRATION_NAME="$(basename "$migration")"
-        echo "  Applying $MIGRATION_NAME..."
-        $DC $COMPOSE_FILE exec -T postgres psql \
-            -U "${DB_USER:-postgres}" \
-            -d "${DB_NAME:-chinese_learning}" \
-            -f "/docker-entrypoint-initdb.d/$MIGRATION_NAME" 2>&1 | tail -5
-    fi
-done
-echo "  Migrations applied."
+# Run migrations using shared migration script
+bash scripts/migrate.sh "${DB_USER:-postgres}" "${DB_NAME:-chinese_learning}" \
+    $DC $COMPOSE_FILE exec -T postgres psql
 
-# Run idempotent HSK vocabulary seeder (NEVER deletes words or progress)
-echo "  Seeding HSK vocabulary (idempotent upsert, safe for production)..."
-if [ -f "scripts/seed_hsk_vocabulary.py" ]; then
-    docker run --rm \
-        --network "$($DC $COMPOSE_FILE exec postgres printenv | grep -o 'mandarin-flash-go[^ ]*' | head -1 || echo 'mandarin-flash-go_internal')" \
-        -v "$PROJECT_DIR/scripts:/scripts" \
-        -e DB_HOST=postgres \
-        -e DB_PORT=5432 \
-        -e DB_NAME="${DB_NAME:-chinese_learning}" \
-        -e DB_USER="${DB_USER:-postgres}" \
-        -e DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD required}" \
-        python:3.11-slim \
-        bash -c "pip install -q psycopg2-binary && python3 -u /scripts/seed_hsk_vocabulary.py" 2>&1 | tail -10
-    
-    VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
-    PROGRESS_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM user_vocabulary_progress;" 2>/dev/null || echo "?")
-    echo "  Vocabulary: $VOCAB_COUNT words, $PROGRESS_COUNT progress records (preserved)."
-else
-    echo "  WARNING: Idempotent seeder not found at scripts/seed_hsk_vocabulary.py"
-fi
-
-# Rebuild lesson↔vocabulary links after seeds (seed 003 may overwrite them).
-echo "  Re-linking lesson vocabulary (post-seed)..."
-$DC $COMPOSE_FILE exec -T postgres psql \
-    -U "${DB_USER:-postgres}" \
-    -d "${DB_NAME:-chinese_learning}" <<'EOSQL'
-DELETE FROM lesson_vocabulary;
-DELETE FROM lessons WHERE slug = 'animals';
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'greetings-and-introductions'
-  AND v.chinese IN ('你好','谢谢','再见','对不起','没关系','不客气','名字','高兴','认识','工作','请问','朋友','明天')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'food-and-dining'
-  AND v.chinese IN ('吃','喝','水','菜','好吃','米饭','面条','面包','咖啡','茶','鸡蛋','肉','辣','服务员','餐厅','啤酒','汤','饱','饭')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'travel-and-transportation'
-  AND v.chinese IN ('飞机','火车','出租车','公共汽车','地铁','机场','左','右','走','路','票','车','酒店','北京','站','迷路')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'animals-and-nature'
-  AND v.chinese IN ('猫','狗','鸟','鱼','马','花','树','动物','熊猫','大象','兔子','蛇','老虎','可爱')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'school-and-education'
-  AND v.chinese IN ('学校','老师','学生','学习','考试','课','课本','同学','图书馆','上课','下课','作业','教室','今天')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'basic-sentence-structure'
-  AND v.chinese IN ('是','不','没','有','想','会','说','看','书','吃','很','肉','钱','早饭','中文')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'measure-words'
-  AND v.chinese IN ('个','本','杯','块','人','书','水','猫','鸟','票','车','鱼','衣服','鞋','筷子','自行车','钱')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'question-particles'
-  AND v.chinese IN ('吗','呢','什么','谁','哪','哪里','怎么','多少','几','岁','时候','为什么','名字','中文')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'time-expressions'
-  AND v.chinese IN ('明天','昨天','今天','早上','晚上','时候','几','星期','月','年','现在','去年','上午','下午')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
-SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
-FROM lessons l CROSS JOIN vocabulary v
-WHERE l.slug = 'negation'
-  AND v.chinese IN ('不','没','有','是','想','吃','喝','钱','高兴','肉','早饭','咖啡')
-ON CONFLICT DO NOTHING;
-EOSQL
+# HSK vocabulary and lesson links are fully managed by migrations
+echo "  Vocabulary and lesson links: Managed by migrations"
+VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
+PROGRESS_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM user_vocabulary_progress;" 2>/dev/null || echo "?")
 LV_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM lesson_vocabulary;" 2>/dev/null || echo "?")
-echo "  Lesson-vocabulary links: $LV_COUNT"
+echo "  Vocabulary: $VOCAB_COUNT words, $PROGRESS_COUNT progress records (preserved), $LV_COUNT lesson links."
 
 # ---------- Enrich definitions from CC-CEDICT ----------
 # The HSK seeds DELETE + re-INSERT levels 1-5, which resets each word's english

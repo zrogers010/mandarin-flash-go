@@ -1,0 +1,222 @@
+{
+  "corrections": [
+    {
+      "chinese": "好",
+      "pinyin": "hǎo",
+      "correct_english": "good | well | fine",
+      "wrong_english": "to be fond of",
+      "note": "好 hǎo (good) vs 好 hào (to be fond of)"
+    },
+    {
+      "chinese": "年",
+      "pinyin": "nián",
+      "correct_english": "year",
+      "wrong_english": "grain | harvest (old)",
+      "note": "年 nián (year) vs 秊 nián (harvest)"
+    },
+    {
+      "chinese": "喝",
+      "pinyin": "hē",
+      "correct_english": "to drink",
+      "wrong_english": "to shout",
+      "note": "喝 hē (drink) vs 喝 hè (shout)"
+    },
+    {
+      "chinese": "写",
+      "pinyin": "xiě",
+      "correct_english": "to write",
+      "wrong_english": "used in 写意",
+      "note": "Basic meaning is 'to write'"
+    },
+    {
+      "chinese": "猫",
+      "pinyin": "māo",
+      "correct_english": "cat",
+      "wrong_english": "used in 猫腰",
+      "note": "Primary meaning is 'cat'"
+    },
+    {
+      "chinese": "少",
+      "pinyin": "shǎo",
+      "correct_english": "few | little | less",
+      "wrong_english": "young",
+      "note": "少 shǎo (few) vs 少 shào (young)"
+    },
+    {
+      "chinese": "千",
+      "pinyin": "qiān",
+      "correct_english": "thousand",
+      "correct_traditional": "千",
+      "wrong_traditional": "韆",
+      "note": "千 (thousand) not 韆 (swing)"
+    },
+    {
+      "chinese": "秋",
+      "pinyin": "qiū",
+      "correct_english": "autumn | fall",
+      "correct_traditional": "秋",
+      "wrong_traditional": "鞦",
+      "note": "秋 (autumn) not 鞦 (swing)"
+    },
+    {
+      "chinese": "绿",
+      "pinyin": "lǜ",
+      "correct_english": "green",
+      "wrong_english": "used in names",
+      "note": "Primary meaning is 'green'"
+    },
+    {
+      "chinese": "和",
+      "pinyin": "hé",
+      "correct_english": "and | with | harmony",
+      "correct_traditional": "和",
+      "wrong_english": "(literary) harmonious",
+      "wrong_traditional": "龢",
+      "note": "和 hé (and) vs 龢 (harmony variant)"
+    },
+    {
+      "chinese": "哪",
+      "pinyin": "nǎ",
+      "correct_english": "which | where",
+      "wrong_english": "emphatic particle",
+      "note": "哪 nǎ (which) vs 哪 na (particle)"
+    },
+    {
+      "chinese": "好吃",
+      "pinyin": "hǎochī",
+      "correct_english": "tasty | delicious",
+      "wrong_english": "gluttonous",
+      "note": "好吃 (tasty) vs 好吃鬼 (glutton)"
+    },
+    {
+      "chinese": "玩",
+      "pinyin": "wán",
+      "correct_english": "to play | to have fun",
+      "correct_traditional": "玩",
+      "wrong_traditional": "翫",
+      "note": "玩 (play) not 翫 (variant)"
+    },
+    {
+      "chinese": "远",
+      "pinyin": "yuǎn",
+      "correct_english": "far | distant",
+      "wrong_english": "to distance oneself",
+      "note": "远 yuǎn (far) vs 远 yuàn (to keep at distance)"
+    },
+    {
+      "chinese": "累",
+      "pinyin": "lèi",
+      "correct_english": "tired | exhausted",
+      "wrong_english": "rope",
+      "note": "累 lèi (tired) vs 累 léi (rope)"
+    },
+    {
+      "chinese": "伞",
+      "pinyin": "sǎn",
+      "correct_english": "umbrella | parasol",
+      "wrong_english": "damask silk",
+      "note": "伞 sǎn (umbrella) vs 繖 sǎn (silk)"
+    },
+    {
+      "chinese": "腿",
+      "pinyin": "tuǐ",
+      "correct_english": "leg",
+      "wrong_english": "hip bone",
+      "note": "腿 (leg) not hip bone"
+    },
+    {
+      "chinese": "难",
+      "pinyin": "nán",
+      "correct_english": "difficult | hard",
+      "wrong_english": "disaster",
+      "note": "难 nán (difficult) vs 难 nàn (disaster)"
+    },
+    {
+      "chinese": "别",
+      "pinyin": "bié",
+      "correct_english": "don't | other | to leave",
+      "correct_traditional": "别",
+      "wrong_traditional": "彆",
+      "note": "别 (don't) not 彆 (variant)"
+    },
+    {
+      "chinese": "你",
+      "pinyin": "nǐ",
+      "correct_english": "you",
+      "correct_traditional": "你",
+      "wrong_traditional": "妳",
+      "note": "你 (you, generic) not 妳 (you, female)"
+    },
+    {
+      "chinese": "宾馆",
+      "pinyin": "bīnguǎn",
+      "correct_english": "hotel | guesthouse",
+      "wrong_pinyin": "bīngguǎn"
+    },
+    {
+      "chinese": "铅笔",
+      "pinyin": "qiānbǐ",
+      "correct_english": "pencil",
+      "wrong_pinyin": "qiánbǐ"
+    },
+    {
+      "chinese": "觉得",
+      "pinyin": "juéde",
+      "correct_english": "to feel | to think",
+      "wrong_pinyin": "juédé"
+    },
+    {
+      "chinese": "朋友",
+      "pinyin": "péngyou",
+      "correct_english": "friend",
+      "wrong_pinyin": "péngyǒu",
+      "note": "Second syllable should be neutral tone"
+    },
+    {
+      "chinese": "喜欢",
+      "pinyin": "xǐhuan",
+      "correct_english": "to like | to be fond of",
+      "wrong_pinyin": "xǐhuān",
+      "note": "Second syllable should be neutral tone"
+    },
+    {
+      "chinese": "发",
+      "pinyin": "fā",
+      "correct_english": "to send | to issue | to develop",
+      "wrong_english": "hair",
+      "note": "发 fā (send) vs 发 fà (hair)"
+    },
+    {
+      "chinese": "把",
+      "pinyin": "bǎ",
+      "correct_english": "to hold | (particle) | handle",
+      "wrong_english": "handle",
+      "note": "Primary use is as grammar particle"
+    },
+    {
+      "chinese": "种",
+      "pinyin": "zhǒng",
+      "correct_english": "kind | type | species",
+      "wrong_english": "to plant",
+      "note": "种 zhǒng (kind) vs 种 zhòng (to plant)"
+    },
+    {
+      "chinese": "过去",
+      "pinyin": "guòqù",
+      "correct_english": "past | former times | to go over",
+      "wrong_english": "(verb suffix)"
+    },
+    {
+      "chinese": "与",
+      "pinyin": "yǔ",
+      "correct_english": "and | with | to give",
+      "wrong_english": "to take part in"
+    },
+    {
+      "chinese": "对",
+      "pinyin": "duì",
+      "correct_english": "correct | right | toward | to face",
+      "note": "Duplicate entry in HSK 2 - remove one"
+    }
+  ]
+}

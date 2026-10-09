@@ -31,8 +31,17 @@ ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
 
 -- Step 5: Add a check to ensure emails are stored lowercase (enforce at DB level)
-ALTER TABLE users ADD CONSTRAINT check_email_lowercase 
-    CHECK (email = LOWER(email));
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'check_email_lowercase' 
+        AND conrelid = 'users'::regclass
+    ) THEN
+        ALTER TABLE users ADD CONSTRAINT check_email_lowercase 
+            CHECK (email = LOWER(email));
+    END IF;
+END $$;
 
 COMMENT ON CONSTRAINT check_email_lowercase ON users IS 
     'Emails must be stored in lowercase for case-insensitive authentication.';
