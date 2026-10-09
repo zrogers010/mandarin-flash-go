@@ -23,7 +23,7 @@ jobs:
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=chinese_learning_test \
             -p 5432:5432 \
-            postgres:15
+            public.ecr.aws/docker/library/postgres:15
           
           # Wait for postgres to be ready
           for i in $(seq 1 30); do
@@ -196,7 +196,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:15
+        image: public.ecr.aws/docker/library/postgres:15
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: chinese_learning_test
@@ -209,7 +209,7 @@ jobs:
           - 5432:5432
       
       redis:
-        image: redis:7
+        image: public.ecr.aws/docker/library/redis:7
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -334,7 +334,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:15
+        image: public.ecr.aws/docker/library/postgres:15
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: chinese_learning_test
