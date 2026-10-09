@@ -2,12 +2,15 @@
 
 This guide covers setting up the automated nightly database backups using systemd timers on production.
 
+**Note**: This replaces any existing backup setup (e.g., `backup-cron.sh` via cron) with identical behavior using systemd timers for better reliability and logging.
+
 ## Overview
 
 The production backup system uses:
-- **systemd timer**: `mf-nightly-backup.timer` schedules backups daily at 3:17 AM PT
-- **systemd service**: `mf-nightly-backup.service` runs the backup script
+- **systemd timer**: `mf-nightly-backup.timer` schedules backups daily at 3:17 AM PT (with timezone specified)
+- **systemd service**: `mf-nightly-backup.service` runs the backup script as the deploy user
 - **backup script**: `~/bin/mf-nightly-backup.sh` performs the actual backup with verification
+- **backup location**: `/home/ec2-user/backups` (configurable via `BACKUP_DIR` environment variable)
 
 ## Installation
 

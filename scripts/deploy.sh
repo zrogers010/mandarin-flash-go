@@ -42,14 +42,25 @@ COMPOSE_FILE="-f docker-compose.prod.yml"
 
 # Safety check: ensure we're running from the same directory as the live containers
 # This prevents deploying from a different checkout and breaking SSL cert paths
-RUNNING_WORKDIR=$($DC $COMPOSE_FILE ps -q mf_backend 2>/dev/null | head -1 | xargs -r $DOCKER inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null || echo "")
-if [ -n "$RUNNING_WORKDIR" ] && [ "$RUNNING_WORKDIR" != "$PROJECT_DIR" ]; then
-    echo "ERROR: Running containers were started from a different directory!"
-    echo "  This checkout: $PROJECT_DIR"
-    echo "  Live containers: $RUNNING_WORKDIR"
-    echo ""
-    echo "You must run deploy.sh from $RUNNING_WORKDIR to avoid breaking SSL certs and mounts."
-    exit 1
+BACKEND_CONTAINER_ID=$($DC $COMPOSE_FILE ps -q backend 2>/dev/null | head -1)
+if [ -n "$BACKEND_CONTAINER_ID" ]; then
+    RUNNING_WORKDIR=$($DOCKER inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$BACKEND_CONTAINER_ID" 2>/dev/null || echo "")
+    
+    if [ -z "$RUNNING_WORKDIR" ]; then
+        echo "ERROR: Cannot determine working directory of running containers!"
+        echo "Containers are running but working_dir label is not available."
+        echo "This is unsafe - refusing to proceed."
+        exit 1
+    fi
+    
+    if [ "$RUNNING_WORKDIR" != "$PROJECT_DIR" ]; then
+        echo "ERROR: Running containers were started from a different directory!"
+        echo "  This checkout: $PROJECT_DIR"
+        echo "  Live containers: $RUNNING_WORKDIR"
+        echo ""
+        echo "You must run deploy.sh from $RUNNING_WORKDIR to avoid breaking SSL certs and mounts."
+        exit 1
+    fi
 fi
 
 echo "=== MandarinFlash Deploy ==="
@@ -135,16 +146,23 @@ LV_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d 
 echo "  Vocabulary: $VOCAB_COUNT words, $PROGRESS_COUNT progress records (preserved), $LV_COUNT lesson links."
 
 # ---------- Enrich definitions from CC-CEDICT ----------
-# The HSK seeds DELETE + re-INSERT levels 1-5, which resets each word's english
-# to a single seed gloss. Re-apply the richer CC-CEDICT definitions (multiple
-# senses, e.g. 装修 -> "to decorate | to renovate | to fit up") and load the full
-# ~120k-entry dictionary. This upsert is idempotent and must run AFTER seeds.
-echo "  Enriching definitions from CC-CEDICT (this can take a minute)..."
-if bash scripts/run_cedict_import.sh; then
-    L0_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0;" 2>/dev/null || echo "?")
-    echo "  CC-CEDICT enrichment complete (dictionary entries: $L0_COUNT)."
+# OPTIONAL: Import CC-CEDICT dictionary entries (121k words)
+# Only runs when RUN_CEDICT_IMPORT=1 is set
+# WARNING: This adds many non-HSK words and should rarely be needed after initial setup
+if [ "${RUN_CEDICT_IMPORT:-0}" = "1" ]; then
+    echo ""
+    echo "=== Import CC-CEDICT Definitions ==="
+    echo "  Enriching definitions from CC-CEDICT (this can take a minute)..."
+    if bash scripts/run_cedict_import.sh; then
+        L0_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0;" 2>/dev/null || echo "?")
+        echo "  CC-CEDICT enrichment complete (dictionary entries: $L0_COUNT)."
+    else
+        echo "  WARNING: CC-CEDICT import failed; definitions/dictionary may be incomplete."
+    fi
 else
-    echo "  WARNING: CC-CEDICT import failed; definitions/dictionary may be incomplete."
+    echo ""
+    echo "=== CC-CEDICT Import Skipped ==="
+    echo "  To import CC-CEDICT dictionary, set RUN_CEDICT_IMPORT=1"
 fi
 
 # ---------- Restart all services ----------

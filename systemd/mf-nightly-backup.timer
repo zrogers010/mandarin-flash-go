@@ -1,11 +1,10 @@
 [Unit]
 Description=MandarinFlash Nightly Backup Timer
-Requires=mf-nightly-backup.service
 
 [Timer]
 # Run daily at 3:17 AM Pacific Time
-# Note: Server time should be set to America/Los_Angeles
-OnCalendar=*-*-* 03:17:00
+# Server runs UTC, so we specify the timezone explicitly
+OnCalendar=*-*-* 03:17:00 America/Los_Angeles
 
 # If system was down at scheduled time, run at next boot
 Persistent=true

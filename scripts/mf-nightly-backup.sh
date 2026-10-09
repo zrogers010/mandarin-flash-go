@@ -6,7 +6,8 @@
 #
 set -euo pipefail
 
-BACKUP_DIR="/home/deploy/backups"
+# Backup directory (configurable, defaults to ec2-user home)
+BACKUP_DIR="${BACKUP_DIR:-/home/ec2-user/backups}"
 DATE=$(date +%Y-%m-%d_%H%M)
 BACKUP_FILE="$BACKUP_DIR/mandarinflash-$DATE.sql.gz"
 LOG_FILE="$BACKUP_DIR/backup.log"
@@ -17,9 +18,8 @@ mkdir -p "$BACKUP_DIR"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting backup..." | tee -a "$LOG_FILE"
 
 # Create backup with compression
-# Note: Direct gzip without intermediate file to avoid disk space issues
-if sudo -n docker compose -f /home/deploy/mandarinflash/docker-compose.prod.yml exec -T postgres \
-    pg_dump -U postgres -d chinese_learning --clean --if-exists 2>&1 | gzip > "$BACKUP_FILE"; then
+# Use docker exec directly (no sudo, no compose, no stderr redirection)
+if docker exec mf_postgres pg_dump -U postgres -d chinese_learning --clean --if-exists | gzip > "$BACKUP_FILE"; then
     
     # Verify the compressed backup is valid
     if gzip -t "$BACKUP_FILE" 2>&1; then

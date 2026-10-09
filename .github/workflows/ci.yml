@@ -728,6 +728,83 @@ jobs:
           fi
           
           echo "✅ PASS: CEDICT import preserved all HSK 1-6 corrections"
+      
+      - name: Test CEDICT idempotency and constraints
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing CEDICT Import Idempotency and Constraints ==="
+          
+          # Capture row counts before second import
+          LEVEL0_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0")
+          TOTAL_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary")
+          
+          # Capture all level-0 english definitions before import
+          psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT chinese, traditional, pinyin, english FROM vocabulary WHERE hsk_level = 0 ORDER BY chinese, pinyin" \
+            > /tmp/level0_before.txt
+          
+          echo "Before second import: $TOTAL_BEFORE total, $LEVEL0_BEFORE level-0"
+          
+          # Run CEDICT import again
+          python3 scripts/import_cedict.py
+          
+          # Check that no new rows were inserted
+          LEVEL0_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0")
+          TOTAL_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary")
+          
+          echo "After second import: $TOTAL_AFTER total, $LEVEL0_AFTER level-0"
+          
+          if [ "$TOTAL_AFTER" -ne "$TOTAL_BEFORE" ]; then
+            echo "❌ FAIL: Second import added $((TOTAL_AFTER - TOTAL_BEFORE)) rows!"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Second import inserted 0 rows (idempotent)"
+          
+          # Verify no level-0 english definitions changed
+          psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT chinese, traditional, pinyin, english FROM vocabulary WHERE hsk_level = 0 ORDER BY chinese, pinyin" \
+            > /tmp/level0_after.txt
+          
+          if ! diff -q /tmp/level0_before.txt /tmp/level0_after.txt > /dev/null; then
+            echo "❌ FAIL: Level-0 English definitions changed after second import!"
+            diff /tmp/level0_before.txt /tmp/level0_after.txt | head -20
+            exit 1
+          fi
+          
+          echo "✅ PASS: No level-0 English definitions changed"
+          
+          # Check for duplicates modulo pinyin spacing/case
+          DUPLICATES=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM (
+              SELECT chinese, traditional, LOWER(REPLACE(pinyin, ' ', '')) as normalized_pinyin, COUNT(*) as cnt
+              FROM vocabulary
+              GROUP BY chinese, traditional, LOWER(REPLACE(pinyin, ' ', ''))
+              HAVING COUNT(*) > 1
+            ) dupes")
+          
+          if [ "$DUPLICATES" -gt 0 ]; then
+            echo "❌ FAIL: Found $DUPLICATES duplicate entries (ignoring pinyin spacing/case)!"
+            psql -h localhost -U postgres -d chinese_learning_test -c \
+              "SELECT chinese, traditional, pinyin, COUNT(*) as cnt
+               FROM vocabulary
+               GROUP BY chinese, traditional, LOWER(REPLACE(pinyin, ' ', ''))
+               HAVING COUNT(*) > 1
+               LIMIT 10"
+            exit 1
+          fi
+          
+          echo "✅ PASS: No duplicates found (pinyin spacing/case normalized)"
 
   frontend:
     name: Frontend (React/TypeScript)
