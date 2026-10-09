@@ -36,6 +36,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 	authHandler := NewAuthHandler(db, cfg)
 	ttsHandler := NewTTSHandler(cfg)
 	lessonHandler := NewLessonHandler(db)
+	guestHandler := NewGuestHandler(db)
 
 	// Initialize middleware
 	userRepo := database.NewUserRepository(db)

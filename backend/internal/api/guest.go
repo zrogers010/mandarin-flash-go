@@ -2,17 +2,27 @@ package api
 
 import (
 	"chinese-learning/internal/models"
+	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
+// GuestHandler handles guest mode and progress merging
+type GuestHandler struct {
+	db *sql.DB
+}
+
+// NewGuestHandler creates a new guest handler
+func NewGuestHandler(db *sql.DB) *GuestHandler {
+	return &GuestHandler{db: db}
+}
+
 // MergeGuestProgress merges localStorage guest progress into authenticated user's account
 // POST /api/v1/auth/merge-guest-progress
-func (s *Server) MergeGuestProgress(c *gin.Context) {
+func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -55,7 +65,7 @@ func (s *Server) MergeGuestProgress(c *gin.Context) {
 
 		// Check if user already has progress for this word
 		var existingCount int
-		err := s.DB.QueryRow(`
+		err := h.db.QueryRow(`
 			SELECT COUNT(*) FROM user_vocabulary_progress
 			WHERE user_id = $1 AND vocabulary_id = $2
 		`, userID, wordID).Scan(&existingCount)
@@ -71,7 +81,7 @@ func (s *Server) MergeGuestProgress(c *gin.Context) {
 		}
 
 		// Insert initial progress for this word
-		_, err = s.DB.Exec(`
+		_, err = h.db.Exec(`
 			INSERT INTO user_vocabulary_progress (
 				id, user_id, vocabulary_id, 
 				level, interval_days, due_date, 
@@ -96,7 +106,7 @@ func (s *Server) MergeGuestProgress(c *gin.Context) {
 	quizzesMerged = len(guestData.QuizResults)
 
 	// Log the merge for analytics
-	_, _ = s.DB.Exec(`
+	_, _ = h.db.Exec(`
 		INSERT INTO daily_activity (
 			id, user_id, date, minutes_studied, cards_reviewed, new_words_learned, created_at, updated_at
 		)
