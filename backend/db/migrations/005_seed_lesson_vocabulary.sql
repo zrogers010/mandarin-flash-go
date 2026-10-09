@@ -20,7 +20,7 @@ VALUES
 ('汤', '湯', 'tāng', 'soup', 2, '[{"chinese":"我要一碗汤。","pinyin":"Wǒ yào yì wǎn tāng.","english":"I want a bowl of soup."}]'::jsonb),
 ('咖啡', '咖啡', 'kāfēi', 'coffee', 2, '[{"chinese":"我想喝咖啡。","pinyin":"Wǒ xiǎng hē kāfēi.","english":"I want to drink coffee."}]'::jsonb),
 ('饱', '飽', 'bǎo', 'full (from eating)', 2, '[{"chinese":"你吃饱了吗？","pinyin":"Nǐ chī bǎo le ma?","english":"Are you full?"}]'::jsonb)
-ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- Travel & Transportation
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
@@ -30,7 +30,7 @@ VALUES
 ('公共汽车', '公共汽車', 'gōnggòngqìchē', 'bus', 2, '[{"chinese":"坐公共汽车还是坐地铁？","pinyin":"Zuò gōnggòng qìchē háishi zuò dìtiě?","english":"Take the bus or the subway?"}]'::jsonb),
 ('酒店', '酒店', 'jiǔdiàn', 'hotel', 3, '[{"chinese":"我的酒店在这附近。","pinyin":"Wǒ de jiǔdiàn zài zhè fùjìn.","english":"My hotel is near here."}]'::jsonb),
 ('迷路', '迷路', 'mílù', 'lost (one''s way)', 3, '[{"chinese":"我迷路了。","pinyin":"Wǒ mílù le.","english":"I''m lost."}]'::jsonb)
-ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- Animals & Nature
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
@@ -47,14 +47,14 @@ VALUES
 ('蛇', '蛇', 'shé', 'snake', 3, '[{"chinese":"那条蛇很长。","pinyin":"Nà tiáo shé hěn cháng.","english":"That snake is very long."}]'::jsonb),
 ('老虎', '老虎', 'lǎohǔ', 'tiger', 3, '[{"chinese":"老虎住在森林里。","pinyin":"Lǎohǔ zhù zài sēnlín lǐ.","english":"Tigers live in the forest."}]'::jsonb),
 ('可爱', '可愛', 'kěài', 'cute', 2, '[{"chinese":"他的狗很可爱。","pinyin":"Tā de gǒu hěn kě''ài.","english":"His dog is very cute."}]'::jsonb)
-ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- School
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES
 ('作业', '作業', 'zuòyè', 'homework', 2, '[{"chinese":"我的作业还没写完。","pinyin":"Wǒ de zuòyè hái méi xiě wán.","english":"I haven''t finished my homework yet."}]'::jsonb),
 ('教室', '教室', 'jiàoshì', 'classroom', 2, '[{"chinese":"老师在教室里。","pinyin":"Lǎoshī zài jiàoshì lǐ.","english":"The teacher is in the classroom."}]'::jsonb)
-ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- Grammar: measure word nouns
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
@@ -63,7 +63,7 @@ VALUES
 ('鞋', '鞋', 'xié', 'shoes', 2, '[{"chinese":"我要买一双鞋。","pinyin":"Wǒ yào mǎi yì shuāng xié.","english":"I want to buy a pair of shoes."}]'::jsonb),
 ('筷子', '筷子', 'kuàizi', 'chopsticks', 2, '[{"chinese":"请给我一双筷子。","pinyin":"Qǐng gěi wǒ yì shuāng kuàizi.","english":"Please give me a pair of chopsticks."}]'::jsonb),
 ('自行车', '自行車', 'zìxíngchē', 'bicycle', 2, '[{"chinese":"他有两辆自行车。","pinyin":"Tā yǒu liǎng liàng zìxíngchē.","english":"He has two bicycles."}]'::jsonb)
-ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 
 -- ── Clear old lesson_vocabulary links and re-populate ────────────
