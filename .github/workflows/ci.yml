@@ -7,6 +7,52 @@ on:
     branches: [ main ]
 
 jobs:
+  backend-integration-tests:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      
+      - name: Run migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/testdb?sslmode=disable
+        run: |
+          # Install golang-migrate if needed
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+          
+          # Run migrations
+          migrate -path db/migrations -database "$DATABASE_URL" up
+      
+      - name: Run integration tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/testdb?sslmode=disable
+        run: |
+          go test -v ./internal/api/... -run "Integration|SchemaValidation"
+
   deploy-safety-check:
     name: Deploy Safety Check
     runs-on: ubuntu-latest
@@ -15,11 +61,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Test deploy.sh safety check logic
+      - name: Test deploy.sh safety check function
         run: |
           set -euo pipefail
           
-          echo "=== Testing deploy.sh safety check logic ==="
+          echo "=== Testing deploy.sh safety check function ==="
+          
+          # Source the actual safety check function
+          source scripts/lib/deploy_safety_check.sh
           
           # Create a fake docker shim that simulates different scenarios
           mkdir -p /tmp/docker-shim
@@ -37,19 +86,10 @@ jobs:
           echo "Test 1: Missing container (fresh install)"
           export PATH="/tmp/docker-shim:$PATH"
           
-          # Extract and test the safety check logic
-          DOCKER="docker"
-          PROJECT_DIR="/test/project"
-          INSPECT_RC=0
-          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
-          
-          if [ $INSPECT_RC -eq 0 ]; then
-            echo "❌ FAIL: Should not have succeeded with missing container"
-            exit 1
-          elif echo "$INSPECT_OUTPUT" | grep -q "No such object\|no such image\|Error: No such container"; then
+          if deploy_safety_check "docker" "/test/project" 2>&1 | grep -q "fresh install"; then
             echo "✅ PASS: Correctly identified missing container (fresh install allowed)"
           else
-            echo "❌ FAIL: Did not recognize missing container error"
+            echo "❌ FAIL: Did not recognize fresh install"
             exit 1
           fi
           
@@ -64,17 +104,11 @@ jobs:
           chmod +x /tmp/docker-shim/docker
           
           echo "Test 2: Unreachable daemon"
-          INSPECT_RC=0
-          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
-          
-          if [ $INSPECT_RC -eq 0 ]; then
-            echo "❌ FAIL: Should not have succeeded with unreachable daemon"
-            exit 1
-          elif echo "$INSPECT_OUTPUT" | grep -q "No such object\|no such image\|Error: No such container"; then
-            echo "❌ FAIL: Misidentified daemon error as missing container"
-            exit 1
-          else
+          if deploy_safety_check "docker" "/test/project" 2>&1 | grep -q "Cannot inspect mf_backend"; then
             echo "✅ PASS: Correctly identified daemon connection error"
+          else
+            echo "❌ FAIL: Did not identify daemon error"
+            exit 1
           fi
           
           # Test 3: Mismatched directory (should fail with error)
@@ -88,39 +122,21 @@ jobs:
           chmod +x /tmp/docker-shim/docker
           
           echo "Test 3: Mismatched directory"
-          PROJECT_DIR="/test/project"
-          INSPECT_RC=0
-          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
-          
-          if [ $INSPECT_RC -eq 0 ]; then
-            LIVE_DIR="$INSPECT_OUTPUT"
-            if [ -n "$LIVE_DIR" ] && [ "$LIVE_DIR" != "$PROJECT_DIR" ]; then
-              echo "✅ PASS: Correctly detected directory mismatch"
-            else
-              echo "❌ FAIL: Did not detect directory mismatch"
-              exit 1
-            fi
+          if deploy_safety_check "docker" "/test/project" 2>&1 | grep -q "different directory"; then
+            echo "✅ PASS: Correctly detected directory mismatch"
           else
-            echo "❌ FAIL: Should have succeeded for existing container"
+            echo "❌ FAIL: Did not detect directory mismatch"
             exit 1
           fi
           
           # Test 4: Matching directory (should pass)
           echo "Test 4: Matching directory"
-          PROJECT_DIR="/different/deployment/directory"
-          INSPECT_RC=0
-          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
-          
-          if [ $INSPECT_RC -eq 0 ]; then
-            LIVE_DIR="$INSPECT_OUTPUT"
-            if [ -n "$LIVE_DIR" ] && [ "$LIVE_DIR" != "$PROJECT_DIR" ]; then
-              echo "❌ FAIL: False positive on matching directories"
-              exit 1
-            else
-              echo "✅ PASS: Correctly allowed matching directory"
-            fi
+          OUTPUT=$(deploy_safety_check "docker" "/different/deployment/directory" 2>&1)
+          if ! echo "$OUTPUT" | grep -q "ERROR"; then
+            echo "✅ PASS: Correctly allowed matching directory"
           else
-            echo "❌ FAIL: Should have succeeded for matching directory"
+            echo "❌ FAIL: False positive on matching directories"
+            echo "$OUTPUT"
             exit 1
           fi
           
