@@ -188,14 +188,19 @@ jobs:
           wget https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz -O scripts/cedict_ts.u8.gz
           gunzip scripts/cedict_ts.u8.gz
 
-      - name: Apply migrations (FIRST RUN)
+      - name: Apply migrations 000-009 (before test data)
         env:
           PGPASSWORD: postgres
         run: |
-          echo "=== First Migration Run ==="
-          for migration in backend/db/migrations/*.sql; do
+          echo "=== Applying Migrations 000-009 ==="
+          for migration in backend/db/migrations/00[0-9]*.sql; do
             if [ -f "$migration" ]; then
               MIGRATION_NAME="$(basename "$migration")"
+              
+              # Skip migration 010 - it needs test data first
+              if [[ "$MIGRATION_NAME" == "010_"* ]]; then
+                continue
+              fi
               
               # Check if already applied
               APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
@@ -216,13 +221,14 @@ jobs:
             fi
           done
 
-      - name: Seed sample HSK words and test fixture
+      - name: Seed sample HSK words and test fixture BEFORE migration 010
         env:
           PGPASSWORD: postgres
         run: |
           # Insert sample HSK words that migration 010 will correct
+          # These must be inserted AFTER migrations 001-009 but BEFORE 010
           psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<'SQL'
-          -- HSK words for correction testing
+          -- HSK words for correction testing (with variants that exist in production)
           INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
           VALUES
             (gen_random_uuid(), '年', '秊', 'nián', 'nian', 'grain | harvest (old)', 1, NOW(), NOW()),
@@ -242,31 +248,34 @@ jobs:
           ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
           SQL
           
-          echo "Sample words and test fixture inserted"
+          echo "Sample words and test fixture inserted, ready for migration 010"
 
-      - name: Run migration 010 (content corrections)
+      - name: Apply migration 010 and remaining migrations
         env:
           PGPASSWORD: postgres
         run: |
-          if [ -f "backend/db/migrations/010_apply_content_corrections.sql" ]; then
-            MIGRATION_NAME="010_apply_content_corrections.sql"
-            
-            # Check if already applied
-            APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
-              "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'" 2>/dev/null || echo "0")
-            
-            if [ "$APPLIED" = "0" ]; then
-              echo "Applying $MIGRATION_NAME..."
+          echo "=== Applying Remaining Migrations (010+) ==="
+          for migration in backend/db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              MIGRATION_NAME="$(basename "$migration")"
+              
+              # Check if already applied
+              APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+                "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'")
+              
+              if [ "$APPLIED" = "1" ]; then
+                continue
+              fi
+              
+              echo "  Applying $MIGRATION_NAME..."
               psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<EOSQL
               BEGIN;
-              \i backend/db/migrations/$MIGRATION_NAME
+              \i $migration
               INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
               COMMIT;
           EOSQL
-            else
-              echo "Skipping $MIGRATION_NAME (already applied)"
             fi
-          fi
+          done
 
       - name: Apply migrations (SECOND RUN - idempotency test)
         env:
