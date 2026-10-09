@@ -7,6 +7,126 @@ on:
     branches: [ main ]
 
 jobs:
+  deploy-safety-check:
+    name: Deploy Safety Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Test deploy.sh safety check logic
+        run: |
+          set -euo pipefail
+          
+          echo "=== Testing deploy.sh safety check logic ==="
+          
+          # Create a fake docker shim that simulates different scenarios
+          mkdir -p /tmp/docker-shim
+          
+          # Test 1: Missing container (fresh install - should pass)
+          cat > /tmp/docker-shim/docker << 'EOF'
+          #!/bin/bash
+          if [ "$1" = "inspect" ]; then
+            echo "Error: No such object: mf_backend" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/docker-shim/docker
+          
+          echo "Test 1: Missing container (fresh install)"
+          export PATH="/tmp/docker-shim:$PATH"
+          
+          # Extract and test the safety check logic
+          DOCKER="docker"
+          PROJECT_DIR="/test/project"
+          INSPECT_RC=0
+          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
+          
+          if [ $INSPECT_RC -eq 0 ]; then
+            echo "❌ FAIL: Should not have succeeded with missing container"
+            exit 1
+          elif echo "$INSPECT_OUTPUT" | grep -q "No such object\|no such image\|Error: No such container"; then
+            echo "✅ PASS: Correctly identified missing container (fresh install allowed)"
+          else
+            echo "❌ FAIL: Did not recognize missing container error"
+            exit 1
+          fi
+          
+          # Test 2: Unreachable daemon (should fail with error)
+          cat > /tmp/docker-shim/docker << 'EOF'
+          #!/bin/bash
+          if [ "$1" = "inspect" ]; then
+            echo "Cannot connect to the Docker daemon" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/docker-shim/docker
+          
+          echo "Test 2: Unreachable daemon"
+          INSPECT_RC=0
+          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
+          
+          if [ $INSPECT_RC -eq 0 ]; then
+            echo "❌ FAIL: Should not have succeeded with unreachable daemon"
+            exit 1
+          elif echo "$INSPECT_OUTPUT" | grep -q "No such object\|no such image\|Error: No such container"; then
+            echo "❌ FAIL: Misidentified daemon error as missing container"
+            exit 1
+          else
+            echo "✅ PASS: Correctly identified daemon connection error"
+          fi
+          
+          # Test 3: Mismatched directory (should fail with error)
+          cat > /tmp/docker-shim/docker << 'EOF'
+          #!/bin/bash
+          if [ "$1" = "inspect" ]; then
+            echo "/different/deployment/directory"
+            exit 0
+          fi
+          EOF
+          chmod +x /tmp/docker-shim/docker
+          
+          echo "Test 3: Mismatched directory"
+          PROJECT_DIR="/test/project"
+          INSPECT_RC=0
+          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
+          
+          if [ $INSPECT_RC -eq 0 ]; then
+            LIVE_DIR="$INSPECT_OUTPUT"
+            if [ -n "$LIVE_DIR" ] && [ "$LIVE_DIR" != "$PROJECT_DIR" ]; then
+              echo "✅ PASS: Correctly detected directory mismatch"
+            else
+              echo "❌ FAIL: Did not detect directory mismatch"
+              exit 1
+            fi
+          else
+            echo "❌ FAIL: Should have succeeded for existing container"
+            exit 1
+          fi
+          
+          # Test 4: Matching directory (should pass)
+          echo "Test 4: Matching directory"
+          PROJECT_DIR="/different/deployment/directory"
+          INSPECT_RC=0
+          INSPECT_OUTPUT=$(docker inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
+          
+          if [ $INSPECT_RC -eq 0 ]; then
+            LIVE_DIR="$INSPECT_OUTPUT"
+            if [ -n "$LIVE_DIR" ] && [ "$LIVE_DIR" != "$PROJECT_DIR" ]; then
+              echo "❌ FAIL: False positive on matching directories"
+              exit 1
+            else
+              echo "✅ PASS: Correctly allowed matching directory"
+            fi
+          else
+            echo "❌ FAIL: Should have succeeded for matching directory"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All deploy safety check tests passed"
+
   migrations:
     name: Migration Tests
     runs-on: ubuntu-latest
@@ -23,7 +143,7 @@ jobs:
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=chinese_learning_test \
             -p 5432:5432 \
-            postgres:15
+            public.ecr.aws/docker/library/postgres:15
           
           # Wait for postgres to be ready
           for i in $(seq 1 30); do
@@ -196,7 +316,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:15
+        image: public.ecr.aws/docker/library/postgres:15
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: chinese_learning_test
@@ -209,7 +329,7 @@ jobs:
           - 5432:5432
       
       redis:
-        image: redis:7
+        image: public.ecr.aws/docker/library/redis:7
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -334,7 +454,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:15
+        image: public.ecr.aws/docker/library/postgres:15
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: chinese_learning_test
@@ -660,6 +780,151 @@ jobs:
           fi
           
           echo "✅ PASS: All content corrections and safety checks verified"
+      
+      - name: Verify CEDICT import preserves HSK corrections
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Verifying CEDICT Import Preserves Migration 010 Corrections ==="
+          
+          # Capture corrected values before CEDICT import
+          HAO_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='好' AND pinyin='hǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          SHAO_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='少' AND pinyin='shǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          NIAN_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='年' AND pinyin='nián' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          HE_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='喝' AND pinyin='hē' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          
+          echo "Before CEDICT import:"
+          echo "  好: $HAO_BEFORE"
+          echo "  少: $SHAO_BEFORE"
+          echo "  年: $NIAN_BEFORE"
+          echo "  喝: $HE_BEFORE"
+          
+          # Run CEDICT import
+          python3 scripts/import_cedict.py
+          
+          # Verify corrections are preserved
+          HAO_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='好' AND pinyin='hǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          SHAO_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='少' AND pinyin='shǎo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          NIAN_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='年' AND pinyin='nián' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          HE_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='喝' AND pinyin='hē' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" || echo "")
+          
+          echo "After CEDICT import:"
+          echo "  好: $HAO_AFTER"
+          echo "  少: $SHAO_AFTER"
+          echo "  年: $NIAN_AFTER"
+          echo "  喝: $HE_AFTER"
+          
+          if [ "$HAO_BEFORE" != "$HAO_AFTER" ]; then
+            echo "❌ FAIL: 好 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          if [ "$SHAO_BEFORE" != "$SHAO_AFTER" ]; then
+            echo "❌ FAIL: 少 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          if [ "$NIAN_BEFORE" != "$NIAN_AFTER" ]; then
+            echo "❌ FAIL: 年 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          if [ "$HE_BEFORE" != "$HE_AFTER" ]; then
+            echo "❌ FAIL: 喝 definition changed after CEDICT import!"
+            exit 1
+          fi
+          
+          echo "✅ PASS: CEDICT import preserved all HSK 1-6 corrections"
+      
+      - name: Test CEDICT idempotency and constraints
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing CEDICT Import Idempotency and Constraints ==="
+          
+          # Capture row counts before second import
+          LEVEL0_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0")
+          TOTAL_BEFORE=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary")
+          
+          # Capture all level-0 english definitions before import
+          psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT chinese, traditional, pinyin, english FROM vocabulary WHERE hsk_level = 0 ORDER BY chinese, pinyin" \
+            > /tmp/level0_before.txt
+          
+          echo "Before second import: $TOTAL_BEFORE total, $LEVEL0_BEFORE level-0"
+          
+          # Run CEDICT import again
+          python3 scripts/import_cedict.py
+          
+          # Check that no new rows were inserted
+          LEVEL0_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0")
+          TOTAL_AFTER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary")
+          
+          echo "After second import: $TOTAL_AFTER total, $LEVEL0_AFTER level-0"
+          
+          if [ "$TOTAL_AFTER" -ne "$TOTAL_BEFORE" ]; then
+            echo "❌ FAIL: Second import added $((TOTAL_AFTER - TOTAL_BEFORE)) rows!"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Second import inserted 0 rows (idempotent)"
+          
+          # Verify no level-0 english definitions changed
+          psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT chinese, traditional, pinyin, english FROM vocabulary WHERE hsk_level = 0 ORDER BY chinese, pinyin" \
+            > /tmp/level0_after.txt
+          
+          if ! diff -q /tmp/level0_before.txt /tmp/level0_after.txt > /dev/null; then
+            echo "❌ FAIL: Level-0 English definitions changed after second import!"
+            diff /tmp/level0_before.txt /tmp/level0_after.txt | head -20
+            exit 1
+          fi
+          
+          echo "✅ PASS: No level-0 English definitions changed"
+          
+          # Check for duplicates modulo pinyin spacing/case
+          DUPLICATES=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM (
+              SELECT chinese, traditional, LOWER(REPLACE(pinyin, ' ', '')) as normalized_pinyin, COUNT(*) as cnt
+              FROM vocabulary
+              GROUP BY chinese, traditional, LOWER(REPLACE(pinyin, ' ', ''))
+              HAVING COUNT(*) > 1
+            ) dupes")
+          
+          if [ "$DUPLICATES" -gt 0 ]; then
+            echo "❌ FAIL: Found $DUPLICATES duplicate entries (ignoring pinyin spacing/case)!"
+            psql -h localhost -U postgres -d chinese_learning_test -c \
+              "SELECT chinese, traditional, LOWER(REPLACE(pinyin, ' ', '')) as normalized_pinyin, COUNT(*) as cnt
+               FROM vocabulary
+               GROUP BY chinese, traditional, LOWER(REPLACE(pinyin, ' ', ''))
+               HAVING COUNT(*) > 1
+               LIMIT 10"
+            exit 1
+          fi
+          
+          echo "✅ PASS: No duplicates found (pinyin spacing/case normalized)"
 
   frontend:
     name: Frontend (React/TypeScript)

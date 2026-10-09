@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 #
 # Deploy MandarinFlash to production.
-# Run from the project root directory as the deploy user.
+#
+# PRODUCTION SETUP:
+#   - Run as the `deploy` user from /home/deploy/mandarinflash
+#   - SSL certs are under this directory (managed by certbot)
+#   - Must run from the same checkout the live containers were started from
 #
 set -euo pipefail
 
@@ -9,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
-# Check if we need sudo for docker (ec2-user on prod is not in docker group)
+# Check if we need sudo for docker
 if docker ps &>/dev/null 2>&1; then
     DOCKER="docker"
 elif sudo -n docker ps &>/dev/null 2>&1; then
@@ -19,16 +23,50 @@ else
     exit 1
 fi
 
-# Use docker compose plugin or standalone
+# Detect docker compose command (plugin vs standalone, with or without sudo)
+DC=""
 if $DOCKER compose version &>/dev/null 2>&1; then
+    # Docker compose plugin
     DC="$DOCKER compose"
-elif $DOCKER docker-compose version &>/dev/null 2>&1; then
-    DC="$DOCKER docker-compose"
+elif command -v docker-compose &>/dev/null && docker-compose version &>/dev/null 2>&1; then
+    # Standalone docker-compose (no sudo)
+    DC="docker-compose"
+elif command -v docker-compose &>/dev/null && sudo -n docker-compose version &>/dev/null 2>&1; then
+    # Standalone docker-compose with sudo
+    DC="sudo -n docker-compose"
 else
-    echo "ERROR: Cannot find docker compose or docker-compose."
+    echo "ERROR: Cannot find docker compose plugin or standalone docker-compose."
     exit 1
 fi
 COMPOSE_FILE="-f docker-compose.prod.yml"
+
+# Safety check: ensure we're running from the same directory as the live containers
+# This prevents deploying from a different checkout and breaking SSL cert paths
+# Inspect the live mf_backend container directly by name
+INSPECT_RC=0
+INSPECT_OUTPUT=$($DOCKER inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
+
+if [ $INSPECT_RC -eq 0 ]; then
+    # Container exists and was inspected successfully
+    LIVE_DIR="$INSPECT_OUTPUT"
+    if [ -n "$LIVE_DIR" ] && [ "$LIVE_DIR" != "$PROJECT_DIR" ]; then
+        echo "ERROR: Running containers were started from a different directory!"
+        echo "  This checkout: $PROJECT_DIR"
+        echo "  Live containers: $LIVE_DIR"
+        echo ""
+        echo "You must run deploy.sh from $LIVE_DIR to avoid breaking SSL certs and mounts."
+        exit 1
+    fi
+elif echo "$INSPECT_OUTPUT" | grep -q "No such object\|no such image\|Error: No such container"; then
+    # Container doesn't exist - this is a fresh install, which is allowed
+    echo "  No existing mf_backend container found (fresh install)"
+else
+    # Inspect failed for another reason (can't reach docker, permission denied, etc)
+    echo "ERROR: Cannot inspect mf_backend container"
+    echo "  $INSPECT_OUTPUT"
+    echo "  Cannot safely determine if this is the correct deployment directory."
+    exit 1
+fi
 
 echo "=== MandarinFlash Deploy ==="
 echo "  Project: $PROJECT_DIR"
@@ -113,16 +151,23 @@ LV_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d 
 echo "  Vocabulary: $VOCAB_COUNT words, $PROGRESS_COUNT progress records (preserved), $LV_COUNT lesson links."
 
 # ---------- Enrich definitions from CC-CEDICT ----------
-# The HSK seeds DELETE + re-INSERT levels 1-5, which resets each word's english
-# to a single seed gloss. Re-apply the richer CC-CEDICT definitions (multiple
-# senses, e.g. 装修 -> "to decorate | to renovate | to fit up") and load the full
-# ~120k-entry dictionary. This upsert is idempotent and must run AFTER seeds.
-echo "  Enriching definitions from CC-CEDICT (this can take a minute)..."
-if bash scripts/run_cedict_import.sh; then
-    L0_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0;" 2>/dev/null || echo "?")
-    echo "  CC-CEDICT enrichment complete (dictionary entries: $L0_COUNT)."
+# OPTIONAL: Import CC-CEDICT dictionary entries (121k words)
+# Only runs when RUN_CEDICT_IMPORT=1 is set
+# WARNING: This adds many non-HSK words and should rarely be needed after initial setup
+if [ "${RUN_CEDICT_IMPORT:-0}" = "1" ]; then
+    echo ""
+    echo "=== Import CC-CEDICT Definitions ==="
+    echo "  Enriching definitions from CC-CEDICT (this can take a minute)..."
+    if bash scripts/run_cedict_import.sh; then
+        L0_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary WHERE hsk_level = 0;" 2>/dev/null || echo "?")
+        echo "  CC-CEDICT enrichment complete (dictionary entries: $L0_COUNT)."
+    else
+        echo "  WARNING: CC-CEDICT import failed; definitions/dictionary may be incomplete."
+    fi
 else
-    echo "  WARNING: CC-CEDICT import failed; definitions/dictionary may be incomplete."
+    echo ""
+    echo "=== CC-CEDICT Import Skipped ==="
+    echo "  To import CC-CEDICT dictionary, set RUN_CEDICT_IMPORT=1"
 fi
 
 # ---------- Restart all services ----------

@@ -273,17 +273,23 @@ def ensure_schema(conn):
 
 def load_existing_entries(conn):
     """
-    Load existing vocabulary entries keyed by (chinese, pinyin_no_tones).
+    Load existing vocabulary entries to check for duplicates.
     
-    IMPORTANT: This now uses ON CONFLICT DO UPDATE in the upsert logic,
-    so we don't need to load all 121k rows into memory. This function
-    remains for counting purposes only.
+    Key format: (chinese, traditional, normalized_pinyin_lowercase)
+    where normalized_pinyin has spaces removed to catch duplicates like
+    'yī xià' vs 'yīxià'.
     """
+    existing = set()
     with conn.cursor() as cur:
-        cur.execute("SELECT COUNT(*) FROM vocabulary")
-        count = cur.fetchone()[0]
+        cur.execute("SELECT chinese, traditional, pinyin FROM vocabulary")
+        for row in cur:
+            chinese, traditional, pinyin = row
+            # Normalize: remove spaces and lowercase
+            normalized = pinyin.replace(" ", "").lower()
+            existing.add((chinese, traditional, normalized))
     
-    return {"_count": count}
+    print(f"  Loaded {len(existing)} existing vocabulary entries")
+    return existing
 
 
 def main():
@@ -294,7 +300,11 @@ def main():
     print("[1/4] Downloading CC-CEDICT...")
     gz_path = download_cedict()
 
-    print("[2/4] Parsing entries...")
+    print("[2/4] Connecting to database...")
+    conn = connect_db()
+    ensure_schema(conn)
+
+    print("[3/4] Parsing and selecting best entries...")
     entries = []
     with gzip.open(gz_path, "rt", encoding="utf-8") as f:
         for line in f:
@@ -303,66 +313,76 @@ def main():
                 entries.append(parsed)
     print(f"  Parsed {len(entries)} entries")
 
-    print("[3/4] Connecting to database...")
-    conn = connect_db()
-    ensure_schema(conn)
-
-    existing = load_existing_entries(conn)
-    print(f"  Found {existing.get('_count', 0)} existing vocabulary entries")
-
-    print("[4/4] Importing with UPSERT (idempotent, preserves IDs, prioritizes best entries)...")
-    
-    # Group entries by (simplified, pinyin_no_tones) and pick the best one
+    # Group entries by (simplified, traditional, normalized_pinyin) and pick the best one
+    # This must match the deduplication key used later to prevent duplicates
     best_entries = {}
     for entry in entries:
-        pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
-        key = (entry["simplified"], pinyin_no_tones)
+        pinyin_normalized = entry["pinyin"].replace(" ", "").lower()
+        key = (entry["simplified"], entry["traditional"], pinyin_normalized)
         
         # If we've seen this key, keep the one with the highest quality score
         if key not in best_entries or entry["quality_score"] > best_entries[key]["quality_score"]:
             best_entries[key] = entry
     
-    print(f"  Selected {len(best_entries)} best entries from {len(entries)} total (removed polyphonic duplicates)")
+    print(f"  Selected {len(best_entries)} best entries from {len(entries)} total (removed duplicates)")
     
+    # Load existing entries to prevent duplicates
+    print("[4/5] Loading existing vocabulary...")
+    existing_entries = load_existing_entries(conn)
+    
+    print("[5/5] Inserting new entries...")
     batch_size = 1000
     processed = 0
     
-    # Use batch UPSERT for performance with 121k rows
+    # Use batch INSERT with ON CONFLICT DO NOTHING
+    # IMPORTANT: Never update existing rows - preserves all manual corrections
+    # and user progress. Also skip entries that differ only by pinyin spacing/case.
     with conn.cursor() as cur:
-        upsert_sql = """
+        insert_sql = """
             INSERT INTO vocabulary (
                 id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-            ON CONFLICT (chinese, traditional, pinyin)
-            DO UPDATE SET
-                english = EXCLUDED.english,
-                pinyin_no_tones = EXCLUDED.pinyin_no_tones,
-                updated_at = NOW()
+            ON CONFLICT (chinese, traditional, pinyin) DO NOTHING
         """
         
         batch = []
-        for (simplified, pinyin_no_tones), entry in best_entries.items():
+        skipped = 0
+        for (simplified, traditional, pinyin_normalized_lower), entry in best_entries.items():
+            # Normalize pinyin: remove spaces
+            pinyin_normalized = entry["pinyin"].replace(" ", "")
+            normalized_key = (simplified, traditional, pinyin_normalized_lower)
+            
+            # Skip if this entry already exists
+            if normalized_key in existing_entries:
+                skipped += 1
+                continue
+            
+            # Calculate pinyin_no_tones from the entry
+            pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
+            
             batch.append((
-                str(uuid.uuid4()),  # New UUID for inserts; ignored on conflict
+                str(uuid.uuid4()),
                 simplified,
-                entry["traditional"],
-                entry["pinyin"],
+                traditional,
+                pinyin_normalized,  # Store without spaces
                 pinyin_no_tones,
                 entry["english"],
                 0,  # hsk_level (dictionary entries)
             ))
             
             if len(batch) >= batch_size:
-                psycopg2.extras.execute_batch(cur, upsert_sql, batch, page_size=batch_size)
+                psycopg2.extras.execute_batch(cur, insert_sql, batch, page_size=batch_size)
                 processed += len(batch)
                 print(f"  Progress: {processed}/{len(best_entries)} entries ({100*processed//len(best_entries)}%)")
                 batch = []
         
         # Final batch
         if batch:
-            psycopg2.extras.execute_batch(cur, upsert_sql, batch, page_size=len(batch))
+            psycopg2.extras.execute_batch(cur, insert_sql, batch, page_size=len(batch))
             processed += len(batch)
+        
+        print(f"  Skipped {skipped} entries (already exist with different spacing/case)")
 
     conn.commit()
     conn.close()

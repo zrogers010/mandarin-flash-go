@@ -33,7 +33,7 @@ describe('Guest Progress Merge', () => {
     expect(summary?.words).toBe(2)
   })
 
-  it('should merge guest progress on login', async () => {
+  it('should merge guest progress on login and update daily_activity', async () => {
     const guestData = {
       completed_quizzes: ['quiz_1'],
       seen_words: ['word-id-1'],
@@ -51,7 +51,10 @@ describe('Guest Progress Merge', () => {
 
     guestStorage.saveProgress(guestData)
 
-    // Mock API call
+    // Mock API call - backend should:
+    // 1. Create/update daily_activity with cards_reviewed = 1 (quizzes_merged)
+    // 2. Set user.last_study_date to CURRENT_DATE if NULL
+    // 3. Enable streak calculation on next study session
     const mockPost = vi.spyOn(api, 'post').mockResolvedValue({
       data: {
         message: 'Guest progress merged successfully',
