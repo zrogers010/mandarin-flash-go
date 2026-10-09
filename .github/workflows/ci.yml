@@ -796,7 +796,7 @@ jobs:
           if [ "$DUPLICATES" -gt 0 ]; then
             echo "❌ FAIL: Found $DUPLICATES duplicate entries (ignoring pinyin spacing/case)!"
             psql -h localhost -U postgres -d chinese_learning_test -c \
-              "SELECT chinese, traditional, pinyin, COUNT(*) as cnt
+              "SELECT chinese, traditional, LOWER(REPLACE(pinyin, ' ', '')) as normalized_pinyin, COUNT(*) as cnt
                FROM vocabulary
                GROUP BY chinese, traditional, LOWER(REPLACE(pinyin, ' ', ''))
                HAVING COUNT(*) > 1
