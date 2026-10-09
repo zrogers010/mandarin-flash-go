@@ -98,12 +98,23 @@ func (h *VocabularyHandler) GetHSKVocabulary(c *gin.Context) {
 		return
 	}
 
+	// Honor limit parameter to avoid sending 1,300 words in one response
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	if limit <= 0 || limit > 2000 {
+		limit = 2000 // Default: return all for a level (max 1,300 for HSK 5)
+	}
+
 	vocabulary, err := h.vocabRepo.GetByHSKLevel(level)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve HSK vocabulary",
 		})
 		return
+	}
+
+	// Apply limit if specified and smaller than result set
+	if limit > 0 && limit < len(vocabulary) {
+		vocabulary = vocabulary[:limit]
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -115,8 +126,9 @@ func (h *VocabularyHandler) GetHSKVocabulary(c *gin.Context) {
 
 // GetRandomVocabulary handles GET /api/v1/vocabulary/random
 func (h *VocabularyHandler) GetRandomVocabulary(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	if limit <= 0 || limit > 50 {
+	// Honor both 'limit' and 'count' parameters (frontend uses both inconsistently)
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", c.DefaultQuery("count", "10")))
+	if limit <= 0 || limit > 100 {
 		limit = 10
 	}
 

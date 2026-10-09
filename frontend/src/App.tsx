@@ -18,6 +18,8 @@ import { Dictionary } from '@/pages/Dictionary'
 import { Chat } from '@/pages/Chat'
 import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
+import ImprovedSignup from '@/pages/ImprovedSignup'
+import Onboarding from '@/pages/Onboarding'
 import { ForgotPassword } from '@/pages/ForgotPassword'
 import { ResetPassword } from '@/pages/ResetPassword'
 import { VerifyEmail } from '@/pages/VerifyEmail'
@@ -41,7 +43,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<ImprovedSignup />} />
+          <Route path="/signup-basic" element={<Signup />} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

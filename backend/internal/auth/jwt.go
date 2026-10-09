@@ -10,11 +10,20 @@ import (
 	"github.com/google/uuid"
 )
 
+// TokenType represents the type of JWT token
+type TokenType string
+
+const (
+	TokenTypeAccess  TokenType = "access"
+	TokenTypeRefresh TokenType = "refresh"
+)
+
 // JWTClaims represents the claims in a JWT token
 type JWTClaims struct {
 	UserID     uuid.UUID `json:"user_id"`
 	Email      string    `json:"email"`
 	IsVerified bool      `json:"is_verified"`
+	Type       TokenType `json:"typ"`
 	jwt.RegisteredClaims
 }
 
@@ -39,6 +48,7 @@ func (ts *TokenService) GenerateAccessToken(userID uuid.UUID, email string, isVe
 		UserID:     userID,
 		Email:      email,
 		IsVerified: isVerified,
+		Type:       TokenTypeAccess,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    ts.issuer,
 			Subject:   userID.String(),
@@ -57,6 +67,7 @@ func (ts *TokenService) GenerateRefreshToken(userID uuid.UUID) (string, error) {
 	now := time.Now()
 	claims := JWTClaims{
 		UserID: userID,
+		Type:   TokenTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    ts.issuer,
 			Subject:   userID.String(),

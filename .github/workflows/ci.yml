@@ -1,0 +1,313 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, cursor/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chinese_learning_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run migrations
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          for migration in db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Applying $(basename $migration)..."
+              PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -f "$migration"
+            fi
+          done
+
+      - name: Run Go tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-secret-key-for-ci
+          ENVIRONMENT: test
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Build backend
+        run: go build -v ./cmd/server
+
+      - name: Test seed idempotency
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          echo "Testing that re-running seeds preserves vocabulary IDs..."
+          
+          # Insert a test word
+          PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test <<'SQL'
+          INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+          VALUES (
+            'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+            '测试',
+            '測試',
+            'cèshì',
+            'ceshi',
+            'test',
+            1,
+            NOW(),
+            NOW()
+          );
+          SQL
+          
+          # Capture the ID
+          ORIGINAL_ID=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT id FROM vocabulary WHERE chinese='测试' AND pinyin_no_tones='ceshi'")
+          echo "Original ID: $ORIGINAL_ID"
+          
+          # Simulate re-seeding by upserting the same word (using new natural key)
+          PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test <<'SQL'
+          INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+          VALUES (
+            gen_random_uuid(),
+            '测试',
+            '測試',
+            'cèshì',
+            'ceshi',
+            'test (updated)',
+            1,
+            NOW(),
+            NOW()
+          )
+          ON CONFLICT (chinese, traditional, pinyin)
+          DO UPDATE SET
+            english = EXCLUDED.english,
+            pinyin_no_tones = EXCLUDED.pinyin_no_tones,
+            updated_at = NOW();
+          SQL
+          
+          # Check the ID is preserved (using the new natural key)
+          NEW_ID=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT id FROM vocabulary WHERE chinese='测试' AND traditional='測試' AND pinyin='cèshì'")
+          NEW_ENGLISH=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT english FROM vocabulary WHERE chinese='测试' AND traditional='測試' AND pinyin='cèshì'")
+          
+          echo "New ID: $NEW_ID"
+          echo "New English: $NEW_ENGLISH"
+          
+          if [ "$ORIGINAL_ID" != "$NEW_ID" ]; then
+            echo "FAIL: ID changed after upsert! This would break learner progress."
+            exit 1
+          fi
+          
+          if [ "$NEW_ENGLISH" != "test (updated)" ]; then
+            echo "FAIL: English was not updated!"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Seed idempotency test successful - ID preserved, content updated"
+
+  cedict-import-idempotency:
+    name: CEDICT Import Idempotency Test
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chinese_learning_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install psycopg2-binary
+
+      - name: Download CC-CEDICT
+        run: |
+          wget https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz -O scripts/cedict_ts.u8.gz
+          gunzip scripts/cedict_ts.u8.gz
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in backend/db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Applying $(basename $migration)..."
+              psql -h localhost -U postgres -d chinese_learning_test -f "$migration"
+            fi
+          done
+
+      - name: First CEDICT import
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          echo "=== First Import ==="
+          python3 scripts/import_cedict.py
+          
+          # Capture counts and sample IDs
+          PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test > /tmp/first_import.txt <<'SQL'
+          SELECT COUNT(*) as total_words FROM vocabulary;
+          SELECT COUNT(*) as unique_keys FROM (SELECT DISTINCT chinese, traditional, pinyin FROM vocabulary) t;
+          SELECT chinese, traditional, pinyin, id FROM vocabulary WHERE chinese = '好' ORDER BY pinyin LIMIT 5;
+          SQL
+          
+          cat /tmp/first_import.txt
+
+      - name: Second CEDICT import (idempotency test)
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          echo "=== Second Import (should be idempotent) ==="
+          python3 scripts/import_cedict.py
+          
+          # Capture counts and sample IDs again
+          PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test > /tmp/second_import.txt <<'SQL'
+          SELECT COUNT(*) as total_words FROM vocabulary;
+          SELECT COUNT(*) as unique_keys FROM (SELECT DISTINCT chinese, traditional, pinyin FROM vocabulary) t;
+          SELECT chinese, traditional, pinyin, id FROM vocabulary WHERE chinese = '好' ORDER BY pinyin LIMIT 5;
+          SQL
+          
+          cat /tmp/second_import.txt
+          
+          # Compare the two outputs - IDs should be identical
+          echo "=== Comparing First and Second Import ==="
+          if diff /tmp/first_import.txt /tmp/second_import.txt; then
+            echo "✅ PASS: IDs are stable across re-imports (idempotent)"
+          else
+            echo "❌ FAIL: IDs changed on second import!"
+            exit 1
+          fi
+
+      - name: Verify natural key uniqueness
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Checking for Duplicate Natural Keys ==="
+          DUPES=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM (
+              SELECT chinese, traditional, pinyin, COUNT(*) as cnt
+              FROM vocabulary
+              GROUP BY chinese, traditional, pinyin
+              HAVING COUNT(*) > 1
+            ) dupes")
+          
+          echo "Duplicate groups found: $DUPES"
+          
+          if [ "$DUPES" -gt 0 ]; then
+            echo "❌ FAIL: Found $DUPES duplicate natural keys!"
+            psql -h localhost -U postgres -d chinese_learning_test -c \
+              "SELECT chinese, traditional, pinyin, COUNT(*) as cnt
+               FROM vocabulary
+               GROUP BY chinese, traditional, pinyin
+               HAVING COUNT(*) > 1
+               LIMIT 10"
+            exit 1
+          else
+            echo "✅ PASS: All natural keys are unique"
+          fi
+
+  frontend:
+    name: Frontend (React/TypeScript)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Check bundle size
+        run: |
+          du -sh dist
+          echo "Build artifacts:"
+          ls -lh dist/assets/ | head -20

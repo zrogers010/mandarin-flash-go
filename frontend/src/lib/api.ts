@@ -24,6 +24,9 @@ api.interceptors.request.use(
   }
 )
 
+// Single-flight refresh lock: prevents multiple parallel 401s from racing to refresh
+let refreshPromise: Promise<string> | null = null
+
 // Add response interceptor to handle token refresh
 api.interceptors.response.use(
   (response) => response,
@@ -35,27 +38,45 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem('refresh_token')
-        if (refreshToken) {
-          // Try to refresh the token
-          const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
-            refresh_token: refreshToken,
-          })
-          
-          const { access_token, refresh_token } = response.data
-          localStorage.setItem('access_token', access_token)
-          // The server rotates the refresh token on each refresh; persist the
-          // new one so subsequent refreshes don't use the now-invalid token.
-          if (refresh_token) {
-            localStorage.setItem('refresh_token', refresh_token)
-          }
-          
-          // Retry the original request
-          originalRequest.headers.Authorization = `Bearer ${access_token}`
-          return api(originalRequest)
+        if (!refreshToken) {
+          throw new Error('No refresh token available')
         }
+
+        // Single-flight lock: if a refresh is already in progress, wait for it
+        if (!refreshPromise) {
+          refreshPromise = (async () => {
+            try {
+              const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
+                refresh_token: refreshToken,
+              })
+              
+              const { access_token, refresh_token: newRefreshToken } = response.data
+              localStorage.setItem('access_token', access_token)
+              
+              // The server rotates the refresh token on each refresh
+              if (newRefreshToken) {
+                localStorage.setItem('refresh_token', newRefreshToken)
+              }
+              
+              return access_token
+            } finally {
+              // Clear the lock after completion (success or failure)
+              refreshPromise = null
+            }
+          })()
+        }
+
+        // Wait for the shared refresh to complete
+        const newAccessToken = await refreshPromise
+        
+        // Retry the original request with the new token
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
+        return api(originalRequest)
+        
       } catch (refreshError) {
-        // Refresh failed, only redirect if we're not on a public route
-        // Public routes: vocabulary, dictionary, quiz/generate, quiz/submit
+        // Refresh failed, clear tokens and redirect to login (unless on a public route)
+        refreshPromise = null
+        
         const url = originalRequest.url || ''
         const isPublicRoute = url.includes('/vocabulary') || 
                              url.includes('/dictionary') || 
@@ -65,7 +86,6 @@ api.interceptors.response.use(
                              url.includes('/health')
         
         if (!isPublicRoute) {
-          // Only redirect to login for protected routes
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
           window.location.href = '/login'

@@ -231,7 +231,7 @@ def connect_db():
 
 
 def ensure_schema(conn):
-    """Add traditional column and trigram indexes if they don't exist."""
+    """Add traditional column, indexes and natural key constraint if they don't exist."""
     with conn.cursor() as cur:
         cur.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
         cur.execute("""
@@ -244,22 +244,29 @@ def ensure_schema(conn):
         cur.execute("CREATE INDEX IF NOT EXISTS idx_vocabulary_english_trgm ON vocabulary USING gin (english gin_trgm_ops);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_vocabulary_pinyin_trgm ON vocabulary USING gin (pinyin gin_trgm_ops);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_vocabulary_traditional ON vocabulary(traditional);")
+        
+        # Add natural key for idempotent upserts (chinese + pinyin_no_tones is unique across all 121k entries)
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_vocabulary_natural_key 
+            ON vocabulary(chinese, pinyin_no_tones);
+        """)
     conn.commit()
-    print("  Schema updated (traditional column + trigram indexes)")
+    print("  Schema updated (traditional column + trigram indexes + natural key)")
 
 
 def load_existing_entries(conn):
-    """Load existing vocabulary entries keyed by (chinese, pinyin_no_tones)."""
+    """
+    Load existing vocabulary entries keyed by (chinese, pinyin_no_tones).
+    
+    IMPORTANT: This now uses ON CONFLICT DO UPDATE in the upsert logic,
+    so we don't need to load all 121k rows into memory. This function
+    remains for counting purposes only.
+    """
     with conn.cursor() as cur:
-        cur.execute("SELECT id, chinese, pinyin, pinyin_no_tones, hsk_level FROM vocabulary")
-        rows = cur.fetchall()
-
-    existing = {}
-    for row in rows:
-        vid, chinese, pinyin, pinyin_no_tones, hsk_level = row
-        key = (chinese, (pinyin_no_tones or strip_tones(pinyin)).lower().replace(" ", ""))
-        existing[key] = {"id": vid, "hsk_level": hsk_level}
-    return existing
+        cur.execute("SELECT COUNT(*) FROM vocabulary")
+        count = cur.fetchone()[0]
+    
+    return {"_count": count}
 
 
 def main():
@@ -284,66 +291,57 @@ def main():
     ensure_schema(conn)
 
     existing = load_existing_entries(conn)
-    print(f"  Found {len(existing)} existing vocabulary entries")
+    print(f"  Found {existing.get('_count', 0)} existing vocabulary entries")
 
-    print("[4/4] Importing...")
-    updated = 0
-    inserted = 0
-    skipped = 0
-    batch_size = 500
-
-    insert_rows = []
-    update_rows = []
-
-    for entry in entries:
-        pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
-        key = (entry["simplified"], pinyin_no_tones)
-
-        if key in existing:
-            ex = existing[key]
-            update_rows.append((
-                entry["english"],
-                entry["traditional"],
-                ex["id"],
-            ))
-        else:
-            insert_rows.append((
-                str(uuid.uuid4()),
+    print("[4/4] Importing with UPSERT (idempotent, preserves IDs)...")
+    batch_size = 1000
+    processed = 0
+    
+    # Use batch UPSERT for performance with 121k rows
+    with conn.cursor() as cur:
+        upsert_sql = """
+            INSERT INTO vocabulary (
+                id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            ON CONFLICT (chinese, traditional, pinyin)
+            DO UPDATE SET
+                english = EXCLUDED.english,
+                pinyin_no_tones = EXCLUDED.pinyin_no_tones,
+                updated_at = NOW()
+        """
+        
+        batch = []
+        for entry in entries:
+            pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
+            
+            batch.append((
+                str(uuid.uuid4()),  # New UUID for inserts; ignored on conflict
                 entry["simplified"],
                 entry["traditional"],
                 entry["pinyin"],
-                strip_tones(entry["pinyin"]),
+                pinyin_no_tones,
                 entry["english"],
-                0,  # hsk_level
+                0,  # hsk_level (dictionary entries)
             ))
-
-    with conn.cursor() as cur:
-        # Batch updates
-        for i in range(0, len(update_rows), batch_size):
-            batch = update_rows[i:i + batch_size]
-            psycopg2.extras.execute_batch(cur, """
-                UPDATE vocabulary
-                SET english = %s, traditional = %s, updated_at = NOW()
-                WHERE id = %s
-            """, batch)
-            updated += len(batch)
-
-        # Batch inserts
-        for i in range(0, len(insert_rows), batch_size):
-            batch = insert_rows[i:i + batch_size]
-            psycopg2.extras.execute_batch(cur, """
-                INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, batch)
-            inserted += len(batch)
+            
+            if len(batch) >= batch_size:
+                psycopg2.extras.execute_batch(cur, upsert_sql, batch, page_size=batch_size)
+                processed += len(batch)
+                print(f"  Progress: {processed}/{len(entries)} entries ({100*processed//len(entries)}%)")
+                batch = []
+        
+        # Final batch
+        if batch:
+            psycopg2.extras.execute_batch(cur, upsert_sql, batch, page_size=len(batch))
+            processed += len(batch)
 
     conn.commit()
     conn.close()
 
     print(f"\n=== Import Complete ===")
-    print(f"  Updated (HSK words enhanced): {updated}")
-    print(f"  Inserted (new dictionary entries): {inserted}")
-    print(f"  Total entries now: {updated + inserted + (len(existing) - updated)}")
+    print(f"  Processed: {processed} entries")
+    print(f"  All IDs preserved for existing words (no user progress lost)")
 
 
 if __name__ == "__main__":

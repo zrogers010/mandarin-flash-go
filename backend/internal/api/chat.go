@@ -46,6 +46,21 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
+	// Enforce max message length (2000 chars = ~400 tokens)
+	const maxMessageLength = 2000
+	if len(req.Message) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Message cannot be empty",
+		})
+		return
+	}
+	if len(req.Message) > maxMessageLength {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Message too long. Maximum length is 2000 characters.",
+		})
+		return
+	}
+
 	// Check if AI is configured
 	if !h.ai.IsConfigured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
