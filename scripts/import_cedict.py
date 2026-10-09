@@ -297,17 +297,17 @@ def main():
     batch_size = 1000
     processed = 0
     
-    # Use COPY or batch UPSERT for performance with 121k rows
+    # Use batch UPSERT for performance with 121k rows
     with conn.cursor() as cur:
         upsert_sql = """
             INSERT INTO vocabulary (
                 id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-            ON CONFLICT (chinese, pinyin_no_tones)
+            ON CONFLICT (chinese, traditional, pinyin)
             DO UPDATE SET
                 english = EXCLUDED.english,
-                traditional = EXCLUDED.traditional,
+                pinyin_no_tones = EXCLUDED.pinyin_no_tones,
                 updated_at = NOW()
         """
         

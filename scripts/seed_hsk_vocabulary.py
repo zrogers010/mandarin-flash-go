@@ -130,10 +130,11 @@ def seed_vocabulary(conn):
                 VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
                 )
-                ON CONFLICT (chinese, pinyin, hsk_level)
+                ON CONFLICT (chinese, traditional, pinyin)
                 DO UPDATE SET
                     english = EXCLUDED.english,
-                    traditional = EXCLUDED.traditional,
+                    hsk_level = EXCLUDED.hsk_level,
+                    pinyin_no_tones = EXCLUDED.pinyin_no_tones,
                     part_of_speech = EXCLUDED.part_of_speech,
                     example_sentences = EXCLUDED.example_sentences,
                     updated_at = NOW()
