@@ -17,9 +17,10 @@ SET english = 'good | well | fine'
 WHERE chinese = '好' AND traditional = '好' AND pinyin = 'hǎo' AND hsk_level BETWEEN 1 AND 6;
 
 -- Fix 年: year (not grain/harvest)
+-- Production may store traditional as 秊 (variant)
 UPDATE vocabulary
-SET english = 'year'
-WHERE chinese = '年' AND traditional = '年' AND pinyin = 'nián' AND hsk_level BETWEEN 1 AND 6;
+SET english = 'year', traditional = '年'
+WHERE chinese = '年' AND traditional IN ('年','秊') AND pinyin = 'nián' AND hsk_level BETWEEN 1 AND 6;
 
 -- Fix 喝: hē (to drink) vs hè (to shout)
 UPDATE vocabulary
@@ -81,20 +82,24 @@ UPDATE vocabulary
 SET english = 'far | distant'
 WHERE chinese = '远' AND traditional = '遠' AND pinyin = 'yuǎn' AND hsk_level BETWEEN 1 AND 6;
 
--- Fix 累: lèi (tired) vs léi (rope)
+-- Fix 累: lèi (tired) vs léi (rope) vs léi (accumulate)
+-- CEDICT has lei4/lèi for tired, lei3/lěi for accumulate, lei2/léi for rope
+-- Match any of these and set to the HSK meaning (tired)
 UPDATE vocabulary
-SET english = 'tired | exhausted'
-WHERE chinese = '累' AND traditional = '累' AND pinyin = 'lèi' AND hsk_level BETWEEN 1 AND 6;
+SET english = 'tired | exhausted', pinyin = 'lèi', traditional = '累'
+WHERE chinese = '累' AND traditional = '累' AND pinyin IN ('lèi', 'lěi', 'léi') AND hsk_level BETWEEN 1 AND 6;
 
--- Fix 伞: umbrella (not damask silk)
+-- Fix 伞: umbrella (not damask silk variant 繖)
+-- CEDICT has 伞|傘|san3 (umbrella) and 伞|繖|san3 (damask silk variant)
 UPDATE vocabulary
-SET english = 'umbrella | parasol'
-WHERE chinese = '伞' AND traditional = '傘' AND pinyin = 'sǎn' AND hsk_level BETWEEN 1 AND 6;
+SET english = 'umbrella | parasol', traditional = '傘'
+WHERE chinese = '伞' AND traditional IN ('傘', '繖') AND pinyin = 'sǎn' AND hsk_level BETWEEN 1 AND 6;
 
--- Fix 腿: leg (not hip bone)
+-- Fix 腿: leg (not hip bone variant 骽)
+-- CEDICT has 腿|腿|tui3 (leg) and 腿|骽|tui3 (old variant/hip bone)
 UPDATE vocabulary
-SET english = 'leg'
-WHERE chinese = '腿' AND traditional = '腿' AND pinyin = 'tuǐ' AND hsk_level BETWEEN 1 AND 6;
+SET english = 'leg', traditional = '腿'
+WHERE chinese = '腿' AND traditional IN ('腿', '骽') AND pinyin = 'tuǐ' AND hsk_level BETWEEN 1 AND 6;
 
 -- Fix 难: nán (difficult) vs nàn (disaster)
 UPDATE vocabulary
@@ -111,9 +116,10 @@ UPDATE vocabulary
 SET english = 'you', traditional = '你'
 WHERE chinese = '你' AND pinyin = 'nǐ' AND hsk_level BETWEEN 1 AND 6;
 
--- Fix 宾馆: correct pinyin
+-- Fix 宾馆: correct pinyin (bin1 guan3 -> bīnguǎn with neutral 2nd syllable often)
+-- Match any existing pinyin variant
 UPDATE vocabulary
-SET pinyin = 'bīnguǎn', pinyin_no_tones = 'binguan'
+SET pinyin = 'bīnguǎn', pinyin_no_tones = 'binguan', english = 'hotel | guesthouse'
 WHERE chinese = '宾馆' AND traditional = '賓館' AND hsk_level BETWEEN 1 AND 6;
 
 -- Fix 铅笔: correct pinyin
@@ -136,10 +142,12 @@ UPDATE vocabulary
 SET pinyin = 'xǐhuan'
 WHERE chinese = '喜欢' AND traditional = '喜歡' AND hsk_level BETWEEN 1 AND 6;
 
--- Fix 发: fā (send) vs fà (hair)
+-- Fix 发: fā (send/發) vs fà (hair/髮)
+-- CEDICT has 发|發|fa1 (send) and 发|髮|fa4 (hair)
+-- HSK uses 發 (send), not 髮 (hair)
 UPDATE vocabulary
-SET english = 'to send | to issue | to develop'
-WHERE chinese = '发' AND traditional = '發' AND pinyin = 'fā' AND hsk_level BETWEEN 1 AND 6;
+SET english = 'to send | to issue | to develop', traditional = '發', pinyin = 'fā'
+WHERE chinese = '发' AND traditional IN ('發', '髮') AND pinyin IN ('fā', 'fà') AND hsk_level BETWEEN 1 AND 6;
 
 -- Fix 把: particle/to hold (not just handle)
 UPDATE vocabulary
@@ -161,13 +169,20 @@ UPDATE vocabulary
 SET english = 'and | with | to give'
 WHERE chinese = '与' AND traditional = '與' AND pinyin = 'yǔ' AND hsk_level BETWEEN 1 AND 6;
 
--- Remove duplicate 对 in HSK 2 (keep only one)
+-- Remove duplicate 对 in HSK 2 (keep only one, deterministically)
+-- Only delete if no user progress exists on the duplicate
 DELETE FROM vocabulary
-WHERE chinese = '对' AND traditional = '對' AND hsk_level = 2 AND id NOT IN (
-    SELECT MIN(id)
-    FROM vocabulary
-    WHERE chinese = '对' AND traditional = '對' AND hsk_level = 2
-);
+WHERE chinese='对' AND traditional='對' AND hsk_level=2
+  AND id <> (
+    SELECT id FROM vocabulary 
+    WHERE chinese='对' AND traditional='對' AND hsk_level=2 
+    ORDER BY created_at, id 
+    LIMIT 1
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM user_vocabulary_progress p 
+    WHERE p.vocabulary_id = vocabulary.id
+  );
 
 -- Fix 'footbal' typo
 UPDATE vocabulary

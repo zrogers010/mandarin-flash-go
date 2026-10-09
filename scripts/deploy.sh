@@ -92,10 +92,15 @@ for migration in backend/db/migrations/*.sql; do
     if [ -f "$migration" ]; then
         MIGRATION_NAME="$(basename "$migration")"
         echo "  Applying $MIGRATION_NAME..."
-        $DC $COMPOSE_FILE exec -T postgres psql \
+        if ! $DC $COMPOSE_FILE exec -T postgres psql \
+            -v ON_ERROR_STOP=1 \
             -U "${DB_USER:-postgres}" \
             -d "${DB_NAME:-chinese_learning}" \
-            -f "/docker-entrypoint-initdb.d/$MIGRATION_NAME" 2>&1 | tail -5
+            -f "/docker-entrypoint-initdb.d/$MIGRATION_NAME"; then
+            echo "  ERROR: Migration $MIGRATION_NAME failed!"
+            echo "  Database may be in inconsistent state. Check logs and rollback if needed."
+            exit 1
+        fi
     fi
 done
 echo "  Migrations applied."
