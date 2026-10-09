@@ -165,6 +165,7 @@ CREATE INDEX IF NOT EXISTS idx_uvp_user_id ON user_vocabulary_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_uvp_next_review ON user_vocabulary_progress(user_id, next_review_at);
 CREATE INDEX IF NOT EXISTS idx_uvp_vocabulary_id ON user_vocabulary_progress(vocabulary_id);
 
+DROP TRIGGER IF EXISTS update_uvp_updated_at ON user_vocabulary_progress;
 CREATE TRIGGER update_uvp_updated_at BEFORE UPDATE ON user_vocabulary_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

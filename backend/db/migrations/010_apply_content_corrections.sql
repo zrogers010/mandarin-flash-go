@@ -9,8 +9,6 @@
 -- These corrections persist across CEDICT re-imports because they target HSK words
 -- (hsk_level 1-6) which are maintained separately from dictionary entries (hsk_level 0).
 
-BEGIN;
-
 -- Fix 好: hǎo (good) vs hào (to be fond of)
 UPDATE vocabulary
 SET english = 'good | well | fine'
@@ -194,8 +192,6 @@ UPDATE vocabulary
 SET updated_at = NOW()
 WHERE chinese IN ('好','年','喝','写','猫','少','千','秋','绿','和','哪','好吃','玩','远','累','伞','腿','难','别','你','宾馆','铅笔','觉得','朋友','喜欢','发','把','种','过去','与','对')
   AND hsk_level BETWEEN 1 AND 6;
-
-COMMIT;
 
 -- Migration is idempotent: safe to run multiple times
 -- Corrections target HSK words (levels 1-6) which are maintained separately from

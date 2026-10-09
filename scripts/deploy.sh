@@ -88,82 +88,15 @@ else
     echo "  WARNING: Backup failed, but continuing deploy."
 fi
 
-# Apply migrations using schema_migrations tracker
-# Each migration runs in a transaction with ON_ERROR_STOP and is recorded on success
-for migration in backend/db/migrations/*.sql; do
-    if [ -f "$migration" ]; then
-        MIGRATION_NAME="$(basename "$migration")"
-        
-        # Check if migration already applied
-        ALREADY_APPLIED=$($DC $COMPOSE_FILE exec -T postgres psql \
-            -U "${DB_USER:-postgres}" \
-            -d "${DB_NAME:-chinese_learning}" \
-            -tAc "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'" 2>/dev/null || echo "0")
-        
-        if [ "$ALREADY_APPLIED" = "1" ]; then
-            echo "  Skipping $MIGRATION_NAME (already applied)"
-            continue
-        fi
-        
-        echo "  Applying $MIGRATION_NAME..."
-        # Run migration and record it in the same transaction
-        if ! $DC $COMPOSE_FILE exec -T postgres psql \
-            -v ON_ERROR_STOP=1 \
-            -U "${DB_USER:-postgres}" \
-            -d "${DB_NAME:-chinese_learning}" <<EOSQL
-BEGIN;
-\i /docker-entrypoint-initdb.d/$MIGRATION_NAME
-INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
-COMMIT;
-EOSQL
-        then
-            echo "  ERROR: Migration $MIGRATION_NAME failed!"
-            echo "  Database may be in inconsistent state. Check logs and rollback if needed."
-            exit 1
-        fi
-    fi
-done
-echo "  Migrations applied."
+# Run migrations using shared migration script
+bash scripts/migrate.sh "${DB_USER:-postgres}" "${DB_NAME:-chinese_learning}" \
+    $DC $COMPOSE_FILE exec -T postgres psql
 
-# Run idempotent HSK vocabulary seeder (NEVER deletes words or progress)
-echo "  Seeding HSK vocabulary (idempotent upsert, safe for production)..."
-if [ -f "scripts/seed_hsk_vocabulary.py" ]; then
-    # Get docker compose project name and derive the network
-    COMPOSE_PROJECT=$($DC $COMPOSE_FILE config --format json | python3 -c "import sys,json; print(json.load(sys.stdin).get('name','mandarin-flash-go'))" 2>/dev/null || echo "mandarin-flash-go")
-    DOCKER_NETWORK="${COMPOSE_PROJECT}_internal"
-    
-    # Verify network exists
-    if ! docker network inspect "$DOCKER_NETWORK" &>/dev/null; then
-        # Fall back to default if not found
-        DOCKER_NETWORK="${COMPOSE_PROJECT}_default"
-        if ! docker network inspect "$DOCKER_NETWORK" &>/dev/null; then
-            echo "  ERROR: Cannot find docker network for compose project $COMPOSE_PROJECT"
-            exit 1
-        fi
-    fi
-    
-    echo "  Using docker network: $DOCKER_NETWORK"
-    
-    if ! docker run --rm \
-        --network "$DOCKER_NETWORK" \
-        -v "$PROJECT_DIR/scripts:/scripts" \
-        -e DB_HOST=postgres \
-        -e DB_PORT=5432 \
-        -e DB_NAME="${DB_NAME:-chinese_learning}" \
-        -e DB_USER="${DB_USER:-postgres}" \
-        -e DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD required}" \
-        python:3.11-slim \
-        bash -c "pip install -q psycopg2-binary && python3 -u /scripts/seed_hsk_vocabulary.py"; then
-        echo "  ERROR: HSK vocabulary seeding failed!"
-        exit 1
-    fi
-    
-    VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
-    PROGRESS_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM user_vocabulary_progress;" 2>/dev/null || echo "?")
-    echo "  Vocabulary: $VOCAB_COUNT words, $PROGRESS_COUNT progress records (preserved)."
-else
-    echo "  WARNING: Idempotent seeder not found at scripts/seed_hsk_vocabulary.py"
-fi
+# HSK vocabulary is fully seeded by migration 005
+echo "  HSK vocabulary seeding: Handled by migrations"
+VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
+PROGRESS_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM user_vocabulary_progress;" 2>/dev/null || echo "?")
+echo "  Vocabulary: $VOCAB_COUNT words, $PROGRESS_COUNT progress records (preserved)."
 
 # Rebuild lesson↔vocabulary links after seeds (seed 003 may overwrite them).
 echo "  Re-linking lesson vocabulary (post-seed)..."

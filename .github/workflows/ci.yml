@@ -7,6 +7,163 @@ on:
     branches: [ main ]
 
 jobs:
+  migrations:
+    name: Migration Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chinese_learning_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Test prod baseline scenario
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing Production Baseline Scenario ==="
+          echo "Simulating a prod DB that was built from 001-006 without schema_migrations"
+          
+          # Apply migrations 001-006 directly (as production was originally built)
+          for migration in backend/db/migrations/00[1-6]_*.sql; do
+            if [ -f "$migration" ]; then
+              echo "  Building prod baseline: $(basename "$migration")"
+              psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -f "$migration"
+            fi
+          done
+          
+          # Verify schema_migrations table does not exist yet
+          HAS_TRACKER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'schema_migrations');" || echo "f")
+          
+          if [ "$HAS_TRACKER" = "t" ]; then
+            echo "❌ FAIL: schema_migrations should not exist yet in baseline scenario!"
+            exit 1
+          fi
+          
+          echo "  Baseline DB ready (001-006 applied, no schema_migrations yet)"
+          echo ""
+          
+          # Now run the migration script - it should detect the baseline and record 001-006
+          echo "  Running migration script (should detect baseline)..."
+          bash scripts/migrate.sh postgres chinese_learning_test \
+            psql -h localhost
+          
+          # Verify baseline was recorded
+          BASELINE_COUNT=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations WHERE filename ~ '^00[1-6]_';" || echo "0")
+          
+          echo "  Baseline migrations recorded: $BASELINE_COUNT"
+          
+          if [ "$BASELINE_COUNT" != "6" ]; then
+            echo "❌ FAIL: Expected 6 baseline migrations (001-006), got: $BASELINE_COUNT"
+            exit 1
+          fi
+          
+          # Verify remaining migrations were applied
+          TOTAL_MIGRATIONS=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Total migrations recorded: $TOTAL_MIGRATIONS"
+          
+          if [ "$TOTAL_MIGRATIONS" -lt "10" ]; then
+            echo "❌ FAIL: Expected at least 10 migrations, got: $TOTAL_MIGRATIONS"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Production baseline scenario successful"
+      
+      - name: Test migration idempotency (second run on same DB)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing Migration Idempotency ==="
+          echo "Running migration script again on the same database..."
+          
+          # Count migrations before second run
+          BEFORE_COUNT=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Migrations before second run: $BEFORE_COUNT"
+          
+          # Run migration script again
+          bash scripts/migrate.sh postgres chinese_learning_test \
+            psql -h localhost
+          
+          # Count migrations after second run
+          AFTER_COUNT=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Migrations after second run: $AFTER_COUNT"
+          
+          if [ "$BEFORE_COUNT" != "$AFTER_COUNT" ]; then
+            echo "❌ FAIL: Migration count changed on second run! Before: $BEFORE_COUNT, After: $AFTER_COUNT"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Migration idempotency verified (no-op on second run)"
+      
+      - name: Test fresh empty DB scenario
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Testing Fresh Empty Database Scenario ==="
+          
+          # Drop and recreate database to start fresh
+          psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS chinese_learning_fresh;"
+          psql -h localhost -U postgres -c "CREATE DATABASE chinese_learning_fresh;"
+          
+          echo "  Created fresh empty database"
+          
+          # Run migration script on empty DB
+          bash scripts/migrate.sh postgres chinese_learning_fresh \
+            psql -h localhost
+          
+          # Verify all migrations were applied
+          MIGRATION_COUNT=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
+          
+          echo "  Migrations applied: $MIGRATION_COUNT"
+          
+          if [ "$MIGRATION_COUNT" -lt "10" ]; then
+            echo "❌ FAIL: Expected at least 10 migrations, got: $MIGRATION_COUNT"
+            exit 1
+          fi
+          
+          # Verify no baseline was recorded (fresh DB should not trigger baseline logic)
+          HAS_USERS=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'users');" || echo "f")
+          
+          if [ "$HAS_USERS" != "t" ]; then
+            echo "❌ FAIL: users table should exist after migrations!"
+            exit 1
+          fi
+          
+          # Check that 005 doesn't duplicate rows on fresh DB
+          VOCAB_COUNT=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE hsk_level BETWEEN 1 AND 6;" || echo "0")
+          
+          echo "  HSK vocabulary rows: $VOCAB_COUNT"
+          
+          if [ "$VOCAB_COUNT" -lt "100" ] || [ "$VOCAB_COUNT" -gt "700" ]; then
+            echo "❌ FAIL: HSK vocabulary count suspicious: $VOCAB_COUNT (expected ~300-600)"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Fresh empty database scenario successful"
+
   backend:
     name: Backend (Go)
     runs-on: ubuntu-latest
@@ -54,18 +211,10 @@ jobs:
 
       - name: Run migrations
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: chinese_learning_test
-          DB_USER: postgres
-          DB_PASSWORD: postgres
+          PGPASSWORD: postgres
         run: |
-          for migration in db/migrations/*.sql; do
-            if [ -f "$migration" ]; then
-              echo "Applying $(basename $migration)..."
-              PGPASSWORD=postgres psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -f "$migration"
-            fi
-          done
+          cd ..
+          bash scripts/migrate.sh postgres chinese_learning_test psql -h localhost
 
       - name: Run Go tests
         env:
