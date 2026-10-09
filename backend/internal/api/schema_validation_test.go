@@ -2,9 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 

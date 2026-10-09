@@ -409,7 +409,8 @@ func TestSubmitQuiz_DailyActivity_Integration(t *testing.T) {
 	// Set up handler and router
 	handler := NewQuizHandler(db)
 
-	router := gin.Default()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		c.Set("user_id", userID)
 		c.Next()

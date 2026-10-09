@@ -36,15 +36,14 @@ jobs:
           go-version: '1.23'
       
       - name: Run migrations
-        working-directory: backend
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/testdb?sslmode=disable
         run: |
           # Install golang-migrate if needed
           go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
           
-          # Run migrations
-          migrate -path db/migrations -database "$DATABASE_URL" up
+          # Run migrations from the backend directory
+          cd backend && migrate -path db/migrations -database "$DATABASE_URL" up
       
       - name: Run integration tests
         working-directory: backend
@@ -124,10 +123,15 @@ jobs:
           chmod +x /tmp/docker-shim/docker
           
           echo "Test 3: Mismatched directory"
-          if deploy_safety_check "docker" "/test/project" 2>&1 | grep -q "different directory"; then
+          set +e
+          OUTPUT=$(deploy_safety_check "docker" "/test/project" 2>&1)
+          RC=$?
+          set -e
+          if [ $RC -ne 0 ] && echo "$OUTPUT" | grep -q "different directory"; then
             echo "✅ PASS: Correctly detected directory mismatch"
           else
-            echo "❌ FAIL: Did not detect directory mismatch"
+            echo "❌ FAIL: Did not detect directory mismatch (RC=$RC)"
+            echo "Output was: $OUTPUT"
             exit 1
           fi
           
