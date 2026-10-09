@@ -82,6 +82,11 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 				authMiddleware.RequireAuth(),
 				authHandler.ResendVerification,
 			)
+			// Onboarding completion (requires auth)
+			authRoutes.POST("/onboarding",
+				authMiddleware.RequireAuth(),
+				authHandler.CompleteOnboarding,
+			)
 		}
 
 		// Public content routes (no authentication required)
@@ -141,6 +146,9 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 				sessions.GET("", authHandler.GetSessions)
 				sessions.DELETE("/:id", authHandler.RevokeSession)
 			}
+
+			// Daily stats (requires auth)
+			protected.GET("/daily-stats", authHandler.GetDailyStats)
 
 			// Quiz history & stats (requires authentication)
 			quizProtected := protected.Group("/quiz")

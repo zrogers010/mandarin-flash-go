@@ -84,6 +84,10 @@ type UserRepository interface {
 	DeleteSessionByID(sessionID uuid.UUID, userID uuid.UUID) error
 	DeleteUserSessions(userID uuid.UUID) error
 	CleanupExpiredTokens() error
+
+	// Onboarding operations
+	CompleteOnboarding(userID uuid.UUID, req *OnboardingRequest) error
+	GetDailyStats(userID uuid.UUID) (*DailyStats, error)
 }
 
 // UserService handles user business logic

@@ -758,3 +758,70 @@ func (ah *AuthHandler) ResendVerification(c *gin.Context) {
 		"message": "Verification email sent. Please check your inbox.",
 	})
 }
+
+// CompleteOnboarding handles POST /api/v1/auth/onboarding
+func (ah *AuthHandler) CompleteOnboarding(c *gin.Context) {
+	userID := c.MustGet("user_id").(uuid.UUID)
+	user := c.MustGet("user").(*models.User)
+
+	var req models.OnboardingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request data",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Validate daily minutes goal
+	validGoals := []int{5, 10, 15, 20, 30, 60}
+	validGoal := false
+	for _, g := range validGoals {
+		if req.DailyMinutesGoal == g {
+			validGoal = true
+			break
+		}
+	}
+	if !validGoal {
+		req.DailyMinutesGoal = 15 // Default to 15 minutes
+	}
+
+	// Update user with onboarding data
+	if err := ah.userRepo.CompleteOnboarding(userID, &req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to save onboarding data",
+		})
+		return
+	}
+
+	// Track onboarding completion event
+	log.Printf("User %s completed onboarding: goal=%s, current_level=%v, daily_goal=%d",
+		userID, req.LearningGoal, req.CurrentHSKLevel, req.DailyMinutesGoal)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Onboarding completed successfully",
+		"user": gin.H{
+			"id":                    user.ID,
+			"email":                 user.Email,
+			"onboarding_completed":  true,
+			"learning_goal":         req.LearningGoal,
+			"current_hsk_level":     req.CurrentHSKLevel,
+			"daily_minutes_goal":    req.DailyMinutesGoal,
+		},
+	})
+}
+
+// GetDailyStats handles GET /api/v1/auth/daily-stats
+func (ah *AuthHandler) GetDailyStats(c *gin.Context) {
+	userID := c.MustGet("user_id").(uuid.UUID)
+
+	stats, err := ah.userRepo.GetDailyStats(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get daily stats",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}

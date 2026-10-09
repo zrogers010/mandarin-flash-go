@@ -473,6 +473,92 @@ func (r *UserRepositoryImpl) CleanupExpiredTokens() error {
 	return nil
 }
 
+// CompleteOnboarding updates user with onboarding data
+func (r *UserRepositoryImpl) CompleteOnboarding(userID uuid.UUID, req *models.OnboardingRequest) error {
+	query := `
+		UPDATE users
+		SET onboarding_completed = true,
+			learning_goal = $2,
+			current_hsk_level = $3,
+			target_hsk_level = $4,
+			daily_minutes_goal = $5,
+			timezone = $6,
+			updated_at = NOW()
+		WHERE id = $1
+	`
+
+	_, err := r.db.Exec(query,
+		userID,
+		req.LearningGoal,
+		req.CurrentHSKLevel,
+		req.TargetHSKLevel,
+		req.DailyMinutesGoal,
+		req.Timezone,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to complete onboarding: %w", err)
+	}
+
+	return nil
+}
+
+// GetDailyStats retrieves today's study stats and streak
+func (r *UserRepositoryImpl) GetDailyStats(userID uuid.UUID) (*models.DailyStats, error) {
+	// Get user's daily goal and streak
+	var dailyGoal int
+	var streakDays int
+	var lastStudyDate sql.NullTime
+	userQuery := `
+		SELECT COALESCE(daily_minutes_goal, 15), COALESCE(study_streak_days, 0), last_study_date
+		FROM users
+		WHERE id = $1
+	`
+	err := r.db.QueryRow(userQuery, userID).Scan(&dailyGoal, &streakDays, &lastStudyDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user stats: %w", err)
+	}
+
+	// Get today's activity
+	var todayMinutes, todayCards, todayWords int
+	var todayGoalMet bool
+	activityQuery := `
+		SELECT COALESCE(minutes_studied, 0), COALESCE(cards_reviewed, 0),
+			   COALESCE(new_words_learned, 0), COALESCE(goal_met, false)
+		FROM daily_activity
+		WHERE user_id = $1 AND activity_date = CURRENT_DATE
+	`
+	err = r.db.QueryRow(activityQuery, userID).Scan(&todayMinutes, &todayCards, &todayWords, &todayGoalMet)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get daily activity: %w", err)
+	}
+
+	// Get reviews due count
+	reviewsDue := 0
+	reviewQuery := `
+		SELECT COUNT(*)
+		FROM user_vocabulary_progress
+		WHERE user_id = $1 AND next_review_at <= NOW()
+	`
+	r.db.QueryRow(reviewQuery, userID).Scan(&reviewsDue)
+
+	stats := &models.DailyStats{
+		TodayMinutes:       todayMinutes,
+		TodayCardsReviewed: todayCards,
+		TodayNewWords:      todayWords,
+		TodayGoalMet:       todayGoalMet,
+		DailyGoal:          dailyGoal,
+		StreakDays:         streakDays,
+		ReviewsDue:         reviewsDue,
+	}
+
+	if lastStudyDate.Valid {
+		stats.LastStudyDate = &lastStudyDate.Time
+	}
+
+	return stats, nil
+}
+
 
 
 
