@@ -17,11 +17,11 @@ jobs:
       
       - name: Start postgres container (production-like setup)
         run: |
-          # Start postgres in a named container, same as production
+          # Start postgres in a named container
+          # Do NOT mount migrations to /docker-entrypoint-initdb.d - we need manual control for testing
           docker run -d --name mf_postgres \
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=chinese_learning_test \
-            -v "$(pwd)/backend/db/migrations:/docker-entrypoint-initdb.d:ro" \
             -p 5432:5432 \
             postgres:15
           
@@ -33,6 +33,10 @@ jobs:
             fi
             sleep 2
           done
+          
+          # Copy migrations into container for access
+          docker exec mf_postgres mkdir -p /migrations
+          docker cp backend/db/migrations/. mf_postgres:/migrations/
       
       - name: Test prod baseline scenario (docker exec mode)
         env:

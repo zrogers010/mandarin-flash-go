@@ -18,7 +18,8 @@ PSQL_COMMAND=("$@")
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MIGRATIONS_DIR="$PROJECT_DIR/backend/db/migrations"
+# Allow MIGRATIONS_DIR to be overridden by environment (for docker container paths)
+MIGRATIONS_DIR="${MIGRATIONS_DIR:-$PROJECT_DIR/backend/db/migrations}"
 
 echo "=== Running database migrations ==="
 echo "  Database: $DB_NAME"
