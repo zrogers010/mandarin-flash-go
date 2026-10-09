@@ -151,14 +151,25 @@ jobs:
             exit 1
           fi
           
-          # Check that 005 doesn't duplicate rows on fresh DB
+          # Check that 005 seeded lesson vocabulary
           VOCAB_COUNT=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
             "SELECT COUNT(*) FROM vocabulary WHERE hsk_level BETWEEN 1 AND 6;" || echo "0")
           
-          echo "  HSK vocabulary rows: $VOCAB_COUNT"
+          echo "  Lesson vocabulary rows: $VOCAB_COUNT"
           
-          if [ "$VOCAB_COUNT" -lt "100" ] || [ "$VOCAB_COUNT" -gt "700" ]; then
-            echo "❌ FAIL: HSK vocabulary count suspicious: $VOCAB_COUNT (expected ~300-600)"
+          if [ "$VOCAB_COUNT" -lt "30" ] || [ "$VOCAB_COUNT" -gt "50" ]; then
+            echo "❌ FAIL: Lesson vocabulary count unexpected: $VOCAB_COUNT (expected ~32)"
+            exit 1
+          fi
+          
+          # Verify lesson_vocabulary links were created
+          LV_COUNT=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+            "SELECT COUNT(*) FROM lesson_vocabulary;" || echo "0")
+          
+          echo "  Lesson-vocabulary links: $LV_COUNT"
+          
+          if [ "$LV_COUNT" -lt "50" ]; then
+            echo "❌ FAIL: Too few lesson-vocabulary links: $LV_COUNT"
             exit 1
           fi
           
