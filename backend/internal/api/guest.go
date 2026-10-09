@@ -83,18 +83,18 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 		// Insert initial progress for this word
 		_, err = h.db.Exec(`
 			INSERT INTO user_vocabulary_progress (
-				id, user_id, vocabulary_id, 
-				level, interval_days, due_date, 
-				times_reviewed, times_correct, times_incorrect,
-				created_at, updated_at
+				user_id, vocabulary_id, ease_factor, interval_days, repetitions, 
+				next_review_at, times_seen, times_correct
 			)
-			VALUES ($1, $2, $3, 0, 1, NOW(), 0, 0, 0, NOW(), NOW())
+			VALUES ($1, $2, 2.5, 0, 0, NOW(), 0, 0)
 			ON CONFLICT (user_id, vocabulary_id) DO NOTHING
-		`, uuid.New(), userID, wordID)
+		`, userID, wordID)
 
 		if err != nil {
 			log.Printf("[MergeGuestProgress] Error inserting word progress: %v", err)
-			continue
+			// Return error instead of silently continuing
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to merge guest progress"})
+			return
 		}
 
 		wordsAdded++

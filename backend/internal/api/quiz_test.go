@@ -10,6 +10,7 @@ import (
 
 	"chinese-learning/internal/models"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -379,4 +380,78 @@ func TestGetQuizHistory(t *testing.T) {
 	assert.Contains(t, firstItem, "percentage")
 	assert.Contains(t, firstItem, "created_at")
 	assert.Contains(t, firstItem, "completed_at")
+}
+
+func TestSubmitQuiz_DailyActivity_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	// This test requires a real database with migrations applied
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Create a test user
+	userID := uuid.New()
+	_, err := db.Exec(`
+		INSERT INTO users (id, email, password_hash, username, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
+	`, userID, "test@example.com", "hash", "testuser")
+	assert.NoError(t, err)
+
+	// Create test vocabulary
+	vocabID := uuid.New()
+	_, err = db.Exec(`
+		INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+		VALUES ($1, '测试', '測試', 'cè shì', 'ce shi', 'test', 1, NOW(), NOW())
+	`, vocabID)
+	assert.NoError(t, err)
+
+	// Set up handler and router
+	handler := NewQuizHandler(db)
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", userID)
+		c.Next()
+	})
+	router.POST("/submit", handler.SubmitQuiz)
+
+	// Submit a quiz
+	quizID := uuid.New()
+	hskLevel := 1
+	submission := models.QuizSubmission{
+		QuizID:   quizID,
+		QuizType: models.QuizTypePractice,
+		HSKLevel: &hskLevel,
+		Answers: map[string]string{
+			vocabID.String(): "test",
+		},
+	}
+
+	body, _ := json.Marshal(submission)
+	req, _ := http.NewRequest("POST", "/submit", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Verify daily_activity was updated with quizzes_completed
+	var quizzesCompleted int
+	err = db.QueryRow(`
+		SELECT COALESCE(quizzes_completed, 0) FROM daily_activity
+		WHERE user_id = $1 AND activity_date = CURRENT_DATE
+	`, userID).Scan(&quizzesCompleted)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, quizzesCompleted, "Daily activity should record quiz completion")
+
+	// Verify last_study_date was updated
+	var lastStudyDate *string
+	err = db.QueryRow(`
+		SELECT to_char(last_study_date, 'YYYY-MM-DD') FROM users WHERE id = $1
+	`, userID).Scan(&lastStudyDate)
+	assert.NoError(t, err)
+	assert.NotNil(t, lastStudyDate, "User last_study_date should be set")
 }
