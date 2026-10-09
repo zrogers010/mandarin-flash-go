@@ -141,7 +141,8 @@ func (es *EmailService) SendEmailVerification(email, name, token string) error {
 		return fmt.Errorf("failed to render email template: %w", err)
 	}
 
-	return es.sendEmail(email, name, emailTemplate.Subject, emailBody)
+	// For now, use the HTML body as text (can be improved with plain text templates)
+	return es.sendEmail(email, name, emailTemplate.Subject, emailBody, emailBody)
 }
 
 // SendPasswordReset sends a password reset email
