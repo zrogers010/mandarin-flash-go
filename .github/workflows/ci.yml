@@ -1,0 +1,189 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, cursor/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chinese_learning_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run migrations
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          for migration in db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Applying $(basename $migration)..."
+              PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -f "$migration"
+            fi
+          done
+
+      - name: Run Go tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-secret-key-for-ci
+          ENVIRONMENT: test
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Build backend
+        run: go build -v ./cmd/server
+
+      - name: Test seed idempotency
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: chinese_learning_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          echo "Testing that re-running seeds preserves vocabulary IDs..."
+          
+          # Insert a test word
+          PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test <<'SQL'
+          INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+          VALUES (
+            'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+            '测试',
+            '測試',
+            'cèshì',
+            'ceshi',
+            'test',
+            1,
+            NOW(),
+            NOW()
+          );
+          SQL
+          
+          # Capture the ID
+          ORIGINAL_ID=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT id FROM vocabulary WHERE chinese='测试' AND pinyin_no_tones='ceshi'")
+          echo "Original ID: $ORIGINAL_ID"
+          
+          # Simulate re-seeding by upserting the same word
+          PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test <<'SQL'
+          INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+          VALUES (
+            gen_random_uuid(),
+            '测试',
+            '測試',
+            'cèshì',
+            'ceshi',
+            'test (updated)',
+            1,
+            NOW(),
+            NOW()
+          )
+          ON CONFLICT (chinese, pinyin_no_tones)
+          DO UPDATE SET
+            english = EXCLUDED.english,
+            updated_at = NOW();
+          SQL
+          
+          # Check the ID is preserved
+          NEW_ID=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT id FROM vocabulary WHERE chinese='测试' AND pinyin_no_tones='ceshi'")
+          NEW_ENGLISH=$(PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test -tAc "SELECT english FROM vocabulary WHERE chinese='测试' AND pinyin_no_tones='ceshi'")
+          
+          echo "New ID: $NEW_ID"
+          echo "New English: $NEW_ENGLISH"
+          
+          if [ "$ORIGINAL_ID" != "$NEW_ID" ]; then
+            echo "FAIL: ID changed after upsert! This would break learner progress."
+            exit 1
+          fi
+          
+          if [ "$NEW_ENGLISH" != "test (updated)" ]; then
+            echo "FAIL: English was not updated!"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Seed idempotency test successful - ID preserved, content updated"
+
+  frontend:
+    name: Frontend (React/TypeScript)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Check bundle size
+        run: |
+          du -sh dist
+          echo "Build artifacts:"
+          ls -lh dist/assets/ | head -20
