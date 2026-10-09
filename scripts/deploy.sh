@@ -43,8 +43,8 @@ COMPOSE_FILE="-f docker-compose.prod.yml"
 # Safety check: ensure we're running from the same directory as the live containers
 # This prevents deploying from a different checkout and breaking SSL cert paths
 # Inspect the live mf_backend container directly by name
-INSPECT_OUTPUT=$($DOCKER inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1)
-INSPECT_RC=$?
+INSPECT_RC=0
+INSPECT_OUTPUT=$($DOCKER inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1) || INSPECT_RC=$?
 
 if [ $INSPECT_RC -eq 0 ]; then
     # Container exists and was inspected successfully
