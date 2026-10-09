@@ -38,13 +38,39 @@ jobs:
       - name: Run migrations
         working-directory: backend
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/testdb?sslmode=disable
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: testdb
+          PGUSER: postgres
+          PGPASSWORD: postgres
         run: |
-          # Install golang-migrate if needed
-          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+          # Apply migrations using psql like scripts/migrate.sh does
+          MIGRATIONS_DIR="db/migrations"
           
-          # Run migrations
-          ~/go/bin/migrate -path db/migrations -database "$DATABASE_URL" up
+          # Create schema_migrations table
+          psql -v ON_ERROR_STOP=1 < "$MIGRATIONS_DIR/000_schema_migrations.sql"
+          
+          # Apply each migration in order
+          for migration in "$MIGRATIONS_DIR"/*.sql; do
+            MIGRATION_NAME="$(basename "$migration")"
+            
+            # Skip if already applied
+            ALREADY_APPLIED=$(psql -tAc "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME';" || echo "0")
+            
+            if [ "$ALREADY_APPLIED" = "1" ]; then
+              echo "  Skipping $MIGRATION_NAME (already applied)"
+              continue
+            fi
+            
+            echo "  Applying $MIGRATION_NAME..."
+            if psql -v ON_ERROR_STOP=1 < "$migration"; then
+              psql -tAc "INSERT INTO schema_migrations (filename, applied_at) VALUES ('$MIGRATION_NAME', NOW());"
+              echo "    ✓ Applied $MIGRATION_NAME"
+            else
+              echo "    ERROR: Failed to apply $MIGRATION_NAME!"
+              exit 1
+            fi
+          done
       
       - name: Run integration tests
         working-directory: backend
