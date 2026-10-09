@@ -33,6 +33,7 @@ import { Lessons } from '@/pages/Lessons'
 import { LessonDetail } from '@/pages/LessonDetail'
 import { Review } from '@/pages/Review'
 import { NotFound } from '@/pages/NotFound'
+import Dashboard from '@/pages/Dashboard'
 
 function App() {
   return (
