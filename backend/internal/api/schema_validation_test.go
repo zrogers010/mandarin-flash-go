@@ -151,14 +151,3 @@ func TestSchemaColumnValidation(t *testing.T) {
 	}
 }
 
-// extractTableAndColumn attempts to extract table and column from SQL
-// This is a simple heuristic parser for validation purposes
-func extractTableAndColumn(query string) (table, column string) {
-	// Simple regex to find "table.column" or "column" in INSERT/UPDATE/SELECT
-	re := regexp.MustCompile(`(?i)(?:FROM|INTO|UPDATE)\s+(\w+)`)
-	matches := re.FindStringSubmatch(query)
-	if len(matches) > 1 {
-		table = matches[1]
-	}
-	return table, ""
-}
