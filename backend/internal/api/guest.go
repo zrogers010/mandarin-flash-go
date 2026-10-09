@@ -52,27 +52,63 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 
 	// Track merge statistics
 	wordsAdded := 0
+	wordsSkipped := 0
 	quizzesMerged := 0
 
-	// Merge seen words into user_vocabulary_progress
-	// Only add words that the user hasn't already seen
-	for _, wordID := range guestData.SeenWords {
-		// Validate wordID is a valid UUID
-		if _, err := uuid.Parse(wordID); err != nil {
-			log.Printf("[MergeGuestProgress] Invalid word ID: %s", wordID)
+	// Start a transaction for atomic merge
+	tx, err := h.db.Begin()
+	if err != nil {
+		log.Printf("[MergeGuestProgress] Failed to start transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to merge guest progress"})
+		return
+	}
+	defer tx.Rollback()
+
+	// Filter and validate vocabulary IDs upfront
+	validWordIDs := []uuid.UUID{}
+	for _, wordIDStr := range guestData.SeenWords {
+		wordID, err := uuid.Parse(wordIDStr)
+		if err != nil {
+			log.Printf("[MergeGuestProgress] Invalid word ID: %s", wordIDStr)
+			wordsSkipped++
 			continue
 		}
 
+		// Check if vocabulary exists in database
+		var exists bool
+		err = tx.QueryRow(`
+			SELECT EXISTS(SELECT 1 FROM vocabulary WHERE id = $1)
+		`, wordID).Scan(&exists)
+
+		if err != nil {
+			log.Printf("[MergeGuestProgress] Error checking vocabulary existence: %v", err)
+			wordsSkipped++
+			continue
+		}
+
+		if !exists {
+			log.Printf("[MergeGuestProgress] Vocabulary ID does not exist: %s", wordIDStr)
+			wordsSkipped++
+			continue
+		}
+
+		validWordIDs = append(validWordIDs, wordID)
+	}
+
+	// Merge seen words into user_vocabulary_progress
+	// Only add words that the user hasn't already seen
+	for _, wordID := range validWordIDs {
 		// Check if user already has progress for this word
 		var existingCount int
-		err := h.db.QueryRow(`
+		err := tx.QueryRow(`
 			SELECT COUNT(*) FROM user_vocabulary_progress
 			WHERE user_id = $1 AND vocabulary_id = $2
 		`, userID, wordID).Scan(&existingCount)
 
 		if err != nil {
 			log.Printf("[MergeGuestProgress] Error checking existing progress: %v", err)
-			continue
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to merge guest progress"})
+			return
 		}
 
 		if existingCount > 0 {
@@ -81,7 +117,7 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 		}
 
 		// Insert initial progress for this word
-		_, err = h.db.Exec(`
+		_, err = tx.Exec(`
 			INSERT INTO user_vocabulary_progress (
 				user_id, vocabulary_id, ease_factor, interval_days, repetitions, 
 				next_review_at, times_seen, times_correct
@@ -92,7 +128,6 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 
 		if err != nil {
 			log.Printf("[MergeGuestProgress] Error inserting word progress: %v", err)
-			// Return error instead of silently continuing
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to merge guest progress"})
 			return
 		}
@@ -105,7 +140,8 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 	quizzesMerged = len(guestData.QuizResults)
 
 	// Update daily activity with both new words and quiz cards
-	_, err := h.db.Exec(`
+	// The daily_activity trigger will automatically update last_study_date
+	_, err = tx.Exec(`
 		INSERT INTO daily_activity (
 			id, user_id, activity_date, minutes_studied, cards_reviewed, new_words_learned, goal_met, created_at, updated_at
 		)
@@ -119,23 +155,21 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 
 	if err != nil {
 		log.Printf("[MergeGuestProgress] Error updating daily_activity: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to merge guest progress"})
+		return
 	}
 
-	// Update user's last_study_date if this is their first activity
-	// This ensures their streak tracking starts from the merge
-	_, err = h.db.Exec(`
-		UPDATE users 
-		SET last_study_date = CURRENT_DATE
-		WHERE id = $1 AND last_study_date IS NULL
-	`, userID)
-
-	if err != nil {
-		log.Printf("[MergeGuestProgress] Error updating last_study_date: %v", err)
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("[MergeGuestProgress] Failed to commit transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to merge guest progress"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":        "Guest progress merged successfully",
 		"words_added":    wordsAdded,
+		"words_skipped":  wordsSkipped,
 		"quizzes_merged": quizzesMerged,
 	})
 }
