@@ -188,46 +188,109 @@ jobs:
           wget https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz -O scripts/cedict_ts.u8.gz
           gunzip scripts/cedict_ts.u8.gz
 
-      - name: Apply migrations (up to 009)
+      - name: Apply migrations (FIRST RUN)
         env:
           PGPASSWORD: postgres
         run: |
-          for migration in backend/db/migrations/00[1-9]*.sql; do
-            if [ -f "$migration" ] && [[ $(basename "$migration") < "010" ]]; then
-              echo "Applying $(basename $migration)..."
-              psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -f "$migration"
+          echo "=== First Migration Run ==="
+          for migration in backend/db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              MIGRATION_NAME="$(basename "$migration")"
+              
+              # Check if already applied
+              APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+                "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'" 2>/dev/null || echo "0")
+              
+              if [ "$APPLIED" = "1" ]; then
+                echo "  Skipping $MIGRATION_NAME (already applied)"
+                continue
+              fi
+              
+              echo "  Applying $MIGRATION_NAME..."
+              psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<EOSQL
+              BEGIN;
+              \i $migration
+              INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
+              COMMIT;
+          EOSQL
             fi
           done
 
-      - name: Seed sample HSK words for testing corrections
+      - name: Seed sample HSK words and test fixture
         env:
           PGPASSWORD: postgres
         run: |
           # Insert sample HSK words that migration 010 will correct
           psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<'SQL'
+          -- HSK words for correction testing
           INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
           VALUES
             (gen_random_uuid(), '年', '秊', 'nián', 'nian', 'grain | harvest (old)', 1, NOW(), NOW()),
             (gen_random_uuid(), '喝', '喝', 'hē', 'he', 'to drink', 1, NOW(), NOW()),
-            (gen_random_uuid(), '猫', '貓', 'māo', 'mao', 'cat', 1, NOW(), NOW()),
-            (gen_random_uuid(), '累', '累', 'léi', 'lei', 'rope', 2, NOW(), NOW()),
+            (gen_random_uuid(), '累', '纍', 'lèi', 'lei', 'rope', 2, NOW(), NOW()),
             (gen_random_uuid(), '伞', '繖', 'sǎn', 'san', 'damask silk', 2, NOW(), NOW()),
             (gen_random_uuid(), '腿', '骽', 'tuǐ', 'tui', 'hip bone', 2, NOW(), NOW()),
-            (gen_random_uuid(), '宾馆', '賓館', 'bīngguǎn', 'bingguan', 'hotel', 3, NOW(), NOW()),
-            (gen_random_uuid(), '发', '髮', 'fà', 'fa', 'hair', 3, NOW(), NOW())
+            (gen_random_uuid(), '宾馆', NULL, 'bīngguǎn', 'bingguan', 'hotel', 2, NOW(), NOW()),
+            (gen_random_uuid(), '发', '髮', 'fà', 'fa', 'hair', 3, NOW(), NOW()),
+            (gen_random_uuid(), '对', NULL, 'duì', 'dui', 'to', 2, NOW(), NOW()),
+            (gen_random_uuid(), '对', '對', 'duì', 'dui', 'correct', 2, NOW(), NOW())
+          ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
+          
+          -- Test fixture: CEDICT level-0 row with 'football' to verify it's not touched
+          INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level, created_at, updated_at)
+          VALUES (gen_random_uuid(), '足球', '足球', 'zúqiú', 'zuqiu', 'football | soccer', 0, NOW(), NOW())
           ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
           SQL
           
-          echo "Sample HSK words inserted for correction testing"
+          echo "Sample words and test fixture inserted"
 
-      - name: Apply migration 010 (content corrections)
+      - name: Run migration 010 (content corrections)
         env:
           PGPASSWORD: postgres
         run: |
           if [ -f "backend/db/migrations/010_apply_content_corrections.sql" ]; then
-            echo "Applying 010_apply_content_corrections.sql..."
-            psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -f "backend/db/migrations/010_apply_content_corrections.sql"
+            MIGRATION_NAME="010_apply_content_corrections.sql"
+            
+            # Check if already applied
+            APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+              "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'" 2>/dev/null || echo "0")
+            
+            if [ "$APPLIED" = "0" ]; then
+              echo "Applying $MIGRATION_NAME..."
+              psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test <<EOSQL
+              BEGIN;
+              \i backend/db/migrations/$MIGRATION_NAME
+              INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
+              COMMIT;
+          EOSQL
+            else
+              echo "Skipping $MIGRATION_NAME (already applied)"
+            fi
           fi
+
+      - name: Apply migrations (SECOND RUN - idempotency test)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "=== Second Migration Run (Idempotency Test) ==="
+          for migration in backend/db/migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              MIGRATION_NAME="$(basename "$migration")"
+              
+              # Check if already applied
+              APPLIED=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+                "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'")
+              
+              if [ "$APPLIED" = "1" ]; then
+                echo "  Skipping $MIGRATION_NAME (already applied)"
+                continue
+              fi
+              
+              echo "  ERROR: $MIGRATION_NAME was not recorded in first run!"
+              exit 1
+            fi
+          done
+          echo "✅ All migrations already applied - idempotent migration system working"
 
       - name: First CEDICT import
         env:

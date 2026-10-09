@@ -88,15 +88,35 @@ else
     echo "  WARNING: Backup failed, but continuing deploy."
 fi
 
+# Apply migrations using schema_migrations tracker
+# Each migration runs in a transaction with ON_ERROR_STOP and is recorded on success
 for migration in backend/db/migrations/*.sql; do
     if [ -f "$migration" ]; then
         MIGRATION_NAME="$(basename "$migration")"
+        
+        # Check if migration already applied
+        ALREADY_APPLIED=$($DC $COMPOSE_FILE exec -T postgres psql \
+            -U "${DB_USER:-postgres}" \
+            -d "${DB_NAME:-chinese_learning}" \
+            -tAc "SELECT COUNT(*) FROM schema_migrations WHERE filename='$MIGRATION_NAME'" 2>/dev/null || echo "0")
+        
+        if [ "$ALREADY_APPLIED" = "1" ]; then
+            echo "  Skipping $MIGRATION_NAME (already applied)"
+            continue
+        fi
+        
         echo "  Applying $MIGRATION_NAME..."
+        # Run migration and record it in the same transaction
         if ! $DC $COMPOSE_FILE exec -T postgres psql \
             -v ON_ERROR_STOP=1 \
             -U "${DB_USER:-postgres}" \
-            -d "${DB_NAME:-chinese_learning}" \
-            -f "/docker-entrypoint-initdb.d/$MIGRATION_NAME"; then
+            -d "${DB_NAME:-chinese_learning}" <<EOSQL
+BEGIN;
+\i /docker-entrypoint-initdb.d/$MIGRATION_NAME
+INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
+COMMIT;
+EOSQL
+        then
             echo "  ERROR: Migration $MIGRATION_NAME failed!"
             echo "  Database may be in inconsistent state. Check logs and rollback if needed."
             exit 1

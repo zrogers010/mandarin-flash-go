@@ -82,12 +82,11 @@ UPDATE vocabulary
 SET english = 'far | distant'
 WHERE chinese = '远' AND traditional = '遠' AND pinyin = 'yuǎn' AND hsk_level BETWEEN 1 AND 6;
 
--- Fix 累: lèi (tired) vs léi (rope) vs léi (accumulate)
--- CEDICT has lei4/lèi for tired, lei3/lěi for accumulate, lei2/léi for rope
--- Match any of these and set to the HSK meaning (tired)
+-- Fix 累: lèi (tired) vs léi (rope) vs lěi (accumulate)
+-- Production stores HSK as 累/纍/lèi (纍 is variant form)
 UPDATE vocabulary
 SET english = 'tired | exhausted', pinyin = 'lèi', traditional = '累'
-WHERE chinese = '累' AND traditional = '累' AND pinyin IN ('lèi', 'lěi', 'léi') AND hsk_level BETWEEN 1 AND 6;
+WHERE chinese = '累' AND traditional IN ('累', '纍') AND pinyin IN ('lèi', 'lěi', 'léi') AND hsk_level BETWEEN 1 AND 6;
 
 -- Fix 伞: umbrella (not damask silk variant 繖)
 -- CEDICT has 伞|傘|san3 (umbrella) and 伞|繖|san3 (damask silk variant)
@@ -116,11 +115,11 @@ UPDATE vocabulary
 SET english = 'you', traditional = '你'
 WHERE chinese = '你' AND pinyin = 'nǐ' AND hsk_level BETWEEN 1 AND 6;
 
--- Fix 宾馆: correct pinyin (bin1 guan3 -> bīnguǎn with neutral 2nd syllable often)
--- Match any existing pinyin variant
+-- Fix 宾馆: correct pinyin
+-- HSK 2 row has traditional NULL in production
 UPDATE vocabulary
-SET pinyin = 'bīnguǎn', pinyin_no_tones = 'binguan', english = 'hotel | guesthouse'
-WHERE chinese = '宾馆' AND traditional = '賓館' AND hsk_level BETWEEN 1 AND 6;
+SET pinyin = 'bīnguǎn', pinyin_no_tones = 'binguan', english = 'hotel | guesthouse', traditional = '賓館'
+WHERE chinese = '宾馆' AND (traditional = '賓館' OR traditional IS NULL) AND hsk_level BETWEEN 1 AND 6;
 
 -- Fix 铅笔: correct pinyin
 UPDATE vocabulary
@@ -170,12 +169,13 @@ SET english = 'and | with | to give'
 WHERE chinese = '与' AND traditional = '與' AND pinyin = 'yǔ' AND hsk_level BETWEEN 1 AND 6;
 
 -- Remove duplicate 对 in HSK 2 (keep only one, deterministically)
+-- Production duplicate has traditional NULL, so match NULL or 對
 -- Only delete if no user progress exists on the duplicate
 DELETE FROM vocabulary
-WHERE chinese='对' AND traditional='對' AND hsk_level=2
+WHERE chinese='对' AND (traditional='對' OR traditional IS NULL) AND hsk_level=2
   AND id <> (
     SELECT id FROM vocabulary 
-    WHERE chinese='对' AND traditional='對' AND hsk_level=2 
+    WHERE chinese='对' AND (traditional='對' OR traditional IS NULL) AND hsk_level=2 
     ORDER BY created_at, id 
     LIMIT 1
   )
@@ -184,10 +184,10 @@ WHERE chinese='对' AND traditional='對' AND hsk_level=2
     WHERE p.vocabulary_id = vocabulary.id
   );
 
--- Fix 'footbal' typo
+-- Fix 'footbal' typo (only in HSK words, with word boundaries to avoid double-fixing)
 UPDATE vocabulary
-SET english = REPLACE(english, 'footbal', 'football')
-WHERE english LIKE '%footbal%';
+SET english = regexp_replace(english, '\mfootbal\M', 'football', 'g')
+WHERE english ~ '\mfootbal\M' AND hsk_level BETWEEN 1 AND 6;
 
 -- Update timestamps for auditing
 UPDATE vocabulary

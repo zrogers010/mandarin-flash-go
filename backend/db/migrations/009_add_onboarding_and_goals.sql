@@ -44,6 +44,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_daily_activity_trigger ON daily_activity;
 CREATE TRIGGER update_daily_activity_trigger
     AFTER INSERT OR UPDATE ON daily_activity
     FOR EACH ROW

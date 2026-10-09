@@ -5,65 +5,65 @@
 -- ── Insert missing vocabulary used in lesson sentences ───────────
 
 -- Greetings
-INSERT INTO vocabulary (chinese, pinyin, english, hsk_level, example_sentences)
-VALUES ('你好', 'nǐhǎo', 'hello', 1, '[{"chinese":"你好！很高兴认识你。","pinyin":"Nǐhǎo! Hěn gāoxìng rènshi nǐ.","english":"Hello! Nice to meet you."}]'::jsonb)
-ON CONFLICT DO NOTHING;
+INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
+VALUES ('你好', '你好', 'nǐhǎo', 'hello', 1, '[{"chinese":"你好！很高兴认识你。","pinyin":"Nǐhǎo! Hěn gāoxìng rènshi nǐ.","english":"Hello! Nice to meet you."}]'::jsonb)
+ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
 
 -- Food & Dining
-INSERT INTO vocabulary (chinese, pinyin, english, hsk_level, example_sentences)
+INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES
-('面条', 'miàntiáo', 'noodles', 2, '[{"chinese":"我想吃面条。","pinyin":"Wǒ xiǎng chī miàntiáo.","english":"I want to eat noodles."}]'::jsonb),
-('辣', 'là', 'spicy', 2, '[{"chinese":"我不吃辣的。","pinyin":"Wǒ bù chī là de.","english":"I don''t eat spicy food."}]'::jsonb),
-('服务员', 'fúwùyuán', 'waiter', 2, '[{"chinese":"服务员，买单！","pinyin":"Fúwùyuán, mǎidān!","english":"Waiter, the bill please!"}]'::jsonb),
-('餐厅', 'cāntīng', 'restaurant', 2, '[{"chinese":"我们去餐厅吃饭。","pinyin":"Wǒmen qù cāntīng chīfàn.","english":"Let''s go eat at a restaurant."}]'::jsonb),
-('啤酒', 'píjiǔ', 'beer', 3, '[{"chinese":"再来一瓶啤酒。","pinyin":"Zài lái yì píng píjiǔ.","english":"Another bottle of beer, please."}]'::jsonb),
-('汤', 'tāng', 'soup', 2, '[{"chinese":"我要一碗汤。","pinyin":"Wǒ yào yì wǎn tāng.","english":"I want a bowl of soup."}]'::jsonb),
-('咖啡', 'kāfēi', 'coffee', 2, '[{"chinese":"我想喝咖啡。","pinyin":"Wǒ xiǎng hē kāfēi.","english":"I want to drink coffee."}]'::jsonb),
-('饱', 'bǎo', 'full (from eating)', 2, '[{"chinese":"你吃饱了吗？","pinyin":"Nǐ chī bǎo le ma?","english":"Are you full?"}]'::jsonb)
-ON CONFLICT DO NOTHING;
+('面条', '麵條', 'miàntiáo', 'noodles', 2, '[{"chinese":"我想吃面条。","pinyin":"Wǒ xiǎng chī miàntiáo.","english":"I want to eat noodles."}]'::jsonb),
+('辣', '辣', 'là', 'spicy', 2, '[{"chinese":"我不吃辣的。","pinyin":"Wǒ bù chī là de.","english":"I don''t eat spicy food."}]'::jsonb),
+('服务员', '服務員', 'fúwùyuán', 'waiter', 2, '[{"chinese":"服务员，买单！","pinyin":"Fúwùyuán, mǎidān!","english":"Waiter, the bill please!"}]'::jsonb),
+('餐厅', '餐廳', 'cāntīng', 'restaurant', 2, '[{"chinese":"我们去餐厅吃饭。","pinyin":"Wǒmen qù cāntīng chīfàn.","english":"Let''s go eat at a restaurant."}]'::jsonb),
+('啤酒', '啤酒', 'píjiǔ', 'beer', 3, '[{"chinese":"再来一瓶啤酒。","pinyin":"Zài lái yì píng píjiǔ.","english":"Another bottle of beer, please."}]'::jsonb),
+('汤', '湯', 'tāng', 'soup', 2, '[{"chinese":"我要一碗汤。","pinyin":"Wǒ yào yì wǎn tāng.","english":"I want a bowl of soup."}]'::jsonb),
+('咖啡', '咖啡', 'kāfēi', 'coffee', 2, '[{"chinese":"我想喝咖啡。","pinyin":"Wǒ xiǎng hē kāfēi.","english":"I want to drink coffee."}]'::jsonb),
+('饱', '飽', 'bǎo', 'full (from eating)', 2, '[{"chinese":"你吃饱了吗？","pinyin":"Nǐ chī bǎo le ma?","english":"Are you full?"}]'::jsonb)
+ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
 
 -- Travel & Transportation
-INSERT INTO vocabulary (chinese, pinyin, english, hsk_level, example_sentences)
+INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES
-('地铁', 'dìtiě', 'subway', 2, '[{"chinese":"请问，地铁站在哪里？","pinyin":"Qǐngwèn, dìtiě zhàn zài nǎlǐ?","english":"Excuse me, where is the subway station?"}]'::jsonb),
-('出租车', 'chūzūchē', 'taxi', 2, '[{"chinese":"请帮我叫一辆出租车。","pinyin":"Qǐng bāng wǒ jiào yí liàng chūzūchē.","english":"Please call a taxi for me."}]'::jsonb),
-('公共汽车', 'gōnggòng qìchē', 'bus', 2, '[{"chinese":"坐公共汽车还是坐地铁？","pinyin":"Zuò gōnggòng qìchē háishi zuò dìtiě?","english":"Take the bus or the subway?"}]'::jsonb),
-('酒店', 'jiǔdiàn', 'hotel', 3, '[{"chinese":"我的酒店在这附近。","pinyin":"Wǒ de jiǔdiàn zài zhè fùjìn.","english":"My hotel is near here."}]'::jsonb),
-('迷路', 'mílù', 'lost (one''s way)', 3, '[{"chinese":"我迷路了。","pinyin":"Wǒ mílù le.","english":"I''m lost."}]'::jsonb)
-ON CONFLICT DO NOTHING;
+('地铁', '地鐵', 'dìtiě', 'subway', 2, '[{"chinese":"请问，地铁站在哪里？","pinyin":"Qǐngwèn, dìtiě zhàn zài nǎlǐ?","english":"Excuse me, where is the subway station?"}]'::jsonb),
+('出租车', '出租車', 'chūzūchē', 'taxi', 2, '[{"chinese":"请帮我叫一辆出租车。","pinyin":"Qǐng bāng wǒ jiào yí liàng chūzūchē.","english":"Please call a taxi for me."}]'::jsonb),
+('公共汽车', '公共汽車', 'gōnggòngqìchē', 'bus', 2, '[{"chinese":"坐公共汽车还是坐地铁？","pinyin":"Zuò gōnggòng qìchē háishi zuò dìtiě?","english":"Take the bus or the subway?"}]'::jsonb),
+('酒店', '酒店', 'jiǔdiàn', 'hotel', 3, '[{"chinese":"我的酒店在这附近。","pinyin":"Wǒ de jiǔdiàn zài zhè fùjìn.","english":"My hotel is near here."}]'::jsonb),
+('迷路', '迷路', 'mílù', 'lost (one''s way)', 3, '[{"chinese":"我迷路了。","pinyin":"Wǒ mílù le.","english":"I''m lost."}]'::jsonb)
+ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
 
 -- Animals & Nature
-INSERT INTO vocabulary (chinese, pinyin, english, hsk_level, example_sentences)
+INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES
-('猫', 'māo', 'cat', 1, '[{"chinese":"我家有一只猫。","pinyin":"Wǒ jiā yǒu yì zhī māo.","english":"I have a cat at home."}]'::jsonb),
-('狗', 'gǒu', 'dog', 1, '[{"chinese":"他的狗很可爱。","pinyin":"Tā de gǒu hěn kě''ài.","english":"His dog is very cute."}]'::jsonb),
-('鸟', 'niǎo', 'bird', 2, '[{"chinese":"鸟在树上唱歌。","pinyin":"Niǎo zài shù shàng chànggē.","english":"The birds are singing in the tree."}]'::jsonb),
-('鱼', 'yú', 'fish', 1, '[{"chinese":"鱼在水里游泳。","pinyin":"Yú zài shuǐ lǐ yóuyǒng.","english":"The fish are swimming in the water."}]'::jsonb),
-('马', 'mǎ', 'horse', 2, '[{"chinese":"马跑得很快。","pinyin":"Mǎ pǎo de hěn kuài.","english":"Horses run very fast."}]'::jsonb),
-('动物', 'dòngwù', 'animal', 2, '[{"chinese":"你喜欢什么动物？","pinyin":"Nǐ xǐhuan shénme dòngwù?","english":"What animal do you like?"}]'::jsonb),
-('熊猫', 'xióngmāo', 'panda', 3, '[{"chinese":"熊猫是中国的国宝。","pinyin":"Xióngmāo shì zhōngguó de guóbǎo.","english":"The panda is China''s national treasure."}]'::jsonb),
-('大象', 'dàxiàng', 'elephant', 3, '[{"chinese":"大象是最大的陆地动物。","pinyin":"Dàxiàng shì zuì dà de lùdì dòngwù.","english":"The elephant is the largest land animal."}]'::jsonb),
-('兔子', 'tùzi', 'rabbit', 3, '[{"chinese":"这只兔子很小。","pinyin":"Zhè zhī tùzi hěn xiǎo.","english":"This rabbit is very small."}]'::jsonb),
-('蛇', 'shé', 'snake', 3, '[{"chinese":"那条蛇很长。","pinyin":"Nà tiáo shé hěn cháng.","english":"That snake is very long."}]'::jsonb),
-('老虎', 'lǎohǔ', 'tiger', 3, '[{"chinese":"老虎住在森林里。","pinyin":"Lǎohǔ zhù zài sēnlín lǐ.","english":"Tigers live in the forest."}]'::jsonb),
-('可爱', 'kě''ài', 'cute', 2, '[{"chinese":"他的狗很可爱。","pinyin":"Tā de gǒu hěn kě''ài.","english":"His dog is very cute."}]'::jsonb)
-ON CONFLICT DO NOTHING;
+('猫', '貓', 'māo', 'cat', 1, '[{"chinese":"我家有一只猫。","pinyin":"Wǒ jiā yǒu yì zhī māo.","english":"I have a cat at home."}]'::jsonb),
+('狗', '狗', 'gǒu', 'dog', 1, '[{"chinese":"他的狗很可爱。","pinyin":"Tā de gǒu hěn kě''ài.","english":"His dog is very cute."}]'::jsonb),
+('鸟', '鳥', 'niǎo', 'bird', 2, '[{"chinese":"鸟在树上唱歌。","pinyin":"Niǎo zài shù shàng chànggē.","english":"The birds are singing in the tree."}]'::jsonb),
+('鱼', '魚', 'yú', 'fish', 1, '[{"chinese":"鱼在水里游泳。","pinyin":"Yú zài shuǐ lǐ yóuyǒng.","english":"The fish are swimming in the water."}]'::jsonb),
+('马', '馬', 'mǎ', 'horse', 2, '[{"chinese":"马跑得很快。","pinyin":"Mǎ pǎo de hěn kuài.","english":"Horses run very fast."}]'::jsonb),
+('动物', '動物', 'dòngwù', 'animal', 2, '[{"chinese":"你喜欢什么动物？","pinyin":"Nǐ xǐhuan shénme dòngwù?","english":"What animal do you like?"}]'::jsonb),
+('熊猫', '熊貓', 'xióngmāo', 'panda', 3, '[{"chinese":"熊猫是中国的国宝。","pinyin":"Xióngmāo shì zhōngguó de guóbǎo.","english":"The panda is China''s national treasure."}]'::jsonb),
+('大象', '大象', 'dàxiàng', 'elephant', 3, '[{"chinese":"大象是最大的陆地动物。","pinyin":"Dàxiàng shì zuì dà de lùdì dòngwù.","english":"The elephant is the largest land animal."}]'::jsonb),
+('兔子', '兔子', 'tùzi', 'rabbit', 3, '[{"chinese":"这只兔子很小。","pinyin":"Zhè zhī tùzi hěn xiǎo.","english":"This rabbit is very small."}]'::jsonb),
+('蛇', '蛇', 'shé', 'snake', 3, '[{"chinese":"那条蛇很长。","pinyin":"Nà tiáo shé hěn cháng.","english":"That snake is very long."}]'::jsonb),
+('老虎', '老虎', 'lǎohǔ', 'tiger', 3, '[{"chinese":"老虎住在森林里。","pinyin":"Lǎohǔ zhù zài sēnlín lǐ.","english":"Tigers live in the forest."}]'::jsonb),
+('可爱', '可愛', 'kěài', 'cute', 2, '[{"chinese":"他的狗很可爱。","pinyin":"Tā de gǒu hěn kě''ài.","english":"His dog is very cute."}]'::jsonb)
+ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
 
 -- School
-INSERT INTO vocabulary (chinese, pinyin, english, hsk_level, example_sentences)
+INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES
-('作业', 'zuòyè', 'homework', 2, '[{"chinese":"我的作业还没写完。","pinyin":"Wǒ de zuòyè hái méi xiě wán.","english":"I haven''t finished my homework yet."}]'::jsonb),
-('教室', 'jiàoshì', 'classroom', 2, '[{"chinese":"老师在教室里。","pinyin":"Lǎoshī zài jiàoshì lǐ.","english":"The teacher is in the classroom."}]'::jsonb)
-ON CONFLICT DO NOTHING;
+('作业', '作業', 'zuòyè', 'homework', 2, '[{"chinese":"我的作业还没写完。","pinyin":"Wǒ de zuòyè hái méi xiě wán.","english":"I haven''t finished my homework yet."}]'::jsonb),
+('教室', '教室', 'jiàoshì', 'classroom', 2, '[{"chinese":"老师在教室里。","pinyin":"Lǎoshī zài jiàoshì lǐ.","english":"The teacher is in the classroom."}]'::jsonb)
+ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
 
 -- Grammar: measure word nouns
-INSERT INTO vocabulary (chinese, pinyin, english, hsk_level, example_sentences)
+INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES
-('衣服', 'yīfu', 'clothes', 1, '[{"chinese":"这件衣服很漂亮。","pinyin":"Zhè jiàn yīfu hěn piàoliang.","english":"This piece of clothing is very pretty."}]'::jsonb),
-('鞋', 'xié', 'shoes', 2, '[{"chinese":"我要买一双鞋。","pinyin":"Wǒ yào mǎi yì shuāng xié.","english":"I want to buy a pair of shoes."}]'::jsonb),
-('筷子', 'kuàizi', 'chopsticks', 2, '[{"chinese":"请给我一双筷子。","pinyin":"Qǐng gěi wǒ yì shuāng kuàizi.","english":"Please give me a pair of chopsticks."}]'::jsonb),
-('自行车', 'zìxíngchē', 'bicycle', 2, '[{"chinese":"他有两辆自行车。","pinyin":"Tā yǒu liǎng liàng zìxíngchē.","english":"He has two bicycles."}]'::jsonb)
-ON CONFLICT DO NOTHING;
+('衣服', '衣服', 'yīfu', 'clothes', 1, '[{"chinese":"这件衣服很漂亮。","pinyin":"Zhè jiàn yīfu hěn piàoliang.","english":"This piece of clothing is very pretty."}]'::jsonb),
+('鞋', '鞋', 'xié', 'shoes', 2, '[{"chinese":"我要买一双鞋。","pinyin":"Wǒ yào mǎi yì shuāng xié.","english":"I want to buy a pair of shoes."}]'::jsonb),
+('筷子', '筷子', 'kuàizi', 'chopsticks', 2, '[{"chinese":"请给我一双筷子。","pinyin":"Qǐng gěi wǒ yì shuāng kuàizi.","english":"Please give me a pair of chopsticks."}]'::jsonb),
+('自行车', '自行車', 'zìxíngchē', 'bicycle', 2, '[{"chinese":"他有两辆自行车。","pinyin":"Tā yǒu liǎng liàng zìxíngchē.","english":"He has two bicycles."}]'::jsonb)
+ON CONFLICT (chinese, traditional, pinyin) DO NOTHING;
 
 
 -- ── Clear old lesson_vocabulary links and re-populate ────────────
