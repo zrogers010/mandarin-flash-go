@@ -285,12 +285,12 @@ jobs:
           # Install psycopg2 for content check script
           pip install psycopg2-binary
           
-          # Insert sample HSK words for testing
+          # Insert sample HSK words for testing (with made-up words to avoid conflicts)
           PGPASSWORD=postgres psql -h localhost -U postgres -d chinese_learning_test <<'SQL'
           INSERT INTO vocabulary (id, chinese, traditional, pinyin, pinyin_no_tones, english, hsk_level)
           VALUES 
-            (gen_random_uuid(), '你好', '你好', 'nǐ hǎo', 'nihao', 'hello', 1),
-            (gen_random_uuid(), '谢谢', '謝謝', 'xiè xie', 'xiexie', 'thank you', 1);
+            (gen_random_uuid(), '测试词', '測試詞', 'cèshì cí', 'ceshici', 'test word', 1),
+            (gen_random_uuid(), '检查字', '檢查字', 'jiǎnchá zì', 'jianchazi', 'check character', 1);
           SQL
           
           # Run content check
