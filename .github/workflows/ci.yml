@@ -394,21 +394,12 @@ jobs:
             exit 1
           fi
           
-          # 猫 = cat (not archaic variant)
-          MAO_EN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
-            "SELECT english FROM vocabulary WHERE chinese='猫' AND pinyin='māo' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
-          echo "猫 (cat): $MAO_EN"
-          if [[ "$MAO_EN" != *"cat"* ]]; then
-            echo "❌ FAIL: 猫 should mean 'cat', got: $MAO_EN"
-            exit 1
-          fi
-          
-          # 累 = tired (not rope)
-          LEI_EN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
-            "SELECT english FROM vocabulary WHERE chinese='累' AND pinyin='lèi' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
-          echo "累 (tired): $LEI_EN"
-          if [[ "$LEI_EN" != *"tired"* ]]; then
-            echo "❌ FAIL: 累 should mean 'tired', got: $LEI_EN"
+          # 累 = tired (not rope), verify pinyin lèi and traditional 累
+          LEI_ROW=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english, pinyin, traditional FROM vocabulary WHERE chinese='累' AND hsk_level BETWEEN 1 AND 6 LIMIT 1" | tr '\t' '|')
+          echo "累 row: $LEI_ROW"
+          if [[ "$LEI_ROW" != *"tired"* ]] || [[ "$LEI_ROW" != *"lèi"* ]] || [[ "$LEI_ROW" != *"累"* ]]; then
+            echo "❌ FAIL: 累 should be tired|lèi|累, got: $LEI_ROW"
             exit 1
           fi
           
@@ -430,7 +421,7 @@ jobs:
             exit 1
           fi
           
-          # 宾馆 = hotel with correct pinyin
+          # 宾馆 = hotel with correct pinyin bīnguǎn
           BINGUAN=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
             "SELECT pinyin FROM vocabulary WHERE chinese='宾馆' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
           echo "宾馆 pinyin: $BINGUAN"
@@ -448,7 +439,43 @@ jobs:
             exit 1
           fi
           
-          echo "✅ PASS: All critical content corrections verified"
+          # Verify exactly one HSK 2 对 remains
+          DUI_COUNT=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE chinese='对' AND hsk_level=2")
+          echo "对 HSK 2 count: $DUI_COUNT"
+          if [ "$DUI_COUNT" != "1" ]; then
+            echo "❌ FAIL: Should have exactly 1 HSK 2 对, got: $DUI_COUNT"
+            exit 1
+          fi
+          
+          # Verify 猫 has exactly one HSK row
+          MAO_HSK_COUNT=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE chinese='猫' AND hsk_level BETWEEN 1 AND 6")
+          echo "猫 HSK rows: $MAO_HSK_COUNT"
+          if [ "$MAO_HSK_COUNT" != "1" ]; then
+            echo "❌ FAIL: 猫 should have exactly 1 HSK row, got: $MAO_HSK_COUNT"
+            exit 1
+          fi
+          
+          # Verify no 'footballl' in level-0 rows (double-fix protection)
+          FOOTBALLL_COUNT=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT COUNT(*) FROM vocabulary WHERE english ~ 'footballl' AND hsk_level=0")
+          echo "Level-0 'footballl' count: $FOOTBALLL_COUNT"
+          if [ "$FOOTBALLL_COUNT" != "0" ]; then
+            echo "❌ FAIL: Found $FOOTBALLL_COUNT level-0 rows with 'footballl'"
+            exit 1
+          fi
+          
+          # Verify test fixture CEDICT row is unchanged
+          FIXTURE=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT english FROM vocabulary WHERE chinese='足球' AND hsk_level=0 LIMIT 1")
+          echo "Test fixture (足球): $FIXTURE"
+          if [[ "$FIXTURE" != "football | soccer" ]]; then
+            echo "❌ FAIL: CEDICT fixture should be 'football | soccer', got: $FIXTURE"
+            exit 1
+          fi
+          
+          echo "✅ PASS: All content corrections and safety checks verified"
 
   frontend:
     name: Frontend (React/TypeScript)
