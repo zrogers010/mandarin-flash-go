@@ -210,6 +210,7 @@ jobs:
           DB_NAME: chinese_learning_test
           DB_USER: postgres
           DB_PASSWORD: postgres
+        working-directory: .
         run: |
 <<<<<<< HEAD
           echo "=== First Import ==="
@@ -293,7 +294,6 @@ jobs:
           SQL
           
           # Run content check
-          cd ../..
           python3 scripts/content_check.py
 >>>>>>> 768b062 (Add content accuracy fixes and quality checks)
 
