@@ -117,10 +117,9 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'measure-words'
-  AND v.chinese IN ('个', '本', '杯', '块', '人', '书', '水', '猫', '鸟', '票', '车', '鱼', '衣服', '鞋', '筷子', '自行车', '钱')
+  AND v.chinese IN ('个', '本', '杯', '块', '人', '书', '水', '猫', '鸟', '票', '车', '鱼', '衣服', '鞋', '筷子', '自行车', '钱');
 
-
--- Question Patterns
+-- Question Particles
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
 SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l

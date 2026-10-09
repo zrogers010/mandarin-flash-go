@@ -82,14 +82,13 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
         echo "  Applying $MIGRATION_NAME..."
         
         # Run migration and record it in the same transaction
-        # The migration SQL is included via \i which requires the file to be accessible
-        # to the postgres container, so we use stdin instead
-        if ! run_psql -v ON_ERROR_STOP=1 <<EOSQL
-BEGIN;
-\i /docker-entrypoint-initdb.d/$MIGRATION_NAME
-INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');
-COMMIT;
-EOSQL
+        # Read the migration file and pipe it to psql with transaction wrapper
+        if ! (
+            echo "BEGIN;"
+            cat "$migration"
+            echo "INSERT INTO schema_migrations (filename) VALUES ('$MIGRATION_NAME');"
+            echo "COMMIT;"
+        ) | run_psql -v ON_ERROR_STOP=1
         then
             echo "  ERROR: Migration $MIGRATION_NAME failed!"
             echo "  Database may be in inconsistent state. Check logs and rollback if needed."
