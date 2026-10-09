@@ -34,23 +34,24 @@ jobs:
             sleep 2
           done
       
-      - name: Test prod baseline scenario
+      - name: Test prod baseline scenario (docker exec mode)
         env:
           PGPASSWORD: postgres
         run: |
-          echo "=== Testing Production Baseline Scenario ==="
+          echo "=== Testing Production Baseline Scenario (Docker Exec Mode) ==="
           echo "Simulating a prod DB that was built from 001-006 without schema_migrations"
+          echo "Running psql inside container, same as production deploy.sh"
           
-          # Apply migrations 001-006 directly (as production was originally built)
+          # Apply migrations 001-006 directly inside the container (as production was originally built)
           for migration in backend/db/migrations/00[1-6]_*.sql; do
             if [ -f "$migration" ]; then
               echo "  Building prod baseline: $(basename "$migration")"
-              psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -f "$migration"
+              docker exec -i mf_postgres psql -v ON_ERROR_STOP=1 -U postgres -d chinese_learning_test < "$migration"
             fi
           done
           
           # Verify schema_migrations table does not exist yet
-          HAS_TRACKER=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+          HAS_TRACKER=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
             "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'schema_migrations');" || echo "f")
           
           if [ "$HAS_TRACKER" = "t" ]; then
@@ -62,12 +63,13 @@ jobs:
           echo ""
           
           # Now run the migration script - it should detect the baseline and record 001-006
-          echo "  Running migration script (should detect baseline)..."
+          # Use docker exec mode, same as production
+          echo "  Running migration script (docker exec mode, same as prod)..."
           bash scripts/migrate.sh postgres chinese_learning_test \
-            psql -h localhost
+            docker exec -i mf_postgres psql
           
           # Verify baseline was recorded
-          BASELINE_COUNT=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+          BASELINE_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
             "SELECT COUNT(*) FROM schema_migrations WHERE filename ~ '^00[1-6]_';" || echo "0")
           
           echo "  Baseline migrations recorded: $BASELINE_COUNT"
@@ -78,7 +80,7 @@ jobs:
           fi
           
           # Verify remaining migrations were applied
-          TOTAL_MIGRATIONS=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+          TOTAL_MIGRATIONS=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
             "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
           
           echo "  Total migrations recorded: $TOTAL_MIGRATIONS"
@@ -88,27 +90,27 @@ jobs:
             exit 1
           fi
           
-          echo "✅ PASS: Production baseline scenario successful"
+          echo "✅ PASS: Production baseline scenario successful (docker exec mode)"
       
-      - name: Test migration idempotency (second run on same DB)
+      - name: Test migration idempotency (second run on same DB, docker exec mode)
         env:
           PGPASSWORD: postgres
         run: |
-          echo "=== Testing Migration Idempotency ==="
+          echo "=== Testing Migration Idempotency (Docker Exec Mode) ==="
           echo "Running migration script again on the same database..."
           
           # Count migrations before second run
-          BEFORE_COUNT=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+          BEFORE_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
             "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
           
           echo "  Migrations before second run: $BEFORE_COUNT"
           
-          # Run migration script again
+          # Run migration script again (docker exec mode)
           bash scripts/migrate.sh postgres chinese_learning_test \
-            psql -h localhost
+            docker exec -i mf_postgres psql
           
           # Count migrations after second run
-          AFTER_COUNT=$(psql -h localhost -U postgres -d chinese_learning_test -tAc \
+          AFTER_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_test -tAc \
             "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
           
           echo "  Migrations after second run: $AFTER_COUNT"
@@ -118,26 +120,26 @@ jobs:
             exit 1
           fi
           
-          echo "✅ PASS: Migration idempotency verified (no-op on second run)"
+          echo "✅ PASS: Migration idempotency verified (no-op on second run, docker exec mode)"
       
-      - name: Test fresh empty DB scenario
+      - name: Test fresh empty DB scenario (docker exec mode)
         env:
           PGPASSWORD: postgres
         run: |
-          echo "=== Testing Fresh Empty Database Scenario ==="
+          echo "=== Testing Fresh Empty Database Scenario (Docker Exec Mode) ==="
           
           # Drop and recreate database to start fresh
-          psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS chinese_learning_fresh;"
-          psql -h localhost -U postgres -c "CREATE DATABASE chinese_learning_fresh;"
+          docker exec -i mf_postgres psql -U postgres -c "DROP DATABASE IF EXISTS chinese_learning_fresh;"
+          docker exec -i mf_postgres psql -U postgres -c "CREATE DATABASE chinese_learning_fresh;"
           
           echo "  Created fresh empty database"
           
-          # Run migration script on empty DB
+          # Run migration script on empty DB (docker exec mode)
           bash scripts/migrate.sh postgres chinese_learning_fresh \
-            psql -h localhost
+            docker exec -i mf_postgres psql
           
           # Verify all migrations were applied
-          MIGRATION_COUNT=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+          MIGRATION_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
             "SELECT COUNT(*) FROM schema_migrations;" || echo "0")
           
           echo "  Migrations applied: $MIGRATION_COUNT"
@@ -148,7 +150,7 @@ jobs:
           fi
           
           # Verify no baseline was recorded (fresh DB should not trigger baseline logic)
-          HAS_USERS=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+          HAS_USERS=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
             "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = 'users');" || echo "f")
           
           if [ "$HAS_USERS" != "t" ]; then
@@ -157,7 +159,7 @@ jobs:
           fi
           
           # Check that 005 seeded lesson vocabulary
-          VOCAB_COUNT=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+          VOCAB_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
             "SELECT COUNT(*) FROM vocabulary WHERE hsk_level BETWEEN 1 AND 6;" || echo "0")
           
           echo "  Lesson vocabulary rows: $VOCAB_COUNT"
@@ -168,7 +170,7 @@ jobs:
           fi
           
           # Verify lesson_vocabulary links were created
-          LV_COUNT=$(psql -h localhost -U postgres -d chinese_learning_fresh -tAc \
+          LV_COUNT=$(docker exec -i mf_postgres psql -U postgres -d chinese_learning_fresh -tAc \
             "SELECT COUNT(*) FROM lesson_vocabulary;" || echo "0")
           
           echo "  Lesson-vocabulary links: $LV_COUNT"
@@ -178,7 +180,11 @@ jobs:
             exit 1
           fi
           
-          echo "✅ PASS: Fresh empty database scenario successful"
+          echo "✅ PASS: Fresh empty database scenario successful (docker exec mode)"
+      
+      - name: Cleanup
+        if: always()
+        run: docker rm -f mf_postgres || true
 
   backend:
     name: Backend (Go)
@@ -225,7 +231,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run migrations
+      - name: Run migrations (host mode for backend tests)
         env:
           PGPASSWORD: postgres
         run: |
