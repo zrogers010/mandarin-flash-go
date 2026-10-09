@@ -23,13 +23,13 @@ func NewAuthMiddleware(tokenService *auth.TokenService, userService *models.User
 	}
 }
 
-// RequireAuth is a middleware that requires authentication
+// RequireAuth is a middleware that requires authentication with an access token
 func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Authorization header is required",
+				"error": "Invalid email or password",
 			})
 			c.Abort()
 			return
@@ -38,7 +38,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		tokenString, err := auth.ExtractTokenFromHeader(authHeader)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization header",
+				"error": "Invalid email or password",
 			})
 			c.Abort()
 			return
@@ -47,7 +47,16 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		claims, err := m.tokenService.ValidateToken(tokenString)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid or expired token",
+				"error": "Invalid email or password",
+			})
+			c.Abort()
+			return
+		}
+
+		// Enforce token type: only access tokens are allowed for API requests
+		if claims.Type != auth.TokenTypeAccess {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid email or password",
 			})
 			c.Abort()
 			return
@@ -57,7 +66,16 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		user, err := m.userService.GetUserByID(claims.UserID)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User not found",
+				"error": "Invalid email or password",
+			})
+			c.Abort()
+			return
+		}
+
+		// Check if user is still active
+		if !user.IsActive {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid email or password",
 			})
 			c.Abort()
 			return

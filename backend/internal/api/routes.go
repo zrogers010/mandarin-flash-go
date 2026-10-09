@@ -150,20 +150,21 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 				quizProtected.GET("/:id", quizHandler.GetQuizDetail)
 			}
 
+			// Spaced repetition / learning routes (authentication required, verification optional)
+			// Unverified users can study and build progress; a banner in the frontend encourages verification
+			learn := protected.Group("/learn")
+			{
+				learn.GET("/review", learningHandler.GetReviewItems)
+				learn.POST("/review", learningHandler.SubmitReview)
+				learn.GET("/new", learningHandler.GetNewWords)
+				learn.GET("/stats", learningHandler.GetLearningStats)
+			}
+
 			// --- Features that require verified email ---
 			verified := protected.Group("/")
 			verified.Use(authMiddleware.RequireVerified())
 			{
-				// Spaced repetition / learning routes
-				learn := verified.Group("/learn")
-				{
-					learn.GET("/review", learningHandler.GetReviewItems)
-					learn.POST("/review", learningHandler.SubmitReview)
-					learn.GET("/new", learningHandler.GetNewWords)
-					learn.GET("/stats", learningHandler.GetLearningStats)
-				}
-
-				// Chat routes
+				// Chat routes (require verified email to prevent spam)
 				chat := verified.Group("/chat")
 				{
 					chat.POST("/message", chatHandler.SendMessage)

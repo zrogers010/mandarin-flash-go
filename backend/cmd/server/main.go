@@ -55,6 +55,19 @@ func main() {
 	// Create router
 	router := gin.Default()
 
+	// Configure trusted proxies for accurate client IP detection
+	// In production, nginx runs in the same Docker network and forwards via X-Real-IP
+	if cfg.Environment == "production" {
+		// Trust nginx container (172.x.x.x range for internal Docker network)
+		// Use X-Real-IP header set by nginx
+		if err := router.SetTrustedProxies([]string{"172.16.0.0/12"}); err != nil {
+			log.Printf("Warning: Failed to set trusted proxies: %v", err)
+		}
+	} else {
+		// In development, trust localhost
+		router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
+	}
+
 	// Configure Gin to handle trailing slashes
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false

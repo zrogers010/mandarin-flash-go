@@ -136,7 +136,9 @@ func (h *QuizHandler) GenerateQuiz(c *gin.Context) {
 			shuffleStrings(options)
 
 			card.MultipleChoice = options
-			card.CorrectAnswer = correctOption
+			// DO NOT send CorrectAnswer to client until submit for scored quizzes
+			// Store it in English field (already present) for validation at submit time
+			// card.CorrectAnswer = correctOption // REMOVED: prevents trivial score manipulation
 		}
 
 		cards = append(cards, card)

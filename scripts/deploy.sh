@@ -71,6 +71,23 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
+# ---------- Pre-migration backup ----------
+BACKUP_DIR="backups"
+mkdir -p "$BACKUP_DIR"
+BACKUP_FILE="$BACKUP_DIR/pre-deploy-$(date +%Y%m%d-%H%M%S).sql.gz"
+echo "  Creating backup: $BACKUP_FILE"
+$DC $COMPOSE_FILE exec -T postgres pg_dump \
+    -U "${DB_USER:-postgres}" \
+    -d "${DB_NAME:-chinese_learning}" \
+    --clean --if-exists \
+    | gzip > "$BACKUP_FILE" 2>&1
+if [ $? -eq 0 ]; then
+    BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+    echo "  Backup complete: $BACKUP_FILE ($BACKUP_SIZE)"
+else
+    echo "  WARNING: Backup failed, but continuing deploy."
+fi
+
 for migration in backend/db/migrations/*.sql; do
     if [ -f "$migration" ]; then
         MIGRATION_NAME="$(basename "$migration")"
@@ -83,21 +100,25 @@ for migration in backend/db/migrations/*.sql; do
 done
 echo "  Migrations applied."
 
-# Run all seed files (idempotent — they use ON CONFLICT DO NOTHING)
-SEED_DIR="backend/db/seeds"
-if [ -d "$SEED_DIR" ] && ls "$SEED_DIR"/*.sql &>/dev/null 2>&1; then
-    echo "  Applying seed data (idempotent)..."
-    for seed_file in "$SEED_DIR"/*.sql; do
-        echo "    $(basename "$seed_file")..."
-        $DC $COMPOSE_FILE exec -T postgres psql \
-            -U "${DB_USER:-postgres}" \
-            -d "${DB_NAME:-chinese_learning}" < "$seed_file" 2>&1 | tail -3
-    done
+# Run idempotent HSK vocabulary seeder (NEVER deletes words or progress)
+echo "  Seeding HSK vocabulary (idempotent upsert, safe for production)..."
+if [ -f "scripts/seed_hsk_vocabulary.py" ]; then
+    docker run --rm \
+        --network "$($DC $COMPOSE_FILE exec postgres printenv | grep -o 'mandarin-flash-go[^ ]*' | head -1 || echo 'mandarin-flash-go_internal')" \
+        -v "$PROJECT_DIR/scripts:/scripts" \
+        -e DB_HOST=postgres \
+        -e DB_PORT=5432 \
+        -e DB_NAME="${DB_NAME:-chinese_learning}" \
+        -e DB_USER="${DB_USER:-postgres}" \
+        -e DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD required}" \
+        python:3.11-slim \
+        bash -c "pip install -q psycopg2-binary && python3 -u /scripts/seed_hsk_vocabulary.py" 2>&1 | tail -10
+    
     VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
-    LESSON_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM lessons;" 2>/dev/null || echo "?")
-    echo "  Seed complete ($VOCAB_COUNT words, $LESSON_COUNT lessons)."
+    PROGRESS_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM user_vocabulary_progress;" 2>/dev/null || echo "?")
+    echo "  Vocabulary: $VOCAB_COUNT words, $PROGRESS_COUNT progress records (preserved)."
 else
-    echo "  WARNING: No seed files found in $SEED_DIR/"
+    echo "  WARNING: Idempotent seeder not found at scripts/seed_hsk_vocabulary.py"
 fi
 
 # Rebuild lesson↔vocabulary links after seeds (seed 003 may overwrite them).

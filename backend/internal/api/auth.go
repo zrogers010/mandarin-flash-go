@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"chinese-learning/internal/auth"
@@ -91,6 +92,9 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 
+	// Normalize email to lowercase and trim whitespace
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+
 	// Check if user already exists
 	existingUser, err := ah.userService.GetUserByEmail(req.Email)
 	if err == nil && existingUser != nil {
@@ -177,6 +181,9 @@ func (ah *AuthHandler) Login(c *gin.Context) {
 		})
 		return
 	}
+
+	// Normalize email to lowercase and trim whitespace
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
 	// Get user by email
 	user, err := ah.userService.GetUserByEmail(req.Email)
@@ -290,6 +297,14 @@ func (ah *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
+	// Enforce token type: only refresh tokens are allowed for token refresh
+	if claims.Type != auth.TokenTypeRefresh {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid token type — access tokens cannot be refreshed",
+		})
+		return
+	}
+
 	// Look up the session in the database
 	tokenHash := auth.HashToken(req.RefreshToken)
 	session, err := ah.userRepo.GetSessionByTokenHash(tokenHash)
@@ -385,6 +400,9 @@ func (ah *AuthHandler) RequestPasswordReset(c *gin.Context) {
 		})
 		return
 	}
+
+	// Normalize email to lowercase and trim whitespace
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
 	// Get user by email
 	user, err := ah.userService.GetUserByEmail(req.Email)
