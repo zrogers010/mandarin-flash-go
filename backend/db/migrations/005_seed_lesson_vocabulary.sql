@@ -6,8 +6,7 @@
 
 -- Greetings
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
-VALUES ('你好', '你好', 'nǐhǎo', 'hello', 1, '[{"chinese":"你好！很高兴认识你。","pinyin":"Nǐhǎo! Hěn gāoxìng rènshi nǐ.","english":"Hello! Nice to meet you."}]'::jsonb)
-
+VALUES ('你好', '你好', 'nǐhǎo', 'hello', 1, '[{"chinese":"你好！很高兴认识你。","pinyin":"Nǐhǎo! Hěn gāoxìng rènshi nǐ.","english":"Hello! Nice to meet you."}]'::jsonb);
 
 -- Food & Dining
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
@@ -19,8 +18,7 @@ VALUES
 ('啤酒', '啤酒', 'píjiǔ', 'beer', 3, '[{"chinese":"再来一瓶啤酒。","pinyin":"Zài lái yì píng píjiǔ.","english":"Another bottle of beer, please."}]'::jsonb),
 ('汤', '湯', 'tāng', 'soup', 2, '[{"chinese":"我要一碗汤。","pinyin":"Wǒ yào yì wǎn tāng.","english":"I want a bowl of soup."}]'::jsonb),
 ('咖啡', '咖啡', 'kāfēi', 'coffee', 2, '[{"chinese":"我想喝咖啡。","pinyin":"Wǒ xiǎng hē kāfēi.","english":"I want to drink coffee."}]'::jsonb),
-('饱', '飽', 'bǎo', 'full (from eating)', 2, '[{"chinese":"你吃饱了吗？","pinyin":"Nǐ chī bǎo le ma?","english":"Are you full?"}]'::jsonb)
-
+('饱', '飽', 'bǎo', 'full (from eating)', 2, '[{"chinese":"你吃饱了吗？","pinyin":"Nǐ chī bǎo le ma?","english":"Are you full?"}]'::jsonb);
 
 -- Travel & Transportation
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
@@ -29,8 +27,7 @@ VALUES
 ('出租车', '出租車', 'chūzūchē', 'taxi', 2, '[{"chinese":"请帮我叫一辆出租车。","pinyin":"Qǐng bāng wǒ jiào yí liàng chūzūchē.","english":"Please call a taxi for me."}]'::jsonb),
 ('公共汽车', '公共汽車', 'gōnggòngqìchē', 'bus', 2, '[{"chinese":"坐公共汽车还是坐地铁？","pinyin":"Zuò gōnggòng qìchē háishi zuò dìtiě?","english":"Take the bus or the subway?"}]'::jsonb),
 ('酒店', '酒店', 'jiǔdiàn', 'hotel', 3, '[{"chinese":"我的酒店在这附近。","pinyin":"Wǒ de jiǔdiàn zài zhè fùjìn.","english":"My hotel is near here."}]'::jsonb),
-('迷路', '迷路', 'mílù', 'lost (one''s way)', 3, '[{"chinese":"我迷路了。","pinyin":"Wǒ mílù le.","english":"I''m lost."}]'::jsonb)
-
+('迷路', '迷路', 'mílù', 'lost (one''s way)', 3, '[{"chinese":"我迷路了。","pinyin":"Wǒ mílù le.","english":"I''m lost."}]'::jsonb);
 
 -- Animals & Nature
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
@@ -46,15 +43,13 @@ VALUES
 ('兔子', '兔子', 'tùzi', 'rabbit', 3, '[{"chinese":"这只兔子很小。","pinyin":"Zhè zhī tùzi hěn xiǎo.","english":"This rabbit is very small."}]'::jsonb),
 ('蛇', '蛇', 'shé', 'snake', 3, '[{"chinese":"那条蛇很长。","pinyin":"Nà tiáo shé hěn cháng.","english":"That snake is very long."}]'::jsonb),
 ('老虎', '老虎', 'lǎohǔ', 'tiger', 3, '[{"chinese":"老虎住在森林里。","pinyin":"Lǎohǔ zhù zài sēnlín lǐ.","english":"Tigers live in the forest."}]'::jsonb),
-('可爱', '可愛', 'kěài', 'cute', 2, '[{"chinese":"他的狗很可爱。","pinyin":"Tā de gǒu hěn kě''ài.","english":"His dog is very cute."}]'::jsonb)
-
+('可爱', '可愛', 'kěài', 'cute', 2, '[{"chinese":"他的狗很可爱。","pinyin":"Tā de gǒu hěn kě''ài.","english":"His dog is very cute."}]'::jsonb);
 
 -- School
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
 VALUES
 ('作业', '作業', 'zuòyè', 'homework', 2, '[{"chinese":"我的作业还没写完。","pinyin":"Wǒ de zuòyè hái méi xiě wán.","english":"I haven''t finished my homework yet."}]'::jsonb),
-('教室', '教室', 'jiàoshì', 'classroom', 2, '[{"chinese":"老师在教室里。","pinyin":"Lǎoshī zài jiàoshì lǐ.","english":"The teacher is in the classroom."}]'::jsonb)
-
+('教室', '教室', 'jiàoshì', 'classroom', 2, '[{"chinese":"老师在教室里。","pinyin":"Lǎoshī zài jiàoshì lǐ.","english":"The teacher is in the classroom."}]'::jsonb);
 
 -- Grammar: measure word nouns
 INSERT INTO vocabulary (chinese, traditional, pinyin, english, hsk_level, example_sentences)
@@ -62,9 +57,7 @@ VALUES
 ('衣服', '衣服', 'yīfu', 'clothes', 1, '[{"chinese":"这件衣服很漂亮。","pinyin":"Zhè jiàn yīfu hěn piàoliang.","english":"This piece of clothing is very pretty."}]'::jsonb),
 ('鞋', '鞋', 'xié', 'shoes', 2, '[{"chinese":"我要买一双鞋。","pinyin":"Wǒ yào mǎi yì shuāng xié.","english":"I want to buy a pair of shoes."}]'::jsonb),
 ('筷子', '筷子', 'kuàizi', 'chopsticks', 2, '[{"chinese":"请给我一双筷子。","pinyin":"Qǐng gěi wǒ yì shuāng kuàizi.","english":"Please give me a pair of chopsticks."}]'::jsonb),
-('自行车', '自行車', 'zìxíngchē', 'bicycle', 2, '[{"chinese":"他有两辆自行车。","pinyin":"Tā yǒu liǎng liàng zìxíngchē.","english":"He has two bicycles."}]'::jsonb)
-
-
+('自行车', '自行車', 'zìxíngchē', 'bicycle', 2, '[{"chinese":"他有两辆自行车。","pinyin":"Tā yǒu liǎng liàng zìxíngchē.","english":"He has two bicycles."}]'::jsonb);
 
 -- ── Clear old lesson_vocabulary links and re-populate ────────────
 
@@ -76,8 +69,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'greetings-and-introductions'
-  AND v.chinese IN ('你好', '谢谢', '再见', '对不起', '没关系', '不客气', '名字', '高兴', '认识', '工作', '请问', '朋友', '明天')
-
+  AND v.chinese IN ('你好', '谢谢', '再见', '对不起', '没关系', '不客气', '名字', '高兴', '认识', '工作', '请问', '朋友', '明天');
 
 -- Food & Dining
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -85,8 +77,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'food-and-dining'
-  AND v.chinese IN ('吃', '喝', '水', '菜', '好吃', '米饭', '面条', '面包', '咖啡', '茶', '鸡蛋', '肉', '辣', '服务员', '餐厅', '啤酒', '汤', '饱', '饭')
-
+  AND v.chinese IN ('吃', '喝', '水', '菜', '好吃', '米饭', '面条', '面包', '咖啡', '茶', '鸡蛋', '肉', '辣', '服务员', '餐厅', '啤酒', '汤', '饱', '饭');
 
 -- Travel & Transportation
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -94,8 +85,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'travel-and-transportation'
-  AND v.chinese IN ('飞机', '火车', '出租车', '公共汽车', '地铁', '机场', '左', '右', '走', '路', '票', '车', '酒店', '北京', '站', '迷路')
-
+  AND v.chinese IN ('飞机', '火车', '出租车', '公共汽车', '地铁', '机场', '左', '右', '走', '路', '票', '车', '酒店', '北京', '站', '迷路');
 
 -- Animals & Nature
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -103,8 +93,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'animals-and-nature'
-  AND v.chinese IN ('猫', '狗', '鸟', '鱼', '马', '花', '树', '动物', '熊猫', '大象', '兔子', '蛇', '老虎', '可爱')
-
+  AND v.chinese IN ('猫', '狗', '鸟', '鱼', '马', '花', '树', '动物', '熊猫', '大象', '兔子', '蛇', '老虎', '可爱');
 
 -- School & Education
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -112,8 +101,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'school-and-education'
-  AND v.chinese IN ('学校', '老师', '学生', '学习', '考试', '课', '课本', '同学', '图书馆', '上课', '下课', '作业', '教室', '今天')
-
+  AND v.chinese IN ('学校', '老师', '学生', '学习', '考试', '课', '课本', '同学', '图书馆', '上课', '下课', '作业', '教室', '今天');
 
 -- Basic Sentence Structure
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -121,8 +109,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'basic-sentence-structure'
-  AND v.chinese IN ('是', '不', '没', '有', '想', '会', '说', '看', '书', '吃', '很', '肉', '钱', '早饭', '中文')
-
+  AND v.chinese IN ('是', '不', '没', '有', '想', '会', '说', '看', '书', '吃', '很', '肉', '钱', '早饭', '中文');
 
 -- Measure Words
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -139,8 +126,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'question-particles'
-  AND v.chinese IN ('吗', '呢', '什么', '谁', '哪', '哪里', '怎么', '多少', '几', '岁', '时候', '为什么', '名字', '中文')
-
+  AND v.chinese IN ('吗', '呢', '什么', '谁', '哪', '哪里', '怎么', '多少', '几', '岁', '时候', '为什么', '名字', '中文');
 
 -- Time Expressions
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -148,8 +134,7 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'time-expressions'
-  AND v.chinese IN ('明天', '昨天', '今天', '早上', '晚上', '时候', '几', '星期', '月', '年', '现在', '去年', '上午', '下午')
-
+  AND v.chinese IN ('明天', '昨天', '今天', '早上', '晚上', '时候', '几', '星期', '月', '年', '现在', '去年', '上午', '下午');
 
 -- Negation
 INSERT INTO lesson_vocabulary (lesson_id, vocabulary_id, sort_order)
@@ -157,5 +142,5 @@ SELECT l.id, v.id, row_number() OVER (ORDER BY v.hsk_level, v.pinyin)
 FROM lessons l
 CROSS JOIN vocabulary v
 WHERE l.slug = 'negation'
-  AND v.chinese IN ('不', '没', '有', '是', '想', '吃', '喝', '钱', '高兴', '肉', '早饭', '咖啡')
+  AND v.chinese IN ('不', '没', '有', '是', '想', '吃', '喝', '钱', '高兴', '肉', '早饭', '咖啡');
 
