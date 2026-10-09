@@ -108,7 +108,7 @@ services:
       - internal
       - external
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "--no-check-certificate", "--header", "Host: $${DOMAIN}", "https://127.0.0.1/health"]
+      test: ["CMD", "wget", "-q", "--spider", "--no-check-certificate", "--header", "Host: ${DOMAIN}", "https://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3

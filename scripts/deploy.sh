@@ -42,25 +42,30 @@ COMPOSE_FILE="-f docker-compose.prod.yml"
 
 # Safety check: ensure we're running from the same directory as the live containers
 # This prevents deploying from a different checkout and breaking SSL cert paths
-BACKEND_CONTAINER_ID=$($DC $COMPOSE_FILE ps -q backend 2>/dev/null | head -1)
-if [ -n "$BACKEND_CONTAINER_ID" ]; then
-    RUNNING_WORKDIR=$($DOCKER inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$BACKEND_CONTAINER_ID" 2>/dev/null || echo "")
-    
-    if [ -z "$RUNNING_WORKDIR" ]; then
-        echo "ERROR: Cannot determine working directory of running containers!"
-        echo "Containers are running but working_dir label is not available."
-        echo "This is unsafe - refusing to proceed."
-        exit 1
-    fi
-    
-    if [ "$RUNNING_WORKDIR" != "$PROJECT_DIR" ]; then
+# Inspect the live mf_backend container directly by name
+INSPECT_OUTPUT=$($DOCKER inspect mf_backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>&1)
+INSPECT_RC=$?
+
+if [ $INSPECT_RC -eq 0 ]; then
+    # Container exists and was inspected successfully
+    LIVE_DIR="$INSPECT_OUTPUT"
+    if [ -n "$LIVE_DIR" ] && [ "$LIVE_DIR" != "$PROJECT_DIR" ]; then
         echo "ERROR: Running containers were started from a different directory!"
         echo "  This checkout: $PROJECT_DIR"
-        echo "  Live containers: $RUNNING_WORKDIR"
+        echo "  Live containers: $LIVE_DIR"
         echo ""
-        echo "You must run deploy.sh from $RUNNING_WORKDIR to avoid breaking SSL certs and mounts."
+        echo "You must run deploy.sh from $LIVE_DIR to avoid breaking SSL certs and mounts."
         exit 1
     fi
+elif echo "$INSPECT_OUTPUT" | grep -q "No such object\|no such image\|Error: No such container"; then
+    # Container doesn't exist - this is a fresh install, which is allowed
+    echo "  No existing mf_backend container found (fresh install)"
+else
+    # Inspect failed for another reason (can't reach docker, permission denied, etc)
+    echo "ERROR: Cannot inspect mf_backend container"
+    echo "  $INSPECT_OUTPUT"
+    echo "  Cannot safely determine if this is the correct deployment directory."
+    exit 1
 fi
 
 echo "=== MandarinFlash Deploy ==="
