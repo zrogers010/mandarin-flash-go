@@ -313,17 +313,18 @@ def main():
                 entries.append(parsed)
     print(f"  Parsed {len(entries)} entries")
 
-    # Group entries by (simplified, pinyin_no_tones) and pick the best one
+    # Group entries by (simplified, traditional, normalized_pinyin) and pick the best one
+    # This must match the deduplication key used later to prevent duplicates
     best_entries = {}
     for entry in entries:
-        pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
-        key = (entry["simplified"], pinyin_no_tones)
+        pinyin_normalized = entry["pinyin"].replace(" ", "").lower()
+        key = (entry["simplified"], entry["traditional"], pinyin_normalized)
         
         # If we've seen this key, keep the one with the highest quality score
         if key not in best_entries or entry["quality_score"] > best_entries[key]["quality_score"]:
             best_entries[key] = entry
     
-    print(f"  Selected {len(best_entries)} best entries from {len(entries)} total (removed polyphonic duplicates)")
+    print(f"  Selected {len(best_entries)} best entries from {len(entries)} total (removed duplicates)")
     
     # Load existing entries to prevent duplicates
     print("[4/5] Loading existing vocabulary...")
@@ -347,20 +348,23 @@ def main():
         
         batch = []
         skipped = 0
-        for (simplified, pinyin_no_tones), entry in best_entries.items():
-            # Normalize pinyin: remove spaces to match existing entries
+        for (simplified, traditional, pinyin_normalized_lower), entry in best_entries.items():
+            # Normalize pinyin: remove spaces
             pinyin_normalized = entry["pinyin"].replace(" ", "")
-            normalized_key = (simplified, entry["traditional"], pinyin_normalized.lower())
+            normalized_key = (simplified, traditional, pinyin_normalized_lower)
             
-            # Skip if this entry already exists (ignoring spacing/case in pinyin)
+            # Skip if this entry already exists
             if normalized_key in existing_entries:
                 skipped += 1
                 continue
             
+            # Calculate pinyin_no_tones from the entry
+            pinyin_no_tones = strip_tones(entry["pinyin"]).lower().replace(" ", "")
+            
             batch.append((
                 str(uuid.uuid4()),
                 simplified,
-                entry["traditional"],
+                traditional,
                 pinyin_normalized,  # Store without spaces
                 pinyin_no_tones,
                 entry["english"],
