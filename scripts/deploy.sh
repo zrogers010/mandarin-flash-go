@@ -108,8 +108,24 @@ echo "  Migrations applied."
 # Run idempotent HSK vocabulary seeder (NEVER deletes words or progress)
 echo "  Seeding HSK vocabulary (idempotent upsert, safe for production)..."
 if [ -f "scripts/seed_hsk_vocabulary.py" ]; then
-    docker run --rm \
-        --network "$($DC $COMPOSE_FILE exec postgres printenv | grep -o 'mandarin-flash-go[^ ]*' | head -1 || echo 'mandarin-flash-go_internal')" \
+    # Get docker compose project name and derive the network
+    COMPOSE_PROJECT=$($DC $COMPOSE_FILE config --format json | python3 -c "import sys,json; print(json.load(sys.stdin).get('name','mandarin-flash-go'))" 2>/dev/null || echo "mandarin-flash-go")
+    DOCKER_NETWORK="${COMPOSE_PROJECT}_internal"
+    
+    # Verify network exists
+    if ! docker network inspect "$DOCKER_NETWORK" &>/dev/null; then
+        # Fall back to default if not found
+        DOCKER_NETWORK="${COMPOSE_PROJECT}_default"
+        if ! docker network inspect "$DOCKER_NETWORK" &>/dev/null; then
+            echo "  ERROR: Cannot find docker network for compose project $COMPOSE_PROJECT"
+            exit 1
+        fi
+    fi
+    
+    echo "  Using docker network: $DOCKER_NETWORK"
+    
+    if ! docker run --rm \
+        --network "$DOCKER_NETWORK" \
         -v "$PROJECT_DIR/scripts:/scripts" \
         -e DB_HOST=postgres \
         -e DB_PORT=5432 \
@@ -117,7 +133,10 @@ if [ -f "scripts/seed_hsk_vocabulary.py" ]; then
         -e DB_USER="${DB_USER:-postgres}" \
         -e DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD required}" \
         python:3.11-slim \
-        bash -c "pip install -q psycopg2-binary && python3 -u /scripts/seed_hsk_vocabulary.py" 2>&1 | tail -10
+        bash -c "pip install -q psycopg2-binary && python3 -u /scripts/seed_hsk_vocabulary.py"; then
+        echo "  ERROR: HSK vocabulary seeding failed!"
+        exit 1
+    fi
     
     VOCAB_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM vocabulary;" 2>/dev/null || echo "?")
     PROGRESS_COUNT=$($DC $COMPOSE_FILE exec -T postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-chinese_learning}" -tAc "SELECT COUNT(*) FROM user_vocabulary_progress;" 2>/dev/null || echo "?")
