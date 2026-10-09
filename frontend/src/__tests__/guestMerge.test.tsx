@@ -15,7 +15,7 @@ describe('Guest Progress Merge', () => {
       seen_words: ['word-id-1', 'word-id-2'],
       quiz_results: [
         {
-          quiz_type: 'practice',
+          quiz_type: 'practice' as const,
           total: 10,
           correct: 8,
           answers: {},
