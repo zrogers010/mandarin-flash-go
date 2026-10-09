@@ -50,13 +50,15 @@ func TestMergeGuestProgress_Integration(t *testing.T) {
 	router.POST("/merge", handler.MergeGuestProgress)
 
 	// Prepare guest data with seen words and quiz results
-	guestData := models.GuestProgressData{
+	guestData := models.GuestProgress{
 		SeenWords: []string{vocabID.String()},
 		QuizResults: []models.GuestQuizResult{
 			{
-				WordID:    vocabID.String(),
-				Correct:   true,
-				Timestamp: 1234567890,
+				QuizType:  "practice",
+				Total:     1,
+				Correct:   1,
+				Answers:   map[string]string{vocabID.String(): "test"},
+				Timestamp: "2024-01-01T00:00:00Z",
 			},
 		},
 	}

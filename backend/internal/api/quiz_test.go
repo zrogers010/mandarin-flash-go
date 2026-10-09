@@ -406,10 +406,8 @@ func TestSubmitQuiz_DailyActivity_Integration(t *testing.T) {
 	`, vocabID)
 	assert.NoError(t, err)
 
-	// Set up handlers and router
-	vocabRepo := database.NewVocabularyRepository(db)
-	quizRepo := database.NewQuizRepository(db)
-	handler := NewQuizHandler(db, vocabRepo, quizRepo)
+	// Set up handler and router
+	handler := NewQuizHandler(db)
 
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
@@ -420,10 +418,11 @@ func TestSubmitQuiz_DailyActivity_Integration(t *testing.T) {
 
 	// Submit a quiz
 	quizID := uuid.New()
+	hskLevel := 1
 	submission := models.QuizSubmission{
 		QuizID:   quizID,
 		QuizType: models.QuizTypePractice,
-		HSKLevel: 1,
+		HSKLevel: &hskLevel,
 		Answers: map[string]string{
 			vocabID.String(): "test",
 		},
