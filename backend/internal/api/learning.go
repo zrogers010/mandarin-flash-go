@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"chinese-learning/internal/database"
+	"chinese-learning/internal/helpers"
 	"chinese-learning/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -115,16 +115,11 @@ func (h *LearningHandler) SubmitReview(c *gin.Context) {
 	if err := h.db.QueryRow(`SELECT COALESCE(timezone, 'UTC') FROM users WHERE id = $1`, userID).Scan(&userTimezone); err != nil {
 		userTimezone = "UTC"
 	}
-	
-	loc, err := time.LoadLocation(userTimezone)
-	if err != nil {
-		loc = time.UTC
-	}
-	localNow := time.Now().In(loc)
-	activityDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+	userTimezone = helpers.ValidateTimezone(userTimezone)
+	activityDate := helpers.GetLocalDate(userTimezone)
 
 	// Update daily_activity with cards reviewed (trigger will update last_study_date)
-	_, err = h.db.Exec(`
+	_, activityErr := h.db.Exec(`
 		INSERT INTO daily_activity (
 			id, user_id, activity_date, minutes_studied, cards_reviewed, new_words_learned, goal_met, created_at, updated_at
 		)
@@ -135,8 +130,8 @@ func (h *LearningHandler) SubmitReview(c *gin.Context) {
 			updated_at = NOW()
 	`, uuid.New(), userID, activityDate, len(results))
 	
-	if err != nil {
-		log.Printf("[SubmitReview] Failed to record daily activity: %v", err)
+	if activityErr != nil {
+		log.Printf("[SubmitReview] Failed to record daily activity: %v", activityErr)
 		// Don't fail the request
 	}
 

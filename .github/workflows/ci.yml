@@ -7,6 +7,28 @@ on:
     branches: [ main ]
 
 jobs:
+  production-image-timezone-check:
+    name: Production Image Timezone Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build production backend image
+        working-directory: backend
+        run: |
+          docker build --target production -t mandarin-backend:test .
+
+      - name: Test timezone loading in production image
+        run: |
+          # Test the server binary directly
+          docker run --rm mandarin-backend:test ./main 2>&1 | grep -q "Timezone data loaded" || {
+            echo "❌ CRITICAL: Production image timezone validation failed!"
+            exit 1
+          }
+          echo "✓ Production image timezone check passed"
+
   backend-integration-tests:
     name: Backend Integration Tests
     runs-on: ubuntu-latest
@@ -186,13 +208,43 @@ jobs:
       
       - name: Start postgres container (production-like setup)
         run: |
+          # Pull image with retries to handle transient rate limit errors
+          for attempt in 1 2 3; do
+            if docker pull public.ecr.aws/docker/library/postgres:15; then
+              echo "Successfully pulled postgres image"
+              break
+            else
+              if [ $attempt -lt 3 ]; then
+                echo "Pull failed, retrying in $((2 ** attempt)) seconds..."
+                sleep $((2 ** attempt))
+              else
+                echo "Failed to pull image after 3 attempts"
+                exit 1
+              fi
+            fi
+          done
+          
           # Start postgres in a named container
           # Do NOT mount migrations to /docker-entrypoint-initdb.d - we need manual control for testing
-          docker run -d --name mf_postgres \
-            -e POSTGRES_PASSWORD=postgres \
-            -e POSTGRES_DB=chinese_learning_test \
-            -p 5432:5432 \
-            public.ecr.aws/docker/library/postgres:15
+          for attempt in 1 2 3; do
+            if docker run -d --name mf_postgres \
+              -e POSTGRES_PASSWORD=postgres \
+              -e POSTGRES_DB=chinese_learning_test \
+              -p 5432:5432 \
+              public.ecr.aws/docker/library/postgres:15; then
+              echo "Successfully started postgres container"
+              break
+            else
+              docker rm -f mf_postgres 2>/dev/null || true
+              if [ $attempt -lt 3 ]; then
+                echo "Container start failed, retrying in $((2 ** attempt)) seconds..."
+                sleep $((2 ** attempt))
+              else
+                echo "Failed to start container after 3 attempts"
+                exit 1
+              fi
+            fi
+          done
           
           # Wait for postgres to be ready
           for i in $(seq 1 30); do

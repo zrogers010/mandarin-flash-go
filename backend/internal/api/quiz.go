@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"chinese-learning/internal/database"
+	"chinese-learning/internal/helpers"
 	"chinese-learning/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -255,13 +256,8 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 		if err := h.db.QueryRow(`SELECT COALESCE(timezone, 'UTC') FROM users WHERE id = $1`, uid).Scan(&userTimezone); err != nil {
 			userTimezone = "UTC"
 		}
-		
-		loc, err := time.LoadLocation(userTimezone)
-		if err != nil {
-			loc = time.UTC
-		}
-		localNow := time.Now().In(loc)
-		activityDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+		userTimezone = helpers.ValidateTimezone(userTimezone)
+		activityDate := helpers.GetLocalDate(userTimezone)
 
 		// Record daily activity using user's local date
 		// The update_daily_activity_trigger automatically updates last_study_date to match activity_date

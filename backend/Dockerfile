@@ -92,8 +92,8 @@ CMD ["/go/bin/air"]
 # Production stage
 FROM alpine:latest AS production
 
-# Install ca-certificates
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS and tzdata for timezone support (belt-and-braces with embedded tzdata)
+RUN apk --no-cache add ca-certificates tzdata
 
 # Create non-root user
 RUN addgroup -g 1001 -S appgroup && \

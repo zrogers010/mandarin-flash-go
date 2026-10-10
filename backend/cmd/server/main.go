@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"time"
+	_ "time/tzdata" // Embed timezone data for Alpine/scratch containers
 
 	"chinese-learning/internal/api"
 	"chinese-learning/internal/config"
@@ -25,6 +26,18 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
+
+	// Validate timezone data is available (critical for timezone-aware features)
+	log.Println("Validating timezone data...")
+	testTimezones := []string{"America/Los_Angeles", "Asia/Shanghai"}
+	for _, tz := range testTimezones {
+		if _, err := time.LoadLocation(tz); err != nil {
+			log.Fatalf("❌ CRITICAL: Timezone data missing! Cannot load %s: %v\n"+
+				"This will break timezone-aware daily activity tracking.\n"+
+				"Ensure time/tzdata is imported or tzdata package is installed.", tz, err)
+		}
+	}
+	log.Println("✓ Timezone data loaded (America/Los_Angeles, Asia/Shanghai verified)")
 
 	// Initialize configuration
 	cfg := config.Load()

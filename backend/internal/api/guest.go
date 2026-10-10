@@ -1,11 +1,11 @@
 package api
 
 import (
+	"chinese-learning/internal/helpers"
 	"chinese-learning/internal/models"
 	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -51,21 +51,15 @@ func (h *GuestHandler) MergeGuestProgress(c *gin.Context) {
 	log.Printf("[MergeGuestProgress] User %v merging %d seen words, %d quiz results",
 		userID, len(guestData.SeenWords), len(guestData.QuizResults))
 
-	// Get user's timezone for activity_date calculation
+	// Get user's timezone and compute local activity_date
 	var userTimezone string
 	err := h.db.QueryRow(`SELECT COALESCE(timezone, 'UTC') FROM users WHERE id = $1`, userID).Scan(&userTimezone)
 	if err != nil {
 		log.Printf("[MergeGuestProgress] Failed to get user timezone: %v", err)
 		userTimezone = "UTC"
 	}
-
-	// Compute activity_date in user's local timezone
-	loc, err := time.LoadLocation(userTimezone)
-	if err != nil {
-		loc = time.UTC
-	}
-	localNow := time.Now().In(loc)
-	activityDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+	userTimezone = helpers.ValidateTimezone(userTimezone)
+	activityDate := helpers.GetLocalDate(userTimezone)
 
 	// Track merge statistics
 	wordsAdded := 0
