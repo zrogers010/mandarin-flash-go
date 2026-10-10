@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"chinese-learning/internal/database"
+	"chinese-learning/internal/helpers"
 	"chinese-learning/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -250,19 +251,26 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 			// log.Printf("Failed to save quiz result: %v", err)
 		}
 
-		// Record daily activity: increment quizzes_completed and update streak/study date
-		// Note: The update_daily_activity_trigger (migration 009) automatically updates
-		// last_study_date when daily_activity is inserted/updated, so no manual update is needed
+		// Get user's timezone and compute local activity_date
+		var userTimezone string
+		if err := h.db.QueryRow(`SELECT COALESCE(timezone, 'UTC') FROM users WHERE id = $1`, uid).Scan(&userTimezone); err != nil {
+			userTimezone = "UTC"
+		}
+		userTimezone = helpers.ValidateTimezone(userTimezone)
+		activityDate := helpers.GetLocalDate(userTimezone)
+
+		// Record daily activity using user's local date
+		// The update_daily_activity_trigger automatically updates last_study_date to match activity_date
 		_, err = h.db.Exec(`
 			INSERT INTO daily_activity (
 				id, user_id, activity_date, minutes_studied, cards_reviewed, new_words_learned, quizzes_completed, goal_met, created_at, updated_at
 			)
-			VALUES ($1, $2, CURRENT_DATE, 0, 0, 0, 1, false, NOW(), NOW())
+			VALUES ($1, $2, $3, 0, 0, 0, 1, false, NOW(), NOW())
 			ON CONFLICT (user_id, activity_date)
 			DO UPDATE SET
 				quizzes_completed = daily_activity.quizzes_completed + 1,
 				updated_at = NOW()
-		`, uuid.New(), uid)
+		`, uuid.New(), uid, activityDate)
 
 		if err != nil {
 			// Log but don't fail the response

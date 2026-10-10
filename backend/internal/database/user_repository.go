@@ -186,6 +186,31 @@ func (r *UserRepositoryImpl) UpdateLastLogin(id uuid.UUID) error {
 	return nil
 }
 
+// UpdateTimezone updates the user's timezone
+func (r *UserRepositoryImpl) UpdateTimezone(userID uuid.UUID, timezone string) error {
+	query := `UPDATE users SET timezone = $2, updated_at = $3 WHERE id = $1`
+
+	_, err := r.db.Exec(query, userID, timezone, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update timezone: %w", err)
+	}
+
+	return nil
+}
+
+// GetUserTimezone gets the user's timezone
+func (r *UserRepositoryImpl) GetUserTimezone(userID uuid.UUID) (string, error) {
+	var timezone string
+	query := `SELECT COALESCE(timezone, 'UTC') FROM users WHERE id = $1`
+
+	err := r.db.QueryRow(query, userID).Scan(&timezone)
+	if err != nil {
+		return "UTC", fmt.Errorf("failed to get user timezone: %w", err)
+	}
+
+	return timezone, nil
+}
+
 // CreateEmailVerificationToken creates an email verification token
 func (r *UserRepositoryImpl) CreateEmailVerificationToken(token *models.EmailVerificationToken) error {
 	query := `
@@ -503,34 +528,53 @@ func (r *UserRepositoryImpl) CompleteOnboarding(userID uuid.UUID, req *models.On
 	return nil
 }
 
-// GetDailyStats retrieves today's study stats and streak
+// GetDailyStats retrieves today's study stats and streak (timezone-aware)
 func (r *UserRepositoryImpl) GetDailyStats(userID uuid.UUID) (*models.DailyStats, error) {
-	// Get user's daily goal and streak
+	// Get user's daily goal, streak, and timezone
 	var dailyGoal int
 	var streakDays int
 	var lastStudyDate sql.NullTime
+	var userTimezone string
 	userQuery := `
-		SELECT COALESCE(daily_minutes_goal, 15), COALESCE(study_streak_days, 0), last_study_date
+		SELECT COALESCE(daily_minutes_goal, 15), COALESCE(study_streak_days, 0), 
+		       last_study_date, COALESCE(timezone, 'UTC')
 		FROM users
 		WHERE id = $1
 	`
-	err := r.db.QueryRow(userQuery, userID).Scan(&dailyGoal, &streakDays, &lastStudyDate)
+	err := r.db.QueryRow(userQuery, userID).Scan(&dailyGoal, &streakDays, &lastStudyDate, &userTimezone)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user stats: %w", err)
 	}
 
-	// Get today's activity
+	// Compute user's local date
+	loc, err := time.LoadLocation(userTimezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	localNow := time.Now().In(loc)
+	localDate := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.UTC)
+
+	// Get today's activity using user's local date
 	var todayMinutes, todayCards, todayWords int
 	var todayGoalMet bool
 	activityQuery := `
 		SELECT COALESCE(minutes_studied, 0), COALESCE(cards_reviewed, 0),
 			   COALESCE(new_words_learned, 0), COALESCE(goal_met, false)
 		FROM daily_activity
-		WHERE user_id = $1 AND activity_date = CURRENT_DATE
+		WHERE user_id = $1 AND activity_date = $2
 	`
-	err = r.db.QueryRow(activityQuery, userID).Scan(&todayMinutes, &todayCards, &todayWords, &todayGoalMet)
+	err = r.db.QueryRow(activityQuery, userID, localDate).Scan(&todayMinutes, &todayCards, &todayWords, &todayGoalMet)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("failed to get daily activity: %w", err)
+	}
+
+	// Calculate streak based on consecutive local dates
+	if lastStudyDate.Valid {
+		yesterday := localDate.AddDate(0, 0, -1)
+		if lastStudyDate.Time.Before(yesterday) {
+			// Streak broken - last study was before yesterday
+			streakDays = 0
+		}
 	}
 
 	// Get reviews due count

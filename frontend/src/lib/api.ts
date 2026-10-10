@@ -524,7 +524,8 @@ export const authApi = {
 		password: string
 		username?: string
 	}): Promise<{ message: string; user: User }> => {
-		const response = await api.post('/auth/signup', data)
+		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+		const response = await api.post('/auth/signup', { ...data, timezone })
 		return response.data
 	},
 
@@ -535,7 +536,8 @@ export const authApi = {
 		user: User
 		expires_in: number
 	}> => {
-		const response = await api.post('/auth/login', data)
+		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+		const response = await api.post('/auth/login', { ...data, timezone })
 		return response.data
 	},
 

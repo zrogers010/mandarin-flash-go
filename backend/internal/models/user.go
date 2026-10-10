@@ -64,6 +64,8 @@ type UserRepository interface {
 	GetUserByID(id uuid.UUID) (*User, error)
 	GetUserByEmail(email string) (*User, error)
 	UpdateUser(user *User) error
+	UpdateTimezone(userID uuid.UUID, timezone string) error
+	GetUserTimezone(userID uuid.UUID) (string, error)
 	DeleteUser(id uuid.UUID) error
 	VerifyUserEmail(id uuid.UUID) error
 	UpdateLastLogin(id uuid.UUID) error
