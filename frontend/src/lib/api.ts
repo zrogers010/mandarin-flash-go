@@ -96,7 +96,7 @@ api.interceptors.response.use(
                              isCredentialAuthRequest(url)
 
         const alreadyOnAuthPage = typeof window !== 'undefined' &&
-          ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email']
+          ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/onboarding']
             .includes(window.location.pathname)
 
         if (!isPublicRoute && !alreadyOnAuthPage) {
@@ -542,7 +542,14 @@ export const authApi = {
 		email: string
 		password: string
 		username?: string
-	}): Promise<{ message: string; user: User }> => {
+	}): Promise<{
+		message: string
+		user: User
+		access_token?: string
+		refresh_token?: string
+		expires_in?: number
+		onboarding_required?: boolean
+	}> => {
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 		const response = await api.post('/auth/signup', { ...data, timezone })
 		return response.data

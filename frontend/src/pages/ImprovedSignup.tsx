@@ -113,7 +113,7 @@ export default function ImprovedSignup() {
         })
       }
 
-      navigate('/onboarding')
+      navigate('/onboarding', { replace: true })
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error || error.message || 'An error occurred'
       

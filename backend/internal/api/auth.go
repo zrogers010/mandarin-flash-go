@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -184,14 +185,23 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 		log.Printf("ERROR: Failed to send verification email to %s: %v", user.Email, err)
 	}
 
+	// Issue a session so the client can land in onboarding without a second
+	// /auth/login (which raced ProtectedRoute and could bounce to /login).
+	session, err := ah.issueSession(c, user, "")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to create session",
+		})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "User created successfully. Please check your email for verification instructions.",
-		"user": gin.H{
-			"id":          user.ID,
-			"email":       user.Email,
-			"username":    user.Username,
-			"is_verified": user.IsVerified,
-		},
+		"message":             "User created successfully. Please check your email for verification instructions.",
+		"access_token":        session.AccessToken,
+		"refresh_token":       session.RefreshToken,
+		"user":                session.User,
+		"expires_in":          session.ExpiresIn,
+		"onboarding_required": true,
 	})
 }
 
@@ -231,38 +241,41 @@ func (ah *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Generate tokens
-	accessToken, err := ah.tokenService.GenerateAccessToken(user.ID, user.Email, user.IsVerified)
+	session, err := ah.issueSession(c, user, req.Timezone)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate access token",
+			"error": err.Error(),
 		})
 		return
+	}
+
+	c.JSON(http.StatusOK, session)
+}
+
+// issueSession creates access/refresh tokens and a server session for user.
+func (ah *AuthHandler) issueSession(c *gin.Context, user *models.User, timezone string) (*AuthResponse, error) {
+	accessToken, err := ah.tokenService.GenerateAccessToken(user.ID, user.Email, user.IsVerified)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token")
 	}
 
 	refreshToken, err := ah.tokenService.GenerateRefreshToken(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate refresh token",
-		})
-		return
+		return nil, fmt.Errorf("failed to generate refresh token")
 	}
 
-	// Update last login
 	if err := ah.userService.UpdateLastLogin(user.ID); err != nil {
-		// Log error but don't fail the login
+		log.Printf("[issueSession] Failed to update last login for %s: %v", user.ID, err)
 	}
 
-	// Quietly update timezone if provided and valid
-	if req.Timezone != "" {
-		if _, err := time.LoadLocation(req.Timezone); err == nil {
-			if err := ah.userRepo.UpdateTimezone(user.ID, req.Timezone); err != nil {
-				log.Printf("[Login] Failed to update timezone for user %s: %v", user.ID, err)
+	if timezone != "" {
+		if _, err := time.LoadLocation(timezone); err == nil {
+			if err := ah.userRepo.UpdateTimezone(user.ID, timezone); err != nil {
+				log.Printf("[issueSession] Failed to update timezone for user %s: %v", user.ID, err)
 			}
 		}
 	}
 
-	// Create session — store deterministic hash of refresh token for lookup
 	clientIP := c.ClientIP()
 	userAgent := c.GetHeader("User-Agent")
 	session := &models.UserSession{
@@ -274,17 +287,16 @@ func (ah *AuthHandler) Login(c *gin.Context) {
 		UserAgent: &userAgent,
 		CreatedAt: time.Now(),
 	}
-
 	if err := ah.userRepo.CreateSession(session); err != nil {
-		// Log error but don't fail the login
+		log.Printf("[issueSession] Failed to persist session for %s: %v", user.ID, err)
 	}
 
-	c.JSON(http.StatusOK, AuthResponse{
+	return &AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		User:         user,
-		ExpiresIn:    900, // 15 minutes
-	})
+		ExpiresIn:    900,
+	}, nil
 }
 
 // Logout handles user logout by invalidating the session

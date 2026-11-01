@@ -13,8 +13,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isAuthenticated, user, isLoading } = useAuth()
   const location = useLocation()
+  const storedToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+  const hydratingSession = !!storedToken && !user
 
-  if (isLoading) {
+  if (isLoading || hydratingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
