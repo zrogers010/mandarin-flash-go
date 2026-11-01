@@ -102,6 +102,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			vocabulary.GET("", vocabHandler.GetVocabularyList)  // Handle /vocabulary
 			vocabulary.GET("/", vocabHandler.GetVocabularyList) // Handle /vocabulary/
 			vocabulary.GET("/random", vocabHandler.GetRandomVocabulary)
+			vocabulary.GET("/hsk-counts", vocabHandler.GetHSKCounts)
 			vocabulary.GET("/hsk/:level", vocabHandler.GetHSKVocabulary)
 			vocabulary.GET("/:id", vocabHandler.GetVocabularyItem)
 		}

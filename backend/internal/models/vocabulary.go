@@ -366,6 +366,30 @@ func (r *VocabularyRepository) GetByHSKLevel(level int) ([]Vocabulary, error) {
 	return vocabulary, nil
 }
 
+// CountByHSKLevel returns how many HSK words exist at each level 1-5.
+func (r *VocabularyRepository) CountByHSKLevel() (map[int]int, error) {
+	rows, err := r.db.Query(`
+		SELECT hsk_level, COUNT(*)
+		FROM vocabulary
+		WHERE hsk_level BETWEEN 1 AND 5
+		GROUP BY hsk_level
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error counting vocabulary by HSK level: %w", err)
+	}
+	defer rows.Close()
+
+	counts := map[int]int{1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+	for rows.Next() {
+		var level, n int
+		if err := rows.Scan(&level, &n); err != nil {
+			return nil, fmt.Errorf("error scanning HSK counts: %w", err)
+		}
+		counts[level] = n
+	}
+	return counts, rows.Err()
+}
+
 // GetRandom retrieves random vocabulary items
 func (r *VocabularyRepository) GetRandom(limit int, level *int) ([]Vocabulary, error) {
 	query := fmt.Sprintf("SELECT %s FROM vocabulary ", VocabColumns)

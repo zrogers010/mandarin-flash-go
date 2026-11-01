@@ -124,6 +124,27 @@ func (h *VocabularyHandler) GetHSKVocabulary(c *gin.Context) {
 	})
 }
 
+// GetHSKCounts handles GET /api/v1/vocabulary/hsk-counts
+func (h *VocabularyHandler) GetHSKCounts(c *gin.Context) {
+	counts, err := h.vocabRepo.CountByHSKLevel()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve HSK word counts",
+		})
+		return
+	}
+
+	total := 0
+	for _, n := range counts {
+		total += n
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"counts": counts,
+		"total":  total,
+	})
+}
+
 // GetRandomVocabulary handles GET /api/v1/vocabulary/random
 func (h *VocabularyHandler) GetRandomVocabulary(c *gin.Context) {
 	// Honor both 'limit' and 'count' parameters (frontend uses both inconsistently)

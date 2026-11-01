@@ -3,9 +3,11 @@
 Apply manual corrections to HSK vocabulary.
 
 Reads hsk_corrections.json and applies fixes for:
-- Wrong English definitions (polyphone mismatches)
+- Wrong English definitions (polyphone mismatches, CEDICT markup)
 - Wrong traditional forms
 - Wrong pinyin
+- Example-sentence pinyin patches
+- Missing-word inserts / HSK-level moves
 - Duplicate entries
 
 Usage:
@@ -141,6 +143,97 @@ def apply_corrections():
             print(f"⏭️  {chinese}: No changes needed")
             skipped += 1
     
+    # Example-sentence pinyin patches (measure-word 只, etc.)
+    for fix in data.get("sentence_fixes", []):
+        word = fix["chinese_word"]
+        sentence = fix["sentence"]
+        new_pinyin = fix["new_pinyin"]
+        cur.execute(
+            """
+            UPDATE vocabulary
+            SET example_sentences = (
+                SELECT COALESCE(jsonb_agg(
+                    CASE
+                        WHEN s->>'chinese' = %s
+                        THEN jsonb_set(s, '{pinyin}', to_jsonb(%s::text))
+                        ELSE s
+                    END
+                ), example_sentences)
+                FROM jsonb_array_elements(COALESCE(example_sentences, '[]'::jsonb)) s
+            ),
+                updated_at = NOW()
+            WHERE chinese = %s
+              AND hsk_level BETWEEN 1 AND 6
+              AND example_sentences::text LIKE %s
+            """,
+            (sentence, new_pinyin, word, f"%{sentence}%"),
+        )
+        if cur.rowcount:
+            print(f"✅ {word}: sentence pinyin → {new_pinyin}")
+            applied += cur.rowcount
+
+    # Inserts / level moves (欢迎 → HSK 2). Natural key is unique, so move first.
+    for row in data.get("inserts", []):
+        chinese = row["chinese"]
+        hsk_level = row["hsk_level"]
+        cur.execute(
+            """
+            UPDATE vocabulary
+            SET hsk_level = %s, english = %s, traditional = %s,
+                pinyin = %s, pinyin_no_tones = %s, updated_at = NOW()
+            WHERE chinese = %s AND hsk_level BETWEEN 1 AND 6 AND hsk_level <> %s
+              AND NOT EXISTS (
+                  SELECT 1 FROM vocabulary v2
+                  WHERE v2.chinese = %s AND v2.hsk_level = %s
+              )
+            """,
+            (
+                hsk_level,
+                row["english"],
+                row.get("traditional"),
+                row["pinyin"],
+                row.get("pinyin_no_tones", ""),
+                chinese,
+                hsk_level,
+                chinese,
+                hsk_level,
+            ),
+        )
+        if cur.rowcount:
+            print(f"✅ {chinese}: moved to HSK {hsk_level}")
+            applied += cur.rowcount
+            continue
+
+        cur.execute(
+            "SELECT 1 FROM vocabulary WHERE chinese = %s AND hsk_level BETWEEN 1 AND 6",
+            (chinese,),
+        )
+        if cur.fetchone():
+            print(f"⏭️  {chinese}: already present at an HSK level")
+            skipped += 1
+            continue
+
+        cur.execute(
+            """
+            INSERT INTO vocabulary (
+                chinese, traditional, pinyin, pinyin_no_tones, english,
+                part_of_speech, hsk_level, example_sentences, created_at, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, NOW(), NOW())
+            """,
+            (
+                chinese,
+                row.get("traditional"),
+                row["pinyin"],
+                row.get("pinyin_no_tones", ""),
+                row["english"],
+                row.get("part_of_speech"),
+                hsk_level,
+                json.dumps(row.get("example_sentences") or [], ensure_ascii=False),
+            ),
+        )
+        print(f"✅ {chinese}: inserted at HSK {hsk_level}")
+        applied += 1
+
     # Handle duplicate 对 in HSK 2
     cur.execute("""
         SELECT id FROM vocabulary
