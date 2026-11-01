@@ -40,48 +40,53 @@ cp "$ROOT/frontend/nginx-includes/security-headers-http.conf" "$WORKDIR/conf/"
 printf '<!doctype html><title>spa</title>' > "$WORKDIR/html/index.html"
 printf 'console.log(1)' > "$WORKDIR/html/assets/x.js"
 
-# nginx:alpine image already has mime.types at /etc/nginx/mime.types.
-# Mount our config as the main file and the include next to it.
-CID="$(docker run -d --rm \
+# Probe from inside the container so CI does not depend on published ports.
+# wget -S prints response headers on stderr.
+docker run --rm \
   -v "$WORKDIR/conf/nginx.conf:/etc/nginx/nginx.conf:ro" \
   -v "$WORKDIR/conf/security-headers-http.conf:/etc/nginx/security-headers-http.conf:ro" \
   -v "$WORKDIR/html:/usr/share/nginx/html:ro" \
-  -p 18080:80 \
-  nginx:alpine)"
-
-cleanup_docker() {
-  docker rm -f "$CID" >/dev/null 2>&1 || true
-  rm -rf "$WORKDIR"
-}
-trap cleanup_docker EXIT
-
-for i in $(seq 1 20); do
-  if curl -sf -o /dev/null http://127.0.0.1:18080/health 2>/dev/null || curl -sf -o /dev/null http://127.0.0.1:18080/ >/dev/null 2>&1; then
-    break
-  fi
-  sleep 0.25
-done
-
-check_headers() {
-  local path="$1"
-  local expect_cache="$2"
-  local headers
-  headers="$(curl -sI "http://127.0.0.1:18080$path")"
-  echo "---- $path ----"
-  echo "$headers"
-  echo "$headers" | grep -qi "cache-control: ${expect_cache}" \
-    || fail "$path missing Cache-Control: $expect_cache"
-  echo "$headers" | grep -qi "content-security-policy:" \
-    || fail "$path missing Content-Security-Policy"
-  echo "$headers" | grep -qi "x-content-type-options: nosniff" \
-    || fail "$path missing X-Content-Type-Options"
-  echo "$headers" | grep -qi "referrer-policy: strict-origin-when-cross-origin" \
-    || fail "$path missing Referrer-Policy"
-}
-
-check_headers "/" "no-cache, must-revalidate"
-check_headers "/index.html" "no-cache, must-revalidate"
-check_headers "/some/spa/route" "no-cache, must-revalidate"
-check_headers "/assets/x.js" "public, max-age=31536000, immutable"
+  nginx:alpine \
+  sh -c '
+    set -eu
+    nginx -t
+    nginx
+    sleep 0.3
+    fetch() {
+      if command -v wget >/dev/null 2>&1; then
+        wget -S -O /dev/null "$1" 2>&1 || true
+      else
+        apk add --no-cache curl >/dev/null
+        curl -sI "$1"
+      fi
+    }
+    check() {
+      path="$1"
+      expect="$2"
+      echo "---- $path ----"
+      headers="$(fetch "http://127.0.0.1$path")"
+      echo "$headers"
+      echo "$headers" | grep -qi "Cache-Control: $expect" || {
+        echo "FAIL: $path missing Cache-Control: $expect" >&2
+        exit 1
+      }
+      echo "$headers" | grep -qi "Content-Security-Policy:" || {
+        echo "FAIL: $path missing Content-Security-Policy" >&2
+        exit 1
+      }
+      echo "$headers" | grep -qi "X-Content-Type-Options: nosniff" || {
+        echo "FAIL: $path missing X-Content-Type-Options" >&2
+        exit 1
+      }
+      echo "$headers" | grep -qi "Referrer-Policy: strict-origin-when-cross-origin" || {
+        echo "FAIL: $path missing Referrer-Policy" >&2
+        exit 1
+      }
+    }
+    check "/" "no-cache, must-revalidate"
+    check "/index.html" "no-cache, must-revalidate"
+    check "/some/spa/route" "no-cache, must-revalidate"
+    check "/assets/x.js" "public, max-age=31536000, immutable"
+  '
 
 echo "✅ nginx cache + security header checks passed."
