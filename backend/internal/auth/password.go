@@ -10,11 +10,41 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	BcryptCost        = 12
+	MinPasswordLength = 8
+	MaxPasswordBytes  = 72 // bcrypt silently truncates past 72 bytes
+)
+
+// DummyPasswordHash is a real bcrypt hash used on unknown-email logins so
+// the response time matches a valid user (no user-enumeration via timing).
+var DummyPasswordHash string
+
+func init() {
+	hashed, err := bcrypt.GenerateFromPassword([]byte("not-a-real-password"), BcryptCost)
+	if err != nil {
+		panic("failed to generate dummy password hash: " + err.Error())
+	}
+	DummyPasswordHash = string(hashed)
+}
+
+// ValidatePasswordLength enforces bcrypt's 72-byte ceiling and the 8-char floor.
+func ValidatePasswordLength(password string) error {
+	if len(password) < MinPasswordLength {
+		return fmt.Errorf("password must be at least %d characters", MinPasswordLength)
+	}
+	if len(password) > MaxPasswordBytes {
+		return fmt.Errorf("password must be at most %d characters", MaxPasswordBytes)
+	}
+	return nil
+}
+
 // HashPassword hashes a password using bcrypt
 func HashPassword(password string) (string, error) {
-	// Use a cost of 12 for production (higher is more secure but slower)
-	cost := 12
-	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), cost)
+	if err := ValidatePasswordLength(password); err != nil {
+		return "", err
+	}
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), BcryptCost)
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}

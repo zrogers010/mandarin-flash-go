@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"chinese-learning/internal/auth"
 	"chinese-learning/internal/models"
 
 	"github.com/google/uuid"
@@ -221,7 +222,7 @@ func (r *UserRepositoryImpl) CreateEmailVerificationToken(token *models.EmailVer
 	_, err := r.db.Exec(query,
 		token.ID,
 		token.UserID,
-		token.Token,
+		auth.HashToken(token.Token),
 		token.ExpiresAt,
 		token.CreatedAt,
 	)
@@ -233,18 +234,11 @@ func (r *UserRepositoryImpl) CreateEmailVerificationToken(token *models.EmailVer
 	return nil
 }
 
-// GetEmailVerificationToken retrieves an email verification token
-func (r *UserRepositoryImpl) GetEmailVerificationToken(token string) (*models.EmailVerificationToken, error) {
-	query := `
-		SELECT id, user_id, token, expires_at, used_at, created_at
-		FROM email_verification_tokens 
-		WHERE token = $1
-	`
-
+func scanEmailVerificationToken(row *sql.Row) (*models.EmailVerificationToken, error) {
 	verificationToken := &models.EmailVerificationToken{}
 	var usedAt sql.NullTime
 
-	err := r.db.QueryRow(query, token).Scan(
+	err := row.Scan(
 		&verificationToken.ID,
 		&verificationToken.UserID,
 		&verificationToken.Token,
@@ -252,31 +246,47 @@ func (r *UserRepositoryImpl) GetEmailVerificationToken(token string) (*models.Em
 		&usedAt,
 		&verificationToken.CreatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("email verification token not found")
 		}
 		return nil, fmt.Errorf("failed to get email verification token: %w", err)
 	}
-
 	if usedAt.Valid {
 		verificationToken.UsedAt = &usedAt.Time
 	}
-
 	return verificationToken, nil
+}
+
+// GetEmailVerificationToken retrieves an email verification token
+func (r *UserRepositoryImpl) GetEmailVerificationToken(token string) (*models.EmailVerificationToken, error) {
+	query := `
+		SELECT id, user_id, token, expires_at, used_at, created_at
+		FROM email_verification_tokens 
+		WHERE token = $1 OR token = $2
+		ORDER BY CASE WHEN token = $1 THEN 0 ELSE 1 END
+		LIMIT 1
+	`
+	return scanEmailVerificationToken(r.db.QueryRow(query, auth.HashToken(token), token))
 }
 
 // UseEmailVerificationToken marks an email verification token as used
 func (r *UserRepositoryImpl) UseEmailVerificationToken(token string) error {
-	query := `UPDATE email_verification_tokens SET used_at = $2 WHERE token = $1`
+	_, err := r.ConsumeEmailVerificationToken(token)
+	return err
+}
 
-	_, err := r.db.Exec(query, token, time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to use email verification token: %w", err)
-	}
-
-	return nil
+// ConsumeEmailVerificationToken atomically marks a valid unused token as used.
+func (r *UserRepositoryImpl) ConsumeEmailVerificationToken(token string) (*models.EmailVerificationToken, error) {
+	query := `
+		UPDATE email_verification_tokens
+		SET used_at = NOW()
+		WHERE (token = $1 OR token = $2)
+		  AND used_at IS NULL
+		  AND expires_at > NOW()
+		RETURNING id, user_id, token, expires_at, used_at, created_at
+	`
+	return scanEmailVerificationToken(r.db.QueryRow(query, auth.HashToken(token), token))
 }
 
 // CreatePasswordResetToken creates a password reset token
@@ -289,7 +299,7 @@ func (r *UserRepositoryImpl) CreatePasswordResetToken(token *models.PasswordRese
 	_, err := r.db.Exec(query,
 		token.ID,
 		token.UserID,
-		token.Token,
+		auth.HashToken(token.Token),
 		token.ExpiresAt,
 		token.CreatedAt,
 	)
@@ -301,18 +311,11 @@ func (r *UserRepositoryImpl) CreatePasswordResetToken(token *models.PasswordRese
 	return nil
 }
 
-// GetPasswordResetToken retrieves a password reset token
-func (r *UserRepositoryImpl) GetPasswordResetToken(token string) (*models.PasswordResetToken, error) {
-	query := `
-		SELECT id, user_id, token, expires_at, used_at, created_at
-		FROM password_reset_tokens 
-		WHERE token = $1
-	`
-
+func scanPasswordResetToken(row *sql.Row) (*models.PasswordResetToken, error) {
 	resetToken := &models.PasswordResetToken{}
 	var usedAt sql.NullTime
 
-	err := r.db.QueryRow(query, token).Scan(
+	err := row.Scan(
 		&resetToken.ID,
 		&resetToken.UserID,
 		&resetToken.Token,
@@ -320,30 +323,58 @@ func (r *UserRepositoryImpl) GetPasswordResetToken(token string) (*models.Passwo
 		&usedAt,
 		&resetToken.CreatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("password reset token not found")
 		}
 		return nil, fmt.Errorf("failed to get password reset token: %w", err)
 	}
-
 	if usedAt.Valid {
 		resetToken.UsedAt = &usedAt.Time
 	}
-
 	return resetToken, nil
+}
+
+// GetPasswordResetToken retrieves a password reset token
+func (r *UserRepositoryImpl) GetPasswordResetToken(token string) (*models.PasswordResetToken, error) {
+	query := `
+		SELECT id, user_id, token, expires_at, used_at, created_at
+		FROM password_reset_tokens 
+		WHERE token = $1 OR token = $2
+		ORDER BY CASE WHEN token = $1 THEN 0 ELSE 1 END
+		LIMIT 1
+	`
+	return scanPasswordResetToken(r.db.QueryRow(query, auth.HashToken(token), token))
 }
 
 // UsePasswordResetToken marks a password reset token as used
 func (r *UserRepositoryImpl) UsePasswordResetToken(token string) error {
-	query := `UPDATE password_reset_tokens SET used_at = $2 WHERE token = $1`
+	_, err := r.ConsumePasswordResetToken(token)
+	return err
+}
 
-	_, err := r.db.Exec(query, token, time.Now())
+// ConsumePasswordResetToken atomically marks a valid unused token as used.
+func (r *UserRepositoryImpl) ConsumePasswordResetToken(token string) (*models.PasswordResetToken, error) {
+	query := `
+		UPDATE password_reset_tokens
+		SET used_at = NOW()
+		WHERE (token = $1 OR token = $2)
+		  AND used_at IS NULL
+		  AND expires_at > NOW()
+		RETURNING id, user_id, token, expires_at, used_at, created_at
+	`
+	return scanPasswordResetToken(r.db.QueryRow(query, auth.HashToken(token), token))
+}
+
+// InvalidateUnusedPasswordResetTokens marks older unused reset tokens used.
+func (r *UserRepositoryImpl) InvalidateUnusedPasswordResetTokens(userID uuid.UUID) error {
+	_, err := r.db.Exec(
+		`UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL`,
+		userID,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to use password reset token: %w", err)
+		return fmt.Errorf("failed to invalidate password reset tokens: %w", err)
 	}
-
 	return nil
 }
 
@@ -602,73 +633,3 @@ func (r *UserRepositoryImpl) GetDailyStats(userID uuid.UUID) (*models.DailyStats
 
 	return stats, nil
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -69,6 +69,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			// Strict rate limits: 3 password reset requests per 15 min per IP
 			authRoutes.POST("/request-password-reset",
 				rateLimiter.Limit(3, 15*time.Minute, "password-reset-request"),
+				rateLimiter.LimitEmail(3, 15*time.Minute, "password-reset-email", true),
 				authHandler.RequestPasswordReset,
 			)
 			// Strict rate limits: 5 password reset confirms per 15 min per IP
@@ -81,6 +82,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB, redisClient *redis.Client, cfg 
 			authRoutes.POST("/resend-verification",
 				rateLimiter.Limit(3, 15*time.Minute, "resend-verification"),
 				authMiddleware.RequireAuth(),
+				rateLimiter.LimitAuthEmail(3, 15*time.Minute, "resend-verification-email", true),
 				authHandler.ResendVerification,
 			)
 			// Onboarding completion (requires auth)

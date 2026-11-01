@@ -17,7 +17,27 @@ import (
 func getTestDB(t *testing.T) *sql.DB {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		t.Skip("DATABASE_URL not set, skipping integration test")
+		host := os.Getenv("DB_HOST")
+		if host == "" {
+			t.Skip("DATABASE_URL/DB_HOST not set, skipping integration test")
+		}
+		port := os.Getenv("DB_PORT")
+		if port == "" {
+			port = "5432"
+		}
+		name := os.Getenv("DB_NAME")
+		if name == "" {
+			name = "chinese_learning_test"
+		}
+		user := os.Getenv("DB_USER")
+		if user == "" {
+			user = "postgres"
+		}
+		pass := os.Getenv("DB_PASSWORD")
+		if pass == "" {
+			pass = "postgres"
+		}
+		dbURL = "postgres://" + user + ":" + pass + "@" + host + ":" + port + "/" + name + "?sslmode=disable"
 	}
 
 	db, err := sql.Open("postgres", dbURL)
@@ -88,7 +108,7 @@ func TestTimezoneSameDayActivity(t *testing.T) {
 	}
 	require.NoError(t, userRepo.CreateUser(user))
 	defer cleanupTestUser(t, db, userID)
-	
+
 	require.NoError(t, userRepo.UpdateTimezone(userID, "America/Los_Angeles"))
 
 	// Simulate activity at 4 PM PT (which might be next UTC day depending on time)
@@ -170,7 +190,7 @@ func TestTimezoneConsecutiveDays(t *testing.T) {
 	}
 	require.NoError(t, userRepo.CreateUser(user))
 	defer cleanupTestUser(t, db, userID)
-	
+
 	require.NoError(t, userRepo.UpdateTimezone(userID, "America/Los_Angeles"))
 
 	loc, err := time.LoadLocation("America/Los_Angeles")
@@ -246,7 +266,7 @@ func TestInvalidTimezoneFallback(t *testing.T) {
 	// When getting timezone, application code should validate and fall back to UTC
 	tz, err := userRepo.GetUserTimezone(userID)
 	require.NoError(t, err)
-	
+
 	// Validate the timezone - invalid should fail LoadLocation
 	loc, tzErr := time.LoadLocation(tz)
 	if tzErr != nil {
