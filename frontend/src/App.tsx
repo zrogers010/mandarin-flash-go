@@ -36,6 +36,7 @@ import { NotFound } from '@/pages/NotFound'
 import Dashboard from '@/pages/Dashboard'
 import { Terms } from '@/pages/Terms'
 import { Privacy } from '@/pages/Privacy'
+import { TryLesson } from '@/pages/TryLesson'
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/try" element={<TryLesson />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<ImprovedSignup />} />
           <Route path="/signup-basic" element={<Signup />} />

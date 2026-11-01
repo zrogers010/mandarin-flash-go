@@ -42,6 +42,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY nginx.prod.conf /etc/nginx/nginx.prod.conf.template
+COPY nginx-includes/security-headers.conf nginx-includes/security-headers-http.conf nginx-includes/hsts.conf /etc/nginx/
 COPY docker-entrypoint-ssl.sh /docker-entrypoint.d/90-envsubst-prod.sh
 RUN chmod +x /docker-entrypoint.d/90-envsubst-prod.sh
 

@@ -4,6 +4,24 @@ import { BookOpen, Brain, Search, BarChart3, ArrowRight, Sparkles, MessageCircle
 import { SEO } from '@/components/SEO'
 import { learningApi } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { HomeHeroCTAs } from '@/components/HomeHeroCTAs'
+
+function HeroCTAs() {
+  const { isAuthenticated } = useAuth()
+  const { data } = useQuery({
+    queryKey: ['learning-stats'],
+    queryFn: () => learningApi.getStats(),
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+  return (
+    <HomeHeroCTAs
+      isAuthenticated={isAuthenticated}
+      wordsDue={data?.stats?.words_due_for_review}
+    />
+  )
+}
 
 /** Shows "N words due for review" for signed-in users with a pending queue. */
 function ReviewBanner() {
@@ -140,16 +158,7 @@ export function Home() {
           ))}
         </ul>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
-          <Link to="/flashcards" className="btn-primary text-base px-6 py-3 inline-flex items-center justify-center">
-            HSK Flashcards
-            <ArrowRight className="ml-2 w-4 h-4" />
-          </Link>
-          <Link to="/learn" className="btn-outline text-base px-6 py-3 inline-flex items-center justify-center">
-            Start Lesson
-            <GraduationCap className="ml-2 w-4 h-4" />
-          </Link>
-        </div>
+        <HeroCTAs />
       </section>
 
       <ReviewBanner />
