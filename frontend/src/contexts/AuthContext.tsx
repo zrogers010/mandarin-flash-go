@@ -2,6 +2,15 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { authApi, User } from '@/lib/api'
+import {
+  clearSessionTokens,
+  interpretStorageEvent,
+  markExplicitLogout,
+  readAccessToken,
+  readRefreshToken,
+  restoreSessionIfClobbered,
+  writeSessionTokens,
+} from '@/lib/authSession'
 
 interface AuthContextType {
   user: User | null
@@ -27,7 +36,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(localStorage.getItem('access_token'))
+  const [token, setToken] = useState<string | null>(readAccessToken())
   const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
 
@@ -36,21 +45,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize auth state on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('access_token')
+      restoreSessionIfClobbered()
+      const storedToken = readAccessToken()
       if (storedToken) {
         try {
           const userData = await authApi.getProfile()
           // Signup/login may have replaced the token while this request was in flight.
-          if (localStorage.getItem('access_token') === storedToken) {
+          if (readAccessToken() === storedToken) {
             setUser(userData.user)
             setToken(storedToken)
           }
         } catch (error) {
-          // Only clear if this is still the token we tried to validate.
-          if (localStorage.getItem('access_token') === storedToken) {
-            localStorage.removeItem('access_token')
-            localStorage.removeItem('refresh_token')
+          // Only clear if this is still the token we tried to validate and
+          // it was not replaced by a freshly issued signup session.
+          if (readAccessToken() === storedToken) {
+            clearSessionTokens()
             setToken(null)
+            setUser(null)
           }
         }
       }
@@ -64,7 +75,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // instead of leaving ProtectedRoute spinning or bouncing to /login.
   useEffect(() => {
     if (isLoading || user) return
-    const storedToken = localStorage.getItem('access_token')
+    restoreSessionIfClobbered()
+    const storedToken = readAccessToken()
     if (!storedToken) return
 
     let cancelled = false
@@ -77,10 +89,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
       .catch(() => {
         if (cancelled) return
-        if (localStorage.getItem('access_token') === storedToken) {
-          localStorage.removeItem('access_token')
-          localStorage.removeItem('refresh_token')
+        if (readAccessToken() === storedToken) {
+          clearSessionTokens()
           setToken(null)
+          setUser(null)
         }
       })
     return () => {
@@ -88,10 +100,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [isLoading, user])
 
+  // Other tabs: adopt a new token, restore a clobbered fresh session, or
+  // honor an explicit logout. Never clear React state because an old bundle
+  // tab wiped localStorage.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      const action = interpretStorageEvent(event, token)
+      if (action === 'restore') {
+        restoreSessionIfClobbered()
+        const restored = readAccessToken()
+        if (restored) setToken(restored)
+        return
+      }
+      if (action === 'logout') {
+        clearSessionTokens()
+        setToken(null)
+        setUser(null)
+        return
+      }
+      if (action === 'adopt' && event.newValue) {
+        setToken(event.newValue)
+        authApi.getProfile().then((userData) => {
+          setUser(userData.user)
+        }).catch(() => {
+          /* keep the adopted token; hydrate effect will retry */
+        })
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [token])
+
   const applySession = (accessToken: string, refreshToken: string, userData: User) => {
-    localStorage.setItem('access_token', accessToken)
-    localStorage.setItem('refresh_token', refreshToken)
-    // Commit before the caller navigates so ProtectedRoute sees a session.
+    writeSessionTokens(accessToken, refreshToken)
+    // Commit before the caller observes isAuthenticated.
     flushSync(() => {
       setToken(accessToken)
       setUser(userData)
@@ -143,10 +185,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const logout = () => {
-    const refreshToken = localStorage.getItem('refresh_token')
-    
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
+    const refreshToken = readRefreshToken()
+    markExplicitLogout()
     setToken(null)
     setUser(null)
     
@@ -238,4 +278,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context
 }
-
