@@ -74,9 +74,12 @@ type UserRepository interface {
 	CreateEmailVerificationToken(token *EmailVerificationToken) error
 	GetEmailVerificationToken(token string) (*EmailVerificationToken, error)
 	UseEmailVerificationToken(token string) error
+	ConsumeEmailVerificationToken(token string) (*EmailVerificationToken, error)
 	CreatePasswordResetToken(token *PasswordResetToken) error
 	GetPasswordResetToken(token string) (*PasswordResetToken, error)
 	UsePasswordResetToken(token string) error
+	ConsumePasswordResetToken(token string) (*PasswordResetToken, error)
+	InvalidateUnusedPasswordResetTokens(userID uuid.UUID) error
 
 	// Session operations
 	CreateSession(session *UserSession) error
@@ -131,73 +134,3 @@ func (s *UserService) VerifyUserEmail(id uuid.UUID) error {
 func (s *UserService) UpdateLastLogin(id uuid.UUID) error {
 	return s.repo.UpdateLastLogin(id)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

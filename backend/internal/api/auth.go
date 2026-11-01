@@ -97,6 +97,11 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 	// Normalize email to lowercase and trim whitespace
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
+	if err := auth.ValidatePasswordLength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	// Validate timezone (falls back to UTC if invalid)
 	timezone := "UTC"
 	if req.Timezone != "" {
@@ -105,20 +110,23 @@ func (ah *AuthHandler) Signup(c *gin.Context) {
 		}
 	}
 
-	// Check if user already exists
-	existingUser, err := ah.userService.GetUserByEmail(req.Email)
-	if err == nil && existingUser != nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"error": "User with this email already exists",
-		})
+	// Always hash first so existing-email and new-email paths have similar timing.
+	hashedPassword, err := auth.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Hash the password
-	hashedPassword, err := auth.HashPassword(req.Password)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to process password",
+	// Do not reveal whether the email is already registered.
+	existingUser, err := ah.userService.GetUserByEmail(req.Email)
+	if err == nil && existingUser != nil {
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "User created successfully. Please check your email for verification instructions.",
+			"user": gin.H{
+				"email":       req.Email,
+				"username":    req.Username,
+				"is_verified": false,
+			},
 		})
 		return
 	}
@@ -201,28 +209,25 @@ func (ah *AuthHandler) Login(c *gin.Context) {
 	// Normalize email to lowercase and trim whitespace
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
+	if err := auth.ValidatePasswordLength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	const invalidLogin = "Invalid email or password"
+
 	// Get user by email
 	user, err := ah.userService.GetUserByEmail(req.Email)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid email or password",
-		})
+	if err != nil || user == nil || !user.IsActive {
+		// Same bcrypt cost as a real password check so unknown/deactivated
+		// emails are not distinguishable by timing or error copy.
+		_ = auth.VerifyPassword(req.Password, auth.DummyPasswordHash)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": invalidLogin})
 		return
 	}
 
-	// Check if user is active
-	if !user.IsActive {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Account is deactivated",
-		})
-		return
-	}
-
-	// Verify password
 	if err := auth.VerifyPassword(req.Password, user.PasswordHash); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid email or password",
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": invalidLogin})
 		return
 	}
 
@@ -456,7 +461,11 @@ func (ah *AuthHandler) RequestPasswordReset(c *gin.Context) {
 		return
 	}
 
-	// Store reset token
+	if err := ah.userRepo.InvalidateUnusedPasswordResetTokens(user.ID); err != nil {
+		log.Printf("ERROR: Failed to invalidate older reset tokens for %s: %v", user.ID, err)
+	}
+
+	// Store hashed reset token (raw value is emailed)
 	passwordToken := &models.PasswordResetToken{
 		ID:        uuid.New(),
 		UserID:    user.ID,
@@ -474,7 +483,7 @@ func (ah *AuthHandler) RequestPasswordReset(c *gin.Context) {
 
 	// Send password reset email
 	if err := ah.emailService.SendPasswordReset(user.Email, user.DisplayName(), resetToken); err != nil {
-		// Log error but don't fail the request
+		log.Printf("ERROR: Failed to send password reset email to %s: %v", user.Email, err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -493,27 +502,16 @@ func (ah *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
 		return
 	}
 
-	// Get the reset token
-	resetToken, err := ah.userRepo.GetPasswordResetToken(req.Token)
+	if err := auth.ValidatePasswordLength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Atomically consume the token (hash or outstanding plaintext).
+	resetToken, err := ah.userRepo.ConsumePasswordResetToken(req.Token)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid or expired reset token",
-		})
-		return
-	}
-
-	// Check if token is expired
-	if time.Now().After(resetToken.ExpiresAt) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Reset token has expired",
-		})
-		return
-	}
-
-	// Check if token has been used
-	if resetToken.UsedAt != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Reset token has already been used",
 		})
 		return
 	}
@@ -545,11 +543,6 @@ func (ah *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
 		return
 	}
 
-	// Mark token as used
-	if err := ah.userRepo.UsePasswordResetToken(req.Token); err != nil {
-		// Log error but don't fail the request
-	}
-
 	// Invalidate all user sessions for security
 	if err := ah.userRepo.DeleteUserSessions(user.ID); err != nil {
 		// Log error but don't fail the request
@@ -571,8 +564,14 @@ func (ah *AuthHandler) VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	// Get the verification token
-	verificationToken, err := ah.userRepo.GetEmailVerificationToken(req.Token)
+	if existing, err := ah.userRepo.GetEmailVerificationToken(req.Token); err == nil && existing.UsedAt != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Email has already been verified",
+		})
+		return
+	}
+
+	verificationToken, err := ah.userRepo.ConsumeEmailVerificationToken(req.Token)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid or expired verification token",
@@ -580,33 +579,11 @@ func (ah *AuthHandler) VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	// Check if token is expired
-	if time.Now().After(verificationToken.ExpiresAt) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Verification token has expired",
-		})
-		return
-	}
-
-	// Check if token has been used — treat a second click as success
-	if verificationToken.UsedAt != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Email has already been verified",
-		})
-		return
-	}
-
-	// Verify the user's email
 	if err := ah.userService.VerifyUserEmail(verificationToken.UserID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to verify email",
 		})
 		return
-	}
-
-	// Mark token as used
-	if err := ah.userRepo.UseEmailVerificationToken(req.Token); err != nil {
-		// Log error but don't fail the request
 	}
 
 	if user, err := ah.userService.GetUserByID(verificationToken.UserID); err == nil && user != nil {
@@ -779,6 +756,7 @@ func (ah *AuthHandler) ResendVerification(c *gin.Context) {
 
 	// Send verification email
 	if err := ah.emailService.SendEmailVerification(currentUser.Email, currentUser.DisplayName(), verificationToken); err != nil {
+		log.Printf("ERROR: Failed to send verification email to %s: %v", currentUser.Email, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to send verification email",
 		})

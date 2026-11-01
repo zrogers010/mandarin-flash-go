@@ -88,7 +88,7 @@ func TestTimezoneSameDayActivity(t *testing.T) {
 	}
 	require.NoError(t, userRepo.CreateUser(user))
 	defer cleanupTestUser(t, db, userID)
-	
+
 	require.NoError(t, userRepo.UpdateTimezone(userID, "America/Los_Angeles"))
 
 	// Simulate activity at 4 PM PT (which might be next UTC day depending on time)
@@ -170,7 +170,7 @@ func TestTimezoneConsecutiveDays(t *testing.T) {
 	}
 	require.NoError(t, userRepo.CreateUser(user))
 	defer cleanupTestUser(t, db, userID)
-	
+
 	require.NoError(t, userRepo.UpdateTimezone(userID, "America/Los_Angeles"))
 
 	loc, err := time.LoadLocation("America/Los_Angeles")
@@ -246,7 +246,7 @@ func TestInvalidTimezoneFallback(t *testing.T) {
 	// When getting timezone, application code should validate and fall back to UTC
 	tz, err := userRepo.GetUserTimezone(userID)
 	require.NoError(t, err)
-	
+
 	// Validate the timezone - invalid should fail LoadLocation
 	loc, tzErr := time.LoadLocation(tz)
 	if tzErr != nil {
