@@ -1069,6 +1069,10 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Check SPA cache headers
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/check_nginx_cache.sh
+
       - name: Check bundle size
         run: |
           du -sh dist
