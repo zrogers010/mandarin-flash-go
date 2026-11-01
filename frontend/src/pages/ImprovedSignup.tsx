@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { readAccessToken } from '../lib/authSession'
 import { IconCircleCheck, IconCircleX, IconEye, IconEyeOff } from '@tabler/icons-react'
 
 interface PasswordStrength {
@@ -19,7 +20,8 @@ export default function ImprovedSignup() {
   const [generalError, setGeneralError] = useState('')
   
   const navigate = useNavigate()
-  const { signup } = useAuth()
+  const { signup, isAuthenticated, token } = useAuth()
+  const [awaitingSession, setAwaitingSession] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).gtag) {
@@ -28,6 +30,22 @@ export default function ImprovedSignup() {
       })
     }
   }, [])
+
+  // Do not navigate until auth context has a committed session. Immediate
+  // navigate('/onboarding') races ProtectedRoute (prod QA: 5ms bounce to /login).
+  useEffect(() => {
+    if (!awaitingSession) return
+    if (isAuthenticated) {
+      navigate('/onboarding', { replace: true })
+      return
+    }
+    const stored = readAccessToken()
+    if (!stored && !token) {
+      setGeneralError('Account created, but we could not start your session. Please log in.')
+      setAwaitingSession(false)
+      setIsLoading(false)
+    }
+  }, [awaitingSession, isAuthenticated, token, navigate])
 
   const validateEmail = (value: string): boolean => {
     setEmailError('')
@@ -113,7 +131,7 @@ export default function ImprovedSignup() {
         })
       }
 
-      navigate('/onboarding', { replace: true })
+      setAwaitingSession(true)
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error || error.message || 'An error occurred'
       
@@ -128,7 +146,6 @@ export default function ImprovedSignup() {
       } else {
         setGeneralError(errorMessage)
       }
-    } finally {
       setIsLoading(false)
     }
   }

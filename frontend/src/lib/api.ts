@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { isCredentialAuthRequest } from './authErrors'
+import { hasFreshSession, readAccessToken, readRefreshToken } from './authSession'
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || ''
 
@@ -14,7 +15,7 @@ export const api = axios.create({
 // Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token')
+    const token = readAccessToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -46,7 +47,7 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token')
+        const refreshToken = readRefreshToken()
         if (!refreshToken) {
           throw new Error('No refresh token available')
         }
@@ -99,7 +100,12 @@ api.interceptors.response.use(
           ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/onboarding']
             .includes(window.location.pathname)
 
-        if (!isPublicRoute && !alreadyOnAuthPage) {
+        const currentToken = readAccessToken()
+        const requestAuth = String(originalRequest.headers?.Authorization || '')
+        const requestUsedCurrent = !currentToken || requestAuth.includes(currentToken)
+        // A stale 401 from another tab or an in-flight request must not wipe
+        // a session that was just issued by signup/login.
+        if (!isPublicRoute && !alreadyOnAuthPage && requestUsedCurrent && !hasFreshSession()) {
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
           window.location.href = '/login'
