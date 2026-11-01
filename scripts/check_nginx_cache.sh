@@ -43,6 +43,7 @@ printf 'console.log(1)' > "$WORKDIR/html/assets/x.js"
 # Probe from inside the container so CI does not depend on published ports.
 # wget -S prints response headers on stderr.
 docker run --rm \
+  --add-host backend:127.0.0.1 \
   -v "$WORKDIR/conf/nginx.conf:/etc/nginx/nginx.conf:ro" \
   -v "$WORKDIR/conf/security-headers-http.conf:/etc/nginx/security-headers-http.conf:ro" \
   -v "$WORKDIR/html:/usr/share/nginx/html:ro" \
