@@ -1,13 +1,17 @@
+import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Volume2, BookOpen, Target, ExternalLink } from 'lucide-react'
 import { vocabularyApi } from '@/lib/api'
 import { speakText } from '@/lib/speech'
 import { parseDefinitions } from '@/lib/definitions'
+import { guestStorage } from '@/lib/guestStorage'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function VocabularyDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
 
   const {
     data: vocabulary,
@@ -18,6 +22,12 @@ export function VocabularyDetail() {
     queryFn: () => vocabularyApi.getById(id!),
     enabled: !!id,
   })
+
+  useEffect(() => {
+    if (!isAuthenticated && vocabulary?.id) {
+      guestStorage.recordSeenWords([vocabulary.id])
+    }
+  }, [isAuthenticated, vocabulary?.id])
 
   if (isLoading) {
     return (

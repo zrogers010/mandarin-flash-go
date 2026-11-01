@@ -84,9 +84,16 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 mt-8 pt-6 text-center">
+        <div className="border-t border-gray-100 mt-8 pt-6 text-center space-y-2">
           <p className="text-sm text-gray-400">
             &copy; {new Date().getFullYear()} MandarinFlash. Learn Mandarin Chinese the smart way.
+          </p>
+          <p className="text-sm text-gray-400">
+            <Link to="/terms" className="hover:text-gray-600">Terms</Link>
+            <span className="mx-2">·</span>
+            <Link to="/privacy" className="hover:text-gray-600">Privacy</Link>
+            <span className="mx-2">·</span>
+            <a href="mailto:support@mandarinflash.com" className="hover:text-gray-600">Support</a>
           </p>
         </div>
       </div>

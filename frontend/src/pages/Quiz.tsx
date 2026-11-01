@@ -6,6 +6,7 @@ import { quizApi, learningApi } from '@/lib/api'
 import { QuizCard } from '@/components/QuizCard'
 import { celebrate, streakBurst } from '@/lib/celebrate'
 import { useAuth } from '@/contexts/AuthContext'
+import { persistGuestStudySession } from '@/lib/guestStorage'
 
 type QuizType = 'practice' | 'scored'
 
@@ -210,6 +211,21 @@ export function Quiz() {
 	}
 
 	const handleFinishQuiz = () => {
+		const cards = currentQuiz?.cards || []
+		if (!isAuthenticated && cards.length > 0) {
+			const correctCount = quizType === 'scored'
+				? cards.filter((c: any) => c.isCorrect).length
+				: Object.keys(userAnswers).length
+			persistGuestStudySession({
+				quizType,
+				hskLevel: selectedLevel,
+				wordIds: cards.map((c: any) => c.id),
+				answers: userAnswers,
+				correct: correctCount,
+				total: cards.length,
+			})
+		}
+
 		if (quizType === 'scored') {
 			// For scored mode, submit the quiz
 			submitQuizMutation.mutate({

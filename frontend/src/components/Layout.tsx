@@ -9,6 +9,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Footer } from '@/components/Footer'
+import { VerifyEmailBanner } from '@/components/VerifyEmailBanner'
 
 function ThemeToggle({ className = '' }: { className?: string }) {
   const { resolvedTheme, toggleTheme } = useTheme()
@@ -344,6 +345,16 @@ export function Layout({ children }: LayoutProps) {
     return () => { document.body.style.overflow = '' }
   }, [mobileMenuOpen])
 
+  const isAuthPage = [
+    '/login',
+    '/signup',
+    '/signup-basic',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-email',
+    '/onboarding',
+  ].includes(location.pathname)
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -479,6 +490,10 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
+      {isAuthenticated && user && !user.is_verified && location.pathname !== '/verify-email' && (
+        <VerifyEmailBanner />
+      )}
+
       {/* Mobile slide-out menu */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50" style={{ top: '3.5rem' }}>
@@ -546,12 +561,17 @@ export function Layout({ children }: LayoutProps) {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-        {children}
-      </main>
-
-      <Footer />
+      {/* Main Content — auth pages skip the extra chrome padding that created a large mobile gap */}
+      {isAuthPage ? (
+        <main>{children}</main>
+      ) : (
+        <>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+            {children}
+          </main>
+          <Footer />
+        </>
+      )}
     </div>
   )
 }

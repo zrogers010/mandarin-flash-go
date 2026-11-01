@@ -121,3 +121,23 @@ export const guestStorage = {
     }
   },
 }
+
+/** Persist a guest study session so it can merge on signup. */
+export function persistGuestStudySession(params: {
+  quizType: 'practice' | 'scored'
+  hskLevel?: number
+  wordIds: string[]
+  answers: Record<string, string>
+  correct: number
+  total: number
+}): void {
+  guestStorage.recordSeenWords(params.wordIds.filter(Boolean))
+  guestStorage.recordQuiz({
+    quiz_type: params.quizType,
+    hsk_level: params.hskLevel,
+    total: params.total,
+    correct: params.correct,
+    answers: params.answers,
+    timestamp: new Date().toISOString(),
+  })
+}

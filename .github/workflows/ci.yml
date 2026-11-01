@@ -1052,6 +1052,9 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Unit tests
+        run: npx vitest run
+
       - name: Build frontend
         run: npm run build
         env:
