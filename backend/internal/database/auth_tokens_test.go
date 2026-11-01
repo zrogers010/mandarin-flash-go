@@ -1,6 +1,8 @@
 package database
 
 import (
+	"database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -8,12 +10,46 @@ import (
 	"chinese-learning/internal/models"
 
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func getAuthTokensTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		host := os.Getenv("DB_HOST")
+		if host == "" {
+			t.Skip("DATABASE_URL/DB_HOST not set, skipping integration test")
+		}
+		port := os.Getenv("DB_PORT")
+		if port == "" {
+			port = "5432"
+		}
+		name := os.Getenv("DB_NAME")
+		if name == "" {
+			name = "chinese_learning_test"
+		}
+		user := os.Getenv("DB_USER")
+		if user == "" {
+			user = "postgres"
+		}
+		pass := os.Getenv("DB_PASSWORD")
+		if pass == "" {
+			pass = "postgres"
+		}
+		dbURL = "postgres://" + user + ":" + pass + "@" + host + ":" + port + "/" + name + "?sslmode=disable"
+	}
+
+	db, err := sql.Open("postgres", dbURL)
+	require.NoError(t, err)
+	require.NoError(t, db.Ping())
+	return db
+}
+
 func TestPasswordResetTokensAreHashedAndInvalidated(t *testing.T) {
-	db := getTestDB(t)
+	db := getAuthTokensTestDB(t)
 	defer db.Close()
 	repo := NewUserRepository(db)
 

@@ -17,27 +17,7 @@ import (
 func getTestDB(t *testing.T) *sql.DB {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		host := os.Getenv("DB_HOST")
-		if host == "" {
-			t.Skip("DATABASE_URL/DB_HOST not set, skipping integration test")
-		}
-		port := os.Getenv("DB_PORT")
-		if port == "" {
-			port = "5432"
-		}
-		name := os.Getenv("DB_NAME")
-		if name == "" {
-			name = "chinese_learning_test"
-		}
-		user := os.Getenv("DB_USER")
-		if user == "" {
-			user = "postgres"
-		}
-		pass := os.Getenv("DB_PASSWORD")
-		if pass == "" {
-			pass = "postgres"
-		}
-		dbURL = "postgres://" + user + ":" + pass + "@" + host + ":" + port + "/" + name + "?sslmode=disable"
+		t.Skip("DATABASE_URL not set, skipping integration test")
 	}
 
 	db, err := sql.Open("postgres", dbURL)
