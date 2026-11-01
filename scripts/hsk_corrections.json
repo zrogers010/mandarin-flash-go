@@ -216,7 +216,979 @@
       "chinese": "对",
       "pinyin": "duì",
       "correct_english": "correct | right | toward | to face",
-      "note": "Duplicate entry in HSK 2 - remove one"
+      "note": "Shorten long CEDICT list"
+    },
+    {
+      "chinese": "一",
+      "pinyin": "yī",
+      "correct_english": "one | a | whole",
+      "note": "Drop Kangxi / yao1 spelling note"
+    },
+    {
+      "chinese": "一点儿",
+      "pinyin": "yīdiǎnr",
+      "correct_english": "a little | a bit",
+      "note": "Replace CEDICT erhua markup"
+    },
+    {
+      "chinese": "上",
+      "pinyin": "shàng",
+      "correct_english": "up | on | above | to attend (class)",
+      "note": "Lead with spatial/attend senses"
+    },
+    {
+      "chinese": "下",
+      "pinyin": "xià",
+      "correct_english": "down | below | next | to get off",
+      "note": "Shorten encyclopedic CEDICT gloss"
+    },
+    {
+      "chinese": "不",
+      "pinyin": "bù",
+      "correct_english": "not | no",
+      "note": "Drop bound-form note"
+    },
+    {
+      "chinese": "个",
+      "pinyin": "gè",
+      "correct_english": "generic measure word",
+      "note": "Learner classifier gloss"
+    },
+    {
+      "chinese": "他",
+      "pinyin": "tā",
+      "correct_english": "he | him",
+      "note": "Drop bound-form 'other' sense"
+    },
+    {
+      "chinese": "会",
+      "pinyin": "huì",
+      "correct_english": "can | to know how to | meeting",
+      "note": "Primary HSK senses"
+    },
+    {
+      "chinese": "做",
+      "pinyin": "zuò",
+      "correct_english": "to do | to make | to be",
+      "note": "Shorten long CEDICT list"
+    },
+    {
+      "chinese": "前面",
+      "pinyin": "qiánmiàn",
+      "correct_english": "in front | ahead",
+      "note": "Drop also-pr note"
+    },
+    {
+      "chinese": "北京",
+      "pinyin": "Běijīng",
+      "correct_english": "Beijing",
+      "note": "Drop municipality/abbr gloss"
+    },
+    {
+      "chinese": "去",
+      "pinyin": "qù",
+      "correct_english": "to go | to go to",
+      "note": "Primary motion sense"
+    },
+    {
+      "chinese": "号",
+      "pinyin": "hào",
+      "correct_english": "number | date | size",
+      "note": "HSK uses number/date/size"
+    },
+    {
+      "chinese": "听",
+      "pinyin": "tīng",
+      "correct_english": "to listen | to hear",
+      "note": "Drop tin-can / literary senses"
+    },
+    {
+      "chinese": "呢",
+      "pinyin": "ne",
+      "correct_english": "question particle (and…? / what about…?)",
+      "note": "One learner gloss"
+    },
+    {
+      "chinese": "多",
+      "pinyin": "duō",
+      "correct_english": "many | much | more | how…",
+      "note": "Drop Taiwan-pr / poly- note"
+    },
+    {
+      "chinese": "大",
+      "pinyin": "dà",
+      "correct_english": "big | large | old (age)",
+      "note": "Drop dialect father/uncle"
+    },
+    {
+      "chinese": "家",
+      "pinyin": "jiā",
+      "correct_english": "home | family | -ist (specialist)",
+      "note": "Lead with home/family"
+    },
+    {
+      "chinese": "开",
+      "pinyin": "kāi",
+      "correct_english": "to open | to start | to turn on | to drive",
+      "note": "Drop Kelvin/carat"
+    },
+    {
+      "chinese": "有",
+      "pinyin": "yǒu",
+      "correct_english": "to have | there is",
+      "note": "Drop bound-form morphology"
+    },
+    {
+      "chinese": "本",
+      "pinyin": "běn",
+      "correct_english": "measure word for books | this | origin",
+      "note": "Lead with classifier"
+    },
+    {
+      "chinese": "来",
+      "pinyin": "lái",
+      "correct_english": "to come",
+      "note": "Primary motion sense"
+    },
+    {
+      "chinese": "水",
+      "pinyin": "shuǐ",
+      "correct_english": "water",
+      "note": "Drop river/shoddy/income senses"
+    },
+    {
+      "chinese": "点",
+      "pinyin": "diǎn",
+      "correct_english": "o'clock | a bit | to order | dot",
+      "note": "HSK clock/bit/order"
+    },
+    {
+      "chinese": "的",
+      "pinyin": "de",
+      "correct_english": "possessive / attributive particle",
+      "note": "One grammar gloss"
+    },
+    {
+      "chinese": "看",
+      "pinyin": "kàn",
+      "correct_english": "to look | to see | to read | to watch",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "说",
+      "pinyin": "shuō",
+      "correct_english": "to speak | to say | to explain",
+      "note": "Drop doctrine sense"
+    },
+    {
+      "chinese": "谁",
+      "pinyin": "shéi",
+      "correct_english": "who",
+      "note": "Drop also-pr shuí"
+    },
+    {
+      "chinese": "里面",
+      "pinyin": "lǐmiàn",
+      "correct_english": "inside",
+      "note": "Drop also-pr note"
+    },
+    {
+      "chinese": "钱",
+      "pinyin": "qián",
+      "correct_english": "money",
+      "note": "Drop tael weight"
+    },
+    {
+      "chinese": "两",
+      "pinyin": "liǎng",
+      "correct_english": "two | both | tael (50g)",
+      "note": "Keep tael as secondary"
+    },
+    {
+      "chinese": "也",
+      "pinyin": "yě",
+      "correct_english": "also | too | even",
+      "note": "Drop literary particle"
+    },
+    {
+      "chinese": "从",
+      "pinyin": "cóng",
+      "correct_english": "from | through",
+      "note": "Lead with preposition"
+    },
+    {
+      "chinese": "再",
+      "pinyin": "zài",
+      "correct_english": "again | then | more",
+      "note": "Primary adverb senses"
+    },
+    {
+      "chinese": "出",
+      "pinyin": "chū",
+      "correct_english": "to go out | to come out | to produce",
+      "note": "Drop opera classifier"
+    },
+    {
+      "chinese": "到",
+      "pinyin": "dào",
+      "correct_english": "to arrive | to reach | until",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "咖啡",
+      "pinyin": "kāfēi",
+      "correct_english": "coffee",
+      "note": "Drop '(loanword)' prefix"
+    },
+    {
+      "chinese": "就",
+      "pinyin": "jiù",
+      "correct_english": "then | right away | just | only",
+      "note": "Learner grammar senses"
+    },
+    {
+      "chinese": "快",
+      "pinyin": "kuài",
+      "correct_english": "fast | quick | soon",
+      "note": "Drop knife/wit senses"
+    },
+    {
+      "chinese": "您",
+      "pinyin": "nín",
+      "correct_english": "you (polite)",
+      "note": "Plain polite-you gloss"
+    },
+    {
+      "chinese": "意思",
+      "pinyin": "yìsi",
+      "correct_english": "meaning | idea | interesting (有意思)",
+      "note": "HSK senses"
+    },
+    {
+      "chinese": "新",
+      "pinyin": "xīn",
+      "correct_english": "new",
+      "note": "Drop meso- chemistry"
+    },
+    {
+      "chinese": "最",
+      "pinyin": "zuì",
+      "correct_english": "most | -est",
+      "note": "Drop 世界之最 example dump"
+    },
+    {
+      "chinese": "机场",
+      "pinyin": "jīchǎng",
+      "correct_english": "airport",
+      "note": "Drop Shadowsocks slang"
+    },
+    {
+      "chinese": "次",
+      "pinyin": "cì",
+      "correct_english": "time(s) | next",
+      "note": "Lead with classifier"
+    },
+    {
+      "chinese": "比",
+      "pinyin": "bǐ",
+      "correct_english": "to compare | than",
+      "note": "Drop Taiwan-pr note"
+    },
+    {
+      "chinese": "白",
+      "pinyin": "bái",
+      "correct_english": "white | blank | in vain",
+      "note": "Drop political/opera senses"
+    },
+    {
+      "chinese": "知道",
+      "pinyin": "zhīdao",
+      "correct_english": "to know",
+      "note": "Drop also-pr note"
+    },
+    {
+      "chinese": "离",
+      "pinyin": "lí",
+      "correct_english": "away from | to leave",
+      "note": "Drop trigram / ☲"
+    },
+    {
+      "chinese": "等",
+      "pinyin": "děng",
+      "correct_english": "to wait | etc. | grade",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "给",
+      "pinyin": "gěi",
+      "correct_english": "to give | for | to",
+      "note": "Lead with give/for"
+    },
+    {
+      "chinese": "要",
+      "pinyin": "yào",
+      "correct_english": "to want | to need | will | must",
+      "note": "HSK senses"
+    },
+    {
+      "chinese": "让",
+      "pinyin": "ràng",
+      "correct_english": "to let | to make | to allow",
+      "note": "Lead with let/make"
+    },
+    {
+      "chinese": "贵",
+      "pinyin": "guì",
+      "correct_english": "expensive | precious | honorable",
+      "note": "Shorten bound-form notes"
+    },
+    {
+      "chinese": "走",
+      "pinyin": "zǒu",
+      "correct_english": "to walk | to go | to leave",
+      "note": "Drop euphemism/die"
+    },
+    {
+      "chinese": "过",
+      "pinyin": "guò",
+      "correct_english": "experiential particle (have …ed) | to pass",
+      "note": "Replace grammar-jargon lead"
+    },
+    {
+      "chinese": "进",
+      "pinyin": "jìn",
+      "correct_english": "to enter | to go in | to advance",
+      "note": "Drop math-base sense"
+    },
+    {
+      "chinese": "错",
+      "pinyin": "cuò",
+      "correct_english": "wrong | mistake",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "长",
+      "pinyin": "cháng",
+      "correct_english": "long",
+      "note": "Drop literary surplus / Taiwan-pr"
+    },
+    {
+      "chinese": "门",
+      "pinyin": "mén",
+      "correct_english": "door | gate | measure word for subjects",
+      "note": "Drop Watergate / phylum"
+    },
+    {
+      "chinese": "阴",
+      "pinyin": "yīn",
+      "correct_english": "overcast | cloudy | Yin",
+      "note": "Drop genitalia"
+    },
+    {
+      "chinese": "零",
+      "pinyin": "líng",
+      "correct_english": "zero",
+      "note": "Primary numeral"
+    },
+    {
+      "chinese": "鱼",
+      "pinyin": "yú",
+      "correct_english": "fish",
+      "note": "Drop non-fish aquatic dump"
+    },
+    {
+      "chinese": "一会儿",
+      "pinyin": "yíhuìr",
+      "correct_english": "a little while | in a moment",
+      "note": "Drop also-pr note"
+    },
+    {
+      "chinese": "借",
+      "pinyin": "jiè",
+      "correct_english": "to borrow | to lend",
+      "note": "Shorten 给/出 combination note"
+    },
+    {
+      "chinese": "元",
+      "pinyin": "yuán",
+      "correct_english": "yuan (currency) | first | unit",
+      "note": "HSK money/unit"
+    },
+    {
+      "chinese": "先",
+      "pinyin": "xiān",
+      "correct_english": "first | in advance | earlier",
+      "note": "Primary adverb"
+    },
+    {
+      "chinese": "关",
+      "pinyin": "guān",
+      "correct_english": "to close | to turn off | to concern",
+      "note": "Do not lead with mountain pass"
+    },
+    {
+      "chinese": "刚才",
+      "pinyin": "gāngcái",
+      "correct_english": "just now",
+      "note": "Replace variant-of markup; trad 剛才",
+      "correct_traditional": "剛才"
+    },
+    {
+      "chinese": "包",
+      "pinyin": "bāo",
+      "correct_english": "bag | package | to wrap",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "太阳",
+      "pinyin": "tàiyáng",
+      "correct_english": "sun | sunshine",
+      "note": "Drop temple-abbr"
+    },
+    {
+      "chinese": "差",
+      "pinyin": "chà",
+      "correct_english": "poor | not good | to lack | difference",
+      "note": "Drop Taiwan-pr"
+    },
+    {
+      "chinese": "带",
+      "pinyin": "dài",
+      "correct_english": "to bring | to take | belt | zone",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "拿",
+      "pinyin": "ná",
+      "correct_english": "to take | to hold",
+      "note": "Drop 把-comparison note"
+    },
+    {
+      "chinese": "接",
+      "pinyin": "jiē",
+      "correct_english": "to receive | to meet | to connect",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "教",
+      "pinyin": "jiāo",
+      "correct_english": "to teach",
+      "note": "HSK verb sense"
+    },
+    {
+      "chinese": "特别",
+      "pinyin": "tèbié",
+      "correct_english": "especially | special | particularly",
+      "note": "Drop 是-pattern note"
+    },
+    {
+      "chinese": "用",
+      "pinyin": "yòng",
+      "correct_english": "to use",
+      "note": "Primary verb"
+    },
+    {
+      "chinese": "画",
+      "pinyin": "huà",
+      "correct_english": "to draw | painting | picture",
+      "note": "Drop 划-variant dump"
+    },
+    {
+      "chinese": "着急",
+      "pinyin": "zháojí",
+      "correct_english": "anxious | worried | in a hurry",
+      "note": "Drop Taiwan-pr"
+    },
+    {
+      "chinese": "笔记本",
+      "pinyin": "bǐjìběn",
+      "correct_english": "notebook | laptop",
+      "note": "Drop CEDICT abbr dump"
+    },
+    {
+      "chinese": "老",
+      "pinyin": "lǎo",
+      "correct_english": "old | always | prefix for names",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "节目",
+      "pinyin": "jiémù",
+      "correct_english": "program | show",
+      "note": "Primary noun"
+    },
+    {
+      "chinese": "被",
+      "pinyin": "bèi",
+      "correct_english": "passive particle (by) | quilt",
+      "note": "Lead with grammar, not quilt only"
+    },
+    {
+      "chinese": "起来",
+      "pinyin": "qǐlái",
+      "correct_english": "to stand up | (verb complement) start / up",
+      "note": "Shorten complement essay"
+    },
+    {
+      "chinese": "超市",
+      "pinyin": "chāoshì",
+      "correct_english": "supermarket",
+      "note": "Drop 超级市场 abbr markup"
+    },
+    {
+      "chinese": "除了",
+      "pinyin": "chúle",
+      "correct_english": "except | besides | in addition to",
+      "note": "Drop long example dump"
+    },
+    {
+      "chinese": "鸟",
+      "pinyin": "niǎo",
+      "correct_english": "bird",
+      "note": "Primary noun"
+    },
+    {
+      "chinese": "专门",
+      "pinyin": "zhuānmén",
+      "correct_english": "specialized | specially",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "主意",
+      "pinyin": "zhǔyi",
+      "correct_english": "idea | plan",
+      "note": "Drop Beijing-pr note"
+    },
+    {
+      "chinese": "之",
+      "pinyin": "zhī",
+      "correct_english": "literary 'of' (like 的)",
+      "note": "Drop CEDICT 的[de5] markup"
+    },
+    {
+      "chinese": "乱",
+      "pinyin": "luàn",
+      "correct_english": "messy | chaotic | randomly",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "亚洲",
+      "pinyin": "yàzhōu",
+      "correct_english": "Asia",
+      "note": "Drop 亚细亚洲 markup"
+    },
+    {
+      "chinese": "作用",
+      "pinyin": "zuòyòng",
+      "correct_english": "effect | function | to affect",
+      "note": "Drop 抑制 example"
+    },
+    {
+      "chinese": "俩",
+      "pinyin": "liǎ",
+      "correct_english": "two (colloquial)",
+      "note": "Drop 兩個 markup"
+    },
+    {
+      "chinese": "倒",
+      "pinyin": "dào",
+      "correct_english": "to pour | but | on the contrary | to fall",
+      "note": "HSK senses"
+    },
+    {
+      "chinese": "刀",
+      "pinyin": "dāo",
+      "correct_english": "knife",
+      "note": "Primary noun"
+    },
+    {
+      "chinese": "厉害",
+      "pinyin": "lìhai",
+      "correct_english": "formidable | sharp | serious",
+      "note": "Primary adjective"
+    },
+    {
+      "chinese": "咱们",
+      "pinyin": "zánmen",
+      "correct_english": "we (including you)",
+      "note": "Drop dialect / also-pr"
+    },
+    {
+      "chinese": "场",
+      "pinyin": "chǎng",
+      "correct_english": "site | field | measure word for events",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "垃圾桶",
+      "pinyin": "lājītǒng",
+      "correct_english": "trash can",
+      "note": "Drop Taiwan-pr"
+    },
+    {
+      "chinese": "好处",
+      "pinyin": "hǎochù",
+      "correct_english": "benefit | advantage",
+      "note": "Drop also-pr"
+    },
+    {
+      "chinese": "寄",
+      "pinyin": "jì",
+      "correct_english": "to mail | to send",
+      "note": "Lead with mail"
+    },
+    {
+      "chinese": "尝",
+      "pinyin": "cháng",
+      "correct_english": "to taste | to try",
+      "note": "Replace variant-of markup",
+      "correct_traditional": "嘗"
+    },
+    {
+      "chinese": "巧克力",
+      "pinyin": "qiǎokèlì",
+      "correct_english": "chocolate",
+      "note": "Drop '(loanword)' prefix"
+    },
+    {
+      "chinese": "帅",
+      "pinyin": "shuài",
+      "correct_english": "handsome | cool",
+      "note": "Lead with HSK adjective"
+    },
+    {
+      "chinese": "幽默",
+      "pinyin": "yōumò",
+      "correct_english": "humorous | humor",
+      "note": "Drop '(loanword)' prefix"
+    },
+    {
+      "chinese": "底",
+      "pinyin": "dǐ",
+      "correct_english": "bottom | end | base",
+      "note": "Drop math radix"
+    },
+    {
+      "chinese": "座",
+      "pinyin": "zuò",
+      "correct_english": "seat | measure word for buildings",
+      "note": "Drop archaic suffix"
+    },
+    {
+      "chinese": "拉",
+      "pinyin": "lā",
+      "correct_english": "to pull | to drag | to play (a bowed instrument)",
+      "note": "Replace 拉拉蛄-only gloss",
+      "correct_traditional": "拉"
+    },
+    {
+      "chinese": "挂",
+      "pinyin": "guà",
+      "correct_english": "to hang | to hang up (the phone)",
+      "note": "Drop slang kill"
+    },
+    {
+      "chinese": "挺",
+      "pinyin": "tǐng",
+      "correct_english": "quite | very | to straighten",
+      "note": "Lead with quite/very"
+    },
+    {
+      "chinese": "掉",
+      "pinyin": "diào",
+      "correct_english": "to fall | to drop | (verb complement) off / away",
+      "note": "Shorten long list"
+    },
+    {
+      "chinese": "接着",
+      "pinyin": "jiēzhe",
+      "correct_english": "then | to continue | next",
+      "note": "Primary adverb"
+    },
+    {
+      "chinese": "推",
+      "pinyin": "tuī",
+      "correct_english": "to push | to postpone | to recommend",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "提",
+      "pinyin": "tí",
+      "correct_english": "to lift | to mention | to raise (an issue)",
+      "note": "Drop brush-stroke note"
+    },
+    {
+      "chinese": "梦",
+      "pinyin": "mèng",
+      "correct_english": "dream",
+      "note": "Fix truncated CEDICT"
+    },
+    {
+      "chinese": "母亲",
+      "pinyin": "mǔqīn",
+      "correct_english": "mother",
+      "note": "Drop also-pr"
+    },
+    {
+      "chinese": "毛",
+      "pinyin": "máo",
+      "correct_english": "hair | fur | 0.1 yuan",
+      "note": "HSK senses"
+    },
+    {
+      "chinese": "活动",
+      "pinyin": "huódòng",
+      "correct_english": "activity | event | to move about",
+      "note": "Fix truncated CEDICT"
+    },
+    {
+      "chinese": "火",
+      "pinyin": "huǒ",
+      "correct_english": "fire | hot (popular)",
+      "note": "Drop Kangxi radical"
+    },
+    {
+      "chinese": "照",
+      "pinyin": "zhào",
+      "correct_english": "according to | to shine | to photograph",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "父亲",
+      "pinyin": "fùqīn",
+      "correct_english": "father",
+      "note": "Drop also-pr"
+    },
+    {
+      "chinese": "直接",
+      "pinyin": "zhíjiē",
+      "correct_english": "direct | immediately",
+      "note": "Drop 间接 markup"
+    },
+    {
+      "chinese": "破",
+      "pinyin": "pò",
+      "correct_english": "broken | to break",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "节",
+      "pinyin": "jié",
+      "correct_english": "festival | section | to save | measure word",
+      "note": "Drop knot/nautical"
+    },
+    {
+      "chinese": "下载",
+      "pinyin": "xiàzài",
+      "correct_english": "to download",
+      "note": "Drop also-pr"
+    },
+    {
+      "chinese": "与其",
+      "pinyin": "yǔqí",
+      "correct_english": "rather than (与其…不如…)",
+      "note": "Plain pattern gloss"
+    },
+    {
+      "chinese": "主动",
+      "pinyin": "zhǔdòng",
+      "correct_english": "to take the initiative | active",
+      "note": "Drop 被动 markup"
+    },
+    {
+      "chinese": "乙",
+      "pinyin": "yǐ",
+      "correct_english": "second (Heavenly Stem) | B",
+      "note": "Drop compass/ethyl"
+    },
+    {
+      "chinese": "似的",
+      "pinyin": "shìde",
+      "correct_english": "like | as if",
+      "note": "Drop Taiwan-pr"
+    },
+    {
+      "chinese": "作为",
+      "pinyin": "zuòwéi",
+      "correct_english": "as | to serve as | conduct",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "使劲儿",
+      "pinyin": "shǐjìnr",
+      "correct_english": "to put in effort | to exert oneself",
+      "note": "Replace erhua markup"
+    },
+    {
+      "chinese": "便",
+      "pinyin": "biàn",
+      "correct_english": "convenient | then | informal",
+      "note": "Drop bathroom sense as lead"
+    },
+    {
+      "chinese": "俱乐部",
+      "pinyin": "jùlèbù",
+      "correct_english": "club",
+      "note": "Drop '(loanword)' prefix"
+    },
+    {
+      "chinese": "切",
+      "pinyin": "qiē",
+      "correct_english": "to cut | to slice",
+      "note": "HSK is qiē 'cut', not qiè"
+    },
+    {
+      "chinese": "则",
+      "pinyin": "zé",
+      "correct_english": "then | but | rule | measure word for news items",
+      "note": "Shorten literary essay"
+    },
+    {
+      "chinese": "升",
+      "pinyin": "shēng",
+      "correct_english": "to rise | to promote | liter",
+      "note": "Replace 陞-variant markup",
+      "correct_traditional": "升"
+    },
+    {
+      "chinese": "发挥",
+      "pinyin": "fāhuī",
+      "correct_english": "to bring into play | to give full play to",
+      "note": "Primary verb"
+    },
+    {
+      "chinese": "发票",
+      "pinyin": "fāpiào",
+      "correct_english": "invoice | receipt",
+      "note": "Drop 统一发票 markup"
+    },
+    {
+      "chinese": "吨",
+      "pinyin": "dūn",
+      "correct_english": "ton",
+      "note": "Drop Taiwan-pr / loanword tag"
+    },
+    {
+      "chinese": "呆",
+      "pinyin": "dāi",
+      "correct_english": "dull | blank | to stay",
+      "note": "Replace 獃-variant markup",
+      "correct_traditional": "呆"
+    },
+    {
+      "chinese": "周到",
+      "pinyin": "zhōudào",
+      "correct_english": "thoughtful | considerate",
+      "note": "Drop also-pr"
+    },
+    {
+      "chinese": "圆",
+      "pinyin": "yuán",
+      "correct_english": "round | circle | yuan",
+      "note": "Primary senses"
+    },
+    {
+      "chinese": "墙",
+      "pinyin": "qiáng",
+      "correct_english": "wall",
+      "note": "Drop slang/GFW sense"
+    },
+    {
+      "chinese": "大厦",
+      "pinyin": "dàshà",
+      "correct_english": "mansion | large building",
+      "note": "Drop Broadway/Empire dump"
+    },
+    {
+      "chinese": "套",
+      "pinyin": "tào",
+      "correct_english": "set | to cover | measure word for sets",
+      "note": "Drop Greek tau"
+    },
+    {
+      "chinese": "学问",
+      "pinyin": "xuéwen",
+      "correct_english": "learning | knowledge",
+      "note": "Fix truncated CEDICT"
+    },
+    {
+      "chinese": "尽快",
+      "pinyin": "jǐnkuài",
+      "correct_english": "as soon as possible",
+      "note": "Replace see-also markup"
+    },
+    {
+      "chinese": "尾巴",
+      "pinyin": "wěiba",
+      "correct_english": "tail",
+      "note": "Drop colloquial-pr note"
+    },
+    {
+      "chinese": "干活儿",
+      "pinyin": "gànhuór",
+      "correct_english": "to work | to do manual work",
+      "note": "Replace erhua markup"
+    },
+    {
+      "chinese": "平",
+      "pinyin": "píng",
+      "correct_english": "flat | level | peaceful | to tie (a game)",
+      "note": "Drop 平声 abbr"
+    }
+  ],
+  "sentence_fixes": [
+    {
+      "chinese_word": "小",
+      "sentence": "这只猫很小",
+      "old_pinyin": "zhè zhǐ māo hěn xiǎo",
+      "new_pinyin": "Zhè zhī māo hěn xiǎo"
+    },
+    {
+      "chinese_word": "狗",
+      "sentence": "他有一只狗",
+      "old_pinyin": "tā yǒu yī zhǐ gǒu",
+      "new_pinyin": "Tā yǒu yì zhī gǒu"
+    },
+    {
+      "chinese_word": "狗",
+      "sentence": "这只狗多大?",
+      "old_pinyin": "zhè zhǐ gǒu duō dà ?",
+      "new_pinyin": "Zhè zhī gǒu duō dà?"
+    },
+    {
+      "chinese_word": "猫",
+      "sentence": "我有一只猫",
+      "old_pinyin": "wǒ yǒu yī zhǐ māo",
+      "new_pinyin": "Wǒ yǒu yì zhī māo"
+    }
+  ],
+  "inserts": [
+    {
+      "chinese": "欢迎",
+      "traditional": "歡迎",
+      "pinyin": "huānyíng",
+      "pinyin_no_tones": "huanying",
+      "english": "to welcome | welcome",
+      "part_of_speech": "verb",
+      "hsk_level": 2,
+      "example_sentences": [
+        {
+          "chinese": "欢迎光临！",
+          "pinyin": "Huānyíng guānglín!",
+          "english": "Welcome!"
+        },
+        {
+          "chinese": "你们欢迎新成员吗？",
+          "pinyin": "Nǐmen huānyíng xīn chéngyuán ma?",
+          "english": "Do you welcome new members?"
+        },
+        {
+          "chinese": "我们热烈欢迎来自世界各地的朋友参加活动。",
+          "pinyin": "Wǒmen rèliè huānyíng láizì shìjiè gèdì de péngyǒu cānjiā huódòng.",
+          "english": "We warmly welcome friends from all over the world to join the event."
+        }
+      ],
+      "note": "Official HSK 2.0 Level 2 word missing from this dataset (only HSK 3 had it)"
     }
   ]
 }

@@ -880,6 +880,15 @@ jobs:
             exit 1
           fi
           
+          # 欢迎 is the missing official HSK 2.0 L2 word (migration 012)
+          HUANYING_LEVEL=$(psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d chinese_learning_test -tAc \
+            "SELECT hsk_level FROM vocabulary WHERE chinese='欢迎' AND hsk_level BETWEEN 1 AND 6 LIMIT 1")
+          echo "欢迎 HSK level: $HUANYING_LEVEL"
+          if [ "$HUANYING_LEVEL" != "2" ]; then
+            echo "❌ FAIL: 欢迎 should be HSK 2 after migration 012, got: $HUANYING_LEVEL"
+            exit 1
+          fi
+          
           echo "✅ PASS: All content corrections and safety checks verified"
       
       - name: Verify CEDICT import preserves HSK corrections

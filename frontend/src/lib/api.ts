@@ -175,6 +175,11 @@ export const vocabularyApi = {
     return response.data
   },
 
+  getHSKCounts: async (): Promise<{ counts: Record<number, number>; total: number }> => {
+    const response = await api.get('/vocabulary/hsk-counts')
+    return response.data
+  },
+
   // Get random vocabulary
   getRandom: async (limit: number = 10, hskLevel?: number): Promise<{ vocabulary: Vocabulary[]; count: number; limit: number; hsk_level?: number }> => {
     const params = new URLSearchParams()

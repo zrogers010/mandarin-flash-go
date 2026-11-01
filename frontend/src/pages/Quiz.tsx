@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Play, Trophy, History, ArrowLeft, LogIn, CheckCircle2, XCircle, BarChart3, RefreshCw, CalendarClock, ArrowRight, Layers, Brain, Flame } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { quizApi, learningApi } from '@/lib/api'
+import { quizApi, learningApi, vocabularyApi } from '@/lib/api'
+import { formatWordCount, hskCountAt } from '@/lib/hskCounts'
 import { QuizCard } from '@/components/QuizCard'
 import { celebrate, streakBurst } from '@/lib/celebrate'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,7 +13,7 @@ type QuizType = 'practice' | 'scored'
 
 const CARD_COUNTS = [10, 25, 50]
 
-const HSK_WORD_COUNTS: Record<number, number> = { 1: 155, 2: 169, 3: 308, 4: 600, 5: 1300 }
+const HSK_LEVELS = [1, 2, 3, 4, 5]
 
 const MODES: {
 	type: QuizType
@@ -132,6 +133,14 @@ export function Quiz() {
 		retry: false,
 	})
 	const dueCount = learningStatsData?.stats?.words_due_for_review ?? 0
+
+	const { data: hskCountData } = useQuery({
+		queryKey: ['hsk-counts'],
+		queryFn: () => vocabularyApi.getHSKCounts(),
+		staleTime: 10 * 60 * 1000,
+	})
+	const hskCounts = hskCountData?.counts
+	const hskTotal = hskCountData?.total
 
 	// Submit quiz mutation
 	const submitQuizMutation = useMutation({
@@ -690,9 +699,9 @@ export function Quiz() {
 								}`}
 							>
 								<span className="block text-sm font-semibold text-gray-900">All</span>
-								<span className="block text-[10px] text-gray-400 dark:text-gray-500">2,532 words</span>
+								<span className="block text-[10px] text-gray-400 dark:text-gray-500">{formatWordCount(hskTotal)}</span>
 							</button>
-							{[1, 2, 3, 4, 5].map((level) => (
+							{HSK_LEVELS.map((level) => (
 								<button
 									key={level}
 									onClick={() => handleLevelChange(selectedLevel === level ? undefined : level)}
@@ -704,7 +713,7 @@ export function Quiz() {
 									}`}
 								>
 									<span className="block text-sm font-semibold text-gray-900">HSK {level}</span>
-									<span className="block text-[10px] text-gray-400 dark:text-gray-500">{HSK_WORD_COUNTS[level]} words</span>
+									<span className="block text-[10px] text-gray-400 dark:text-gray-500">{formatWordCount(hskCountAt(hskCounts, level))}</span>
 								</button>
 							))}
 						</div>
