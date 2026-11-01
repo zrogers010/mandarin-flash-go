@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { authApi, User } from '@/lib/api'
 
@@ -39,13 +40,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (storedToken) {
         try {
           const userData = await authApi.getProfile()
-          setUser(userData.user)
-          setToken(storedToken)
+          // Signup/login may have replaced the token while this request was in flight.
+          if (localStorage.getItem('access_token') === storedToken) {
+            setUser(userData.user)
+            setToken(storedToken)
+          }
         } catch (error) {
-          // Token is invalid, clear it
-          localStorage.removeItem('access_token')
-          localStorage.removeItem('refresh_token')
-          setToken(null)
+          // Only clear if this is still the token we tried to validate.
+          if (localStorage.getItem('access_token') === storedToken) {
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('refresh_token')
+            setToken(null)
+          }
         }
       }
       setIsLoading(false)
@@ -54,22 +60,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth()
   }, [])
 
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await authApi.login({ email, password })
-      const { access_token, refresh_token, user: userData } = response
-      
-      localStorage.setItem('access_token', access_token)
-      localStorage.setItem('refresh_token', refresh_token)
-      
-      setToken(access_token)
-      setUser(userData)
-      
-      // Merge guest progress if it exists
-      await mergeGuestProgressIfExists()
-    } catch (error) {
-      throw error
+  // If a token appears after the first hydrate (signup → navigate), load the user
+  // instead of leaving ProtectedRoute spinning or bouncing to /login.
+  useEffect(() => {
+    if (isLoading || user) return
+    const storedToken = localStorage.getItem('access_token')
+    if (!storedToken) return
+
+    let cancelled = false
+    authApi
+      .getProfile()
+      .then((userData) => {
+        if (cancelled) return
+        setUser(userData.user)
+        setToken(storedToken)
+      })
+      .catch(() => {
+        if (cancelled) return
+        if (localStorage.getItem('access_token') === storedToken) {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          setToken(null)
+        }
+      })
+    return () => {
+      cancelled = true
     }
+  }, [isLoading, user])
+
+  const applySession = (accessToken: string, refreshToken: string, userData: User) => {
+    localStorage.setItem('access_token', accessToken)
+    localStorage.setItem('refresh_token', refreshToken)
+    // Commit before the caller navigates so ProtectedRoute sees a session.
+    flushSync(() => {
+      setToken(accessToken)
+      setUser(userData)
+    })
+  }
+
+  const login = async (email: string, password: string) => {
+    const response = await authApi.login({ email, password })
+    applySession(response.access_token, response.refresh_token, response.user)
+    await mergeGuestProgressIfExists()
   }
 
   const mergeGuestProgressIfExists = async () => {
@@ -95,13 +127,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const signup = async (email: string, password: string, username?: string) => {
-    await authApi.signup({
+    const response = await authApi.signup({
       email,
       password,
       username: username || undefined,
     })
-    // Backend allows unverified users to log in. Auto-login so signup
-    // lands in onboarding instead of bouncing off ProtectedRoute.
+    // New accounts return a session so we never depend on a second /auth/login
+    // racing ProtectedRoute. Duplicate-email 201s omit tokens (no enumeration).
+    if (response.access_token && response.refresh_token && response.user) {
+      applySession(response.access_token, response.refresh_token, response.user)
+      await mergeGuestProgressIfExists()
+      return
+    }
     await login(email, password)
   }
 

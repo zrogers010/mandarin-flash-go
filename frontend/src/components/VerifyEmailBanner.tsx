@@ -20,7 +20,10 @@ export function VerifyEmailBanner() {
   }
 
   return (
-    <div className="bg-amber-50 border-b border-amber-200">
+    <div
+      data-testid="verify-email-banner"
+      className="bg-amber-50 border-b border-amber-200 sticky top-14 sm:top-16 z-30"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-start sm:items-center gap-3">
         <IconMail className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5 sm:mt-0" aria-hidden />
         <div className="flex-1 min-w-0 text-sm text-amber-900">
