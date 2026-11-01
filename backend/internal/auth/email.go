@@ -81,12 +81,14 @@ func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody, textBody s
 		log.Println("════════════════════════════════════════════════════════")
 		log.Printf("  [DEV MODE] Email to: %s <%s>", toName, toEmail)
 		log.Printf("  Subject: %s", subject)
+		log.Printf("  Text body length: %d  HTML body length: %d", len(textBody), len(htmlBody))
 		log.Println("  Set AWS_REGION to enable real email delivery via SES")
 		log.Println("════════════════════════════════════════════════════════")
 		return nil
 	}
 
 	fromAddr := fmt.Sprintf("%s <%s>", es.fromName, es.fromEmail)
+	utf8 := "UTF-8"
 
 	input := &sesv2.SendEmailInput{
 		FromEmailAddress: &fromAddr,
@@ -97,7 +99,8 @@ func (es *EmailService) sendEmail(toEmail, toName, subject, htmlBody, textBody s
 			Simple: &sestypes.Message{
 				Subject: &sestypes.Content{Data: &subject},
 				Body: &sestypes.Body{
-					Html: &sestypes.Content{Data: &htmlBody},
+					Html: &sestypes.Content{Data: &htmlBody, Charset: &utf8},
+					Text: &sestypes.Content{Data: &textBody, Charset: &utf8},
 				},
 			},
 		},
@@ -124,25 +127,9 @@ func (es *EmailService) SendEmailVerification(email, name, token string) error {
 		return nil
 	}
 
-	data := EmailVerificationData{
-		UserName:     name,
-		VerifyURL:    verifyURL,
-		ExpiresAt:    time.Now().Add(24 * time.Hour),
-		SupportEmail: es.supportEmail,
-	}
-
-	emailTemplate, err := es.getEmailVerificationTemplate()
-	if err != nil {
-		return fmt.Errorf("failed to get email template: %w", err)
-	}
-
-	emailBody, err := es.renderTemplate(emailTemplate, data)
-	if err != nil {
-		return fmt.Errorf("failed to render email template: %w", err)
-	}
-
-	// For now, use the HTML body as text (can be improved with plain text templates)
-	return es.sendEmail(email, name, emailTemplate.Subject, emailBody, emailBody)
+	htmlBody := GetVerificationEmailHTML(name, token, "24")
+	textBody := GetVerificationEmailPlainText(name, token, "24")
+	return es.sendEmail(email, name, "Verify Your Email - MandarinFlash", htmlBody, textBody)
 }
 
 // SendPasswordReset sends a password reset email using new templates

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { isCredentialAuthRequest } from './authErrors'
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || ''
 
@@ -32,6 +33,14 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+
+    const requestUrl = originalRequest?.url || ''
+
+    // Login/signup/reset 401s are credential failures, not expired sessions.
+    // Refreshing or doing a hard redirect to /login wipes the form and hides the error.
+    if (error.response?.status === 401 && isCredentialAuthRequest(requestUrl)) {
+      return Promise.reject(error)
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
@@ -78,14 +87,19 @@ api.interceptors.response.use(
         refreshPromise = null
         
         const url = originalRequest.url || ''
-        const isPublicRoute = url.includes('/vocabulary') || 
-                             url.includes('/dictionary') || 
+        const isPublicRoute = url.includes('/vocabulary') ||
+                             url.includes('/dictionary') ||
                              url.includes('/lessons') ||
-                             url.includes('/quiz/generate') || 
+                             url.includes('/quiz/generate') ||
                              url.includes('/quiz/submit') ||
-                             url.includes('/health')
-        
-        if (!isPublicRoute) {
+                             url.includes('/health') ||
+                             isCredentialAuthRequest(url)
+
+        const alreadyOnAuthPage = typeof window !== 'undefined' &&
+          ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email']
+            .includes(window.location.pathname)
+
+        if (!isPublicRoute && !alreadyOnAuthPage) {
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
           window.location.href = '/login'

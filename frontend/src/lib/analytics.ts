@@ -31,12 +31,11 @@ export const analytics = {
   /**
    * Track successful signup
    */
-  trackSignupComplete(email: string) {
+  trackSignupComplete() {
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'signup_complete', {
         event_category: 'engagement',
         event_label: 'User completed signup',
-        user_id: email, // Hashed by GA4
       })
     }
   },

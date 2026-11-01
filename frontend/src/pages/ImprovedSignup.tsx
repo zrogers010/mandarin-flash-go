@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { EyeIcon, EyeSlashIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { IconCircleCheck, IconCircleX, IconEye, IconEyeOff } from '@tabler/icons-react'
 
 interface PasswordStrength {
   score: number
@@ -21,7 +21,6 @@ export default function ImprovedSignup() {
   const navigate = useNavigate()
   const { signup } = useAuth()
 
-  // Track signup start for analytics
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).gtag) {
       (window as any).gtag('event', 'signup_start', {
@@ -30,7 +29,6 @@ export default function ImprovedSignup() {
     }
   }, [])
 
-  // Real-time email validation
   const validateEmail = (value: string): boolean => {
     setEmailError('')
     if (!value) return false
@@ -43,7 +41,6 @@ export default function ImprovedSignup() {
     return true
   }
 
-  // Password strength calculation
   const calculatePasswordStrength = (pwd: string): PasswordStrength => {
     if (!pwd) {
       return { score: 0, feedback: '', color: 'gray' }
@@ -52,11 +49,9 @@ export default function ImprovedSignup() {
     let score = 0
     const feedback: string[] = []
 
-    // Length check
     if (pwd.length >= 8) score++
     else feedback.push('at least 8 characters')
 
-    // Complexity checks
     if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++
     else feedback.push('uppercase and lowercase letters')
 
@@ -66,7 +61,6 @@ export default function ImprovedSignup() {
     if (/[^a-zA-Z0-9]/.test(pwd)) score++
     else feedback.push('a special character')
 
-    // Determine strength
     let strengthText = ''
     let color = 'gray'
     
@@ -101,10 +95,8 @@ export default function ImprovedSignup() {
     setEmailError('')
     setPasswordError('')
 
-    // Validate email
     if (!validateEmail(email)) return
 
-    // Validate password
     if (password.length < 8) {
       setPasswordError('Password must be at least 8 characters')
       return
@@ -115,19 +107,14 @@ export default function ImprovedSignup() {
     try {
       await signup(email, password)
       
-      // Track signup completion
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'signup_complete', {
           event_category: 'engagement',
         })
       }
 
-      // Redirect to onboarding
       navigate('/onboarding')
     } catch (error: any) {
-      setIsLoading(false)
-      
-      // Handle specific error messages
       const errorMessage = error?.response?.data?.error || error.message || 'An error occurred'
       
       if (errorMessage.toLowerCase().includes('email')) {
@@ -141,33 +128,32 @@ export default function ImprovedSignup() {
       } else {
         setGeneralError(errorMessage)
       }
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800 px-4 py-12">
-      <div className="max-w-md w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+    <div className="bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800 px-4 pt-6 pb-10 sm:pt-10 sm:pb-16">
+      <div className="max-w-md w-full mx-auto">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Start Learning Chinese
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Join thousands of learners mastering Mandarin
+            Create a free account to save your HSK flashcards, quizzes, and progress.
           </p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8">
           {generalError && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-              <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div role="alert" className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+              <IconCircleX className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-700 dark:text-red-300">{generalError}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email address
@@ -195,13 +181,12 @@ export default function ImprovedSignup() {
               />
               {emailError && (
                 <p id="email-error" className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                  <XCircleIcon className="h-4 w-4" />
+                  <IconCircleX className="h-4 w-4" />
                   {emailError}
                 </p>
               )}
             </div>
 
-            {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Password
@@ -234,14 +219,13 @@ export default function ImprovedSignup() {
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
+                    <IconEyeOff className="h-5 w-5" />
                   ) : (
-                    <EyeIcon className="h-5 w-5" />
+                    <IconEye className="h-5 w-5" />
                   )}
                 </button>
               </div>
               
-              {/* Password Strength Indicator */}
               {password && (
                 <div id="password-strength" className="mt-2">
                   <div className="flex items-center gap-1 mb-1">
@@ -270,13 +254,12 @@ export default function ImprovedSignup() {
               
               {passwordError && (
                 <p id="password-error" className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                  <XCircleIcon className="h-4 w-4" />
+                  <IconCircleX className="h-4 w-4" />
                   {passwordError}
                 </p>
               )}
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading || !email || !password || !!emailError}
@@ -296,12 +279,13 @@ export default function ImprovedSignup() {
             </button>
           </form>
 
-          {/* Terms */}
           <p className="mt-6 text-xs text-center text-gray-500 dark:text-gray-400">
-            By creating an account, you agree to our Terms of Service and Privacy Policy
+            By creating an account, you agree to our{' '}
+            <Link to="/terms" className="underline hover:text-gray-700">Terms of Service</Link>
+            {' '}and{' '}
+            <Link to="/privacy" className="underline hover:text-gray-700">Privacy Policy</Link>
           </p>
 
-          {/* Login Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?{' '}
@@ -315,10 +299,9 @@ export default function ImprovedSignup() {
           </div>
         </div>
 
-        {/* Trust Indicators */}
-        <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <CheckCircleIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex items-center justify-center gap-2">
+            <IconCircleCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span>Free forever • No credit card required</span>
           </div>
         </div>

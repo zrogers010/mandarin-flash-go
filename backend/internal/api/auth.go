@@ -588,10 +588,10 @@ func (ah *AuthHandler) VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	// Check if token has been used
+	// Check if token has been used — treat a second click as success
 	if verificationToken.UsedAt != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Email has already been verified",
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Email has already been verified",
 		})
 		return
 	}
@@ -607,6 +607,12 @@ func (ah *AuthHandler) VerifyEmail(c *gin.Context) {
 	// Mark token as used
 	if err := ah.userRepo.UseEmailVerificationToken(req.Token); err != nil {
 		// Log error but don't fail the request
+	}
+
+	if user, err := ah.userService.GetUserByID(verificationToken.UserID); err == nil && user != nil {
+		if err := ah.emailService.SendWelcomeEmail(user.Email, user.DisplayName()); err != nil {
+			log.Printf("ERROR: Failed to send welcome email to %s: %v", user.Email, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -835,12 +841,12 @@ func (ah *AuthHandler) CompleteOnboarding(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Onboarding completed successfully",
 		"user": gin.H{
-			"id":                    user.ID,
-			"email":                 user.Email,
-			"onboarding_completed":  true,
-			"learning_goal":         req.LearningGoal,
-			"current_hsk_level":     req.CurrentHSKLevel,
-			"daily_minutes_goal":    req.DailyMinutesGoal,
+			"id":                   user.ID,
+			"email":                user.Email,
+			"onboarding_completed": true,
+			"learning_goal":        req.LearningGoal,
+			"current_hsk_level":    req.CurrentHSKLevel,
+			"daily_minutes_goal":   req.DailyMinutesGoal,
 		},
 	})
 }

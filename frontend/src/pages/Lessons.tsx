@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BookTemplate, Utensils, GraduationCap, ArrowRight, Brain } from 'lucide-react'
 import { lessonsApi, type Lesson } from '@/lib/api'
 import { SEO } from '@/components/SEO'
+import { lessonEyebrow } from '@/lib/lessonLabels'
 
 const categoryMeta: Record<string, { label: string; icon: typeof BookTemplate; color: string }> = {
   grammar: { label: 'Grammar', icon: BookTemplate, color: 'bg-purple-600' },
@@ -172,13 +173,7 @@ export function Lessons() {
                       {lesson.title}
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span className="capitalize">{meta?.label ?? lesson.category}</span>
-                      {lesson.difficulty && (
-                        <>
-                          <span className="text-gray-300">|</span>
-                          <span className="capitalize">{lesson.difficulty}</span>
-                        </>
-                      )}
+                      <span>{lessonEyebrow(lesson.category, lesson.difficulty)}</span>
                     </div>
                   </div>
                 </div>

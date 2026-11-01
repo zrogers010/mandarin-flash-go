@@ -5,6 +5,7 @@ import { lessonsApi, type LessonWithVocabulary } from '@/lib/api'
 import { speakText } from '@/lib/speech'
 import { shortDefinition } from '@/lib/definitions'
 import { SEO } from '@/components/SEO'
+import { lessonEyebrow } from '@/lib/lessonLabels'
 import { useMemo, useCallback } from 'react'
 
 interface SentenceData {
@@ -180,13 +181,7 @@ export function LessonDetail() {
       {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span className="capitalize">{lesson.category}</span>
-          {lesson.difficulty && (
-            <>
-              <span className="text-gray-300">|</span>
-              <span className="capitalize">{lesson.difficulty}</span>
-            </>
-          )}
+          <span>{lessonEyebrow(lesson.category, lesson.difficulty)}</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{lesson.title}</h1>
         {lesson.description && (

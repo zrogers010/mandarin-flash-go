@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { IconCircleCheck, IconCircleX, IconLoader2 } from '@tabler/icons-react'
 import { SEO } from '@/components/SEO'
+import { isAlreadyVerifiedError, stripAuthTokenFromUrl } from '@/lib/stripAuthToken'
 
 export const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
-  const { verifyEmail } = useAuth()
+  const tokenFromQuery = searchParams.get('token')
+  const { verifyEmail, refreshUser, isAuthenticated } = useAuth()
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
 
   useEffect(() => {
+    const token = tokenFromQuery || stripAuthTokenFromUrl()
+
     if (!token) {
       setStatus('error')
       setMessage('No verification token provided. Please check the link in your email.')
@@ -24,17 +27,26 @@ export const VerifyEmail: React.FC = () => {
         await verifyEmail(token)
         setStatus('success')
         setMessage('Your email has been verified successfully!')
+        if (isAuthenticated) {
+          try { await refreshUser() } catch { /* banner will hide on next profile load */ }
+        }
       } catch (err: any) {
+        const apiMessage = err.response?.data?.error || ''
+        if (isAlreadyVerifiedError(apiMessage)) {
+          setStatus('success')
+          setMessage('Your email is already verified. You are all set!')
+          return
+        }
         setStatus('error')
         setMessage(
-          err.response?.data?.error ||
+          apiMessage ||
           'Failed to verify email. The link may have expired or already been used.'
         )
       }
     }
 
     verify()
-  }, [token, verifyEmail])
+  }, [tokenFromQuery, verifyEmail, refreshUser, isAuthenticated])
 
   return (
     <>
@@ -43,7 +55,7 @@ export const VerifyEmail: React.FC = () => {
         <div className="max-w-md w-full text-center space-y-6">
           {status === 'loading' && (
           <>
-            <Loader2 className="h-16 w-16 text-primary-600 animate-spin mx-auto" />
+            <IconLoader2 className="h-16 w-16 text-primary-600 animate-spin mx-auto" />
             <h2 className="text-2xl font-bold text-gray-900">Verifying your email...</h2>
             <p className="text-gray-600">Please wait a moment.</p>
           </>
@@ -52,7 +64,7 @@ export const VerifyEmail: React.FC = () => {
         {status === 'success' && (
           <>
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-10 w-10 text-green-600" />
+              <IconCircleCheck className="h-10 w-10 text-green-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Email Verified!</h2>
             <p className="text-gray-600">{message}</p>
@@ -71,7 +83,7 @@ export const VerifyEmail: React.FC = () => {
         {status === 'error' && (
           <>
             <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <XCircle className="h-10 w-10 text-red-600" />
+              <IconCircleX className="h-10 w-10 text-red-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Verification Failed</h2>
             <p className="text-gray-600">{message}</p>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react'
+import { IconAlertCircle, IconArrowLeft, IconCircleCheck, IconEye, IconEyeOff, IconLock } from '@tabler/icons-react'
 import { SEO } from '@/components/SEO'
+import { stripAuthTokenFromUrl } from '@/lib/stripAuthToken'
 
 export const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('')
@@ -17,9 +18,10 @@ export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  const token = searchParams.get('token')
+  const [token] = useState(() => searchParams.get('token') || stripAuthTokenFromUrl())
 
   useEffect(() => {
+    stripAuthTokenFromUrl()
     if (!token) {
       setError('Invalid or missing reset token')
     }
@@ -72,7 +74,7 @@ export const ResetPassword: React.FC = () => {
           <div className="max-w-md w-full space-y-8">
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
             <div className="flex">
-              <AlertCircle className="h-5 w-5 text-red-400" />
+              <IconAlertCircle className="h-5 w-5 text-red-400" />
               <div className="ml-3">
                 <p className="text-sm text-red-800">Invalid or missing reset token</p>
               </div>
@@ -102,7 +104,7 @@ export const ResetPassword: React.FC = () => {
             to="/login"
             className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
           >
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            <IconArrowLeft className="h-4 w-4 mr-1" />
             Back to login
           </Link>
           <h2 className="text-center text-3xl font-extrabold text-gray-900">
@@ -116,7 +118,7 @@ export const ResetPassword: React.FC = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
-                <AlertCircle className="h-5 w-5 text-red-400" />
+                <IconAlertCircle className="h-5 w-5 text-red-400" />
                 <div className="ml-3">
                   <p className="text-sm text-red-800">{error}</p>
                 </div>
@@ -127,7 +129,7 @@ export const ResetPassword: React.FC = () => {
           {success && (
             <div className="bg-green-50 border border-green-200 rounded-md p-4">
               <div className="flex">
-                <CheckCircle className="h-5 w-5 text-green-400" />
+                <IconCircleCheck className="h-5 w-5 text-green-400" />
                 <div className="ml-3">
                   <p className="text-sm text-green-800">{success}</p>
                 </div>
@@ -142,7 +144,7 @@ export const ResetPassword: React.FC = () => {
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  <IconLock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="password"
@@ -162,9 +164,9 @@ export const ResetPassword: React.FC = () => {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <IconEyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <IconEye className="h-5 w-5" />
                     )}
                   </button>
                 </div>
@@ -180,7 +182,7 @@ export const ResetPassword: React.FC = () => {
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  <IconLock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="confirmPassword"
@@ -200,9 +202,9 @@ export const ResetPassword: React.FC = () => {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <IconEyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <IconEye className="h-5 w-5" />
                     )}
                   </button>
                 </div>

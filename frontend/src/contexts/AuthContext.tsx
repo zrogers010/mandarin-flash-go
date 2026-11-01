@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authApi, User } from '@/lib/api'
 
 interface AuthContextType {
@@ -27,6 +28,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(localStorage.getItem('access_token'))
   const [isLoading, setIsLoading] = useState(true)
+  const navigate = useNavigate()
 
   const isAuthenticated = !!user && !!token
 
@@ -93,17 +95,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const signup = async (email: string, password: string, username?: string) => {
-    try {
-      await authApi.signup({
-        email,
-        password,
-        username: username || undefined,
-      })
-      
-      // Don't automatically log in after signup - user needs to verify email first
-    } catch (error) {
-      throw error
-    }
+    await authApi.signup({
+      email,
+      password,
+      username: username || undefined,
+    })
+    // Backend allows unverified users to log in. Auto-login so signup
+    // lands in onboarding instead of bouncing off ProtectedRoute.
+    await login(email, password)
   }
 
   const logout = () => {
@@ -120,6 +119,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Ignore errors on logout
       })
     }
+
+    navigate('/', { replace: true })
   }
 
   const requestPasswordReset = async (email: string) => {

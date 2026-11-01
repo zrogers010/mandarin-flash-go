@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react'
+import { IconAlertCircle, IconEye, IconEyeOff, IconLock, IconMail } from '@tabler/icons-react'
 import { SEO } from '@/components/SEO'
+import { LOGIN_ERROR_MESSAGE } from '@/lib/authErrors'
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -25,8 +26,9 @@ export const Login: React.FC = () => {
     try {
       await login(email, password)
       navigate(from, { replace: true })
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.')
+    } catch {
+      // Non-enumerating: same copy for unknown email, bad password, or deactivated.
+      setError(LOGIN_ERROR_MESSAGE)
     } finally {
       setIsLoading(false)
     }
@@ -35,7 +37,7 @@ export const Login: React.FC = () => {
   return (
     <>
       <SEO title="Sign In" noindex />
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="bg-gray-50 px-4 pt-6 pb-10 sm:pt-10 sm:pb-16">
         <div className="max-w-md w-full space-y-8">
           <div>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -53,9 +55,9 @@ export const Login: React.FC = () => {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div role="alert" className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
-                <AlertCircle className="h-5 w-5 text-red-400" />
+                <IconAlertCircle className="h-5 w-5 text-red-400" />
                 <div className="ml-3">
                   <p className="text-sm text-red-800">{error}</p>
                 </div>
@@ -69,7 +71,7 @@ export const Login: React.FC = () => {
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <IconMail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="email"
@@ -90,7 +92,7 @@ export const Login: React.FC = () => {
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  <IconLock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="password"
@@ -110,9 +112,9 @@ export const Login: React.FC = () => {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <IconEyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <IconEye className="h-5 w-5" />
                     )}
                   </button>
                 </div>
